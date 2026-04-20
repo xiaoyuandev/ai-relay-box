@@ -22,22 +22,23 @@ interface ProvidersPageProps {
   apiBase?: string;
 }
 
-export function ProvidersPage({ desktopState, apiBase }: ProvidersPageProps) {
+export function ProvidersPage({
+  desktopState,
+  apiBase
+}: ProvidersPageProps) {
   const [health, setHealth] = useState("loading");
   const [providers, setProviders] = useState<Provider[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
-  const [authMode, setAuthMode] = useState<"bearer" | "x-api-key" | "both">(
-    "bearer"
-  );
   const [editingId, setEditingId] = useState<string | null>(null);
   const [healthFeedback, setHealthFeedback] = useState<string | null>(null);
   const [detailsFeedback, setDetailsFeedback] = useState<string | null>(null);
   const [selectedProviderName, setSelectedProviderName] = useState<string | null>(null);
   const [models, setModels] = useState<ProviderModel[] | null>(null);
   const [modelsLoading, setModelsLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,12 +86,17 @@ export function ProvidersPage({ desktopState, apiBase }: ProvidersPageProps) {
     setModels(null);
     setSelectedProviderName(null);
 
+    if (!name.trim() || !baseUrl.trim() || !apiKey.trim()) {
+      setError("Name, Base URL, and API Key are required.");
+      return;
+    }
+
     try {
+      setSubmitting(true);
       const payload = {
-        name,
-        base_url: baseUrl,
-        api_key: apiKey,
-        auth_mode: authMode,
+        name: name.trim(),
+        base_url: baseUrl.trim(),
+        api_key: apiKey.trim(),
         extra_headers: {}
       };
 
@@ -102,9 +108,12 @@ export function ProvidersPage({ desktopState, apiBase }: ProvidersPageProps) {
 
       resetForm();
       setEditingId(null);
+      setHealthFeedback(editingId ? "Provider updated." : "Provider created.");
       await refreshProviders();
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : "Unknown error");
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -165,7 +174,6 @@ export function ProvidersPage({ desktopState, apiBase }: ProvidersPageProps) {
     setName(provider.name);
     setBaseUrl(provider.base_url);
     setApiKey("");
-    setAuthMode(provider.auth_mode);
     setHealthFeedback(null);
     setDetailsFeedback(null);
     setModels(null);
@@ -178,7 +186,6 @@ export function ProvidersPage({ desktopState, apiBase }: ProvidersPageProps) {
     setName("");
     setBaseUrl("");
     setApiKey("");
-    setAuthMode("bearer");
     setDetailsFeedback(null);
     setModels(null);
     setSelectedProviderName(null);
@@ -247,6 +254,10 @@ export function ProvidersPage({ desktopState, apiBase }: ProvidersPageProps) {
             Electron-vite desktop shell aligned to the packaging baseline before
             further feature development.
           </p>
+          <p className="meta">
+            connected api base:{" "}
+            <span className="mono">{apiBase ?? "http://127.0.0.1:3456"}</span>
+          </p>
         </div>
         <div className="hero-pills">
           <div className={`health-pill health-${health}`}>core: {health}</div>
@@ -300,11 +311,16 @@ export function ProvidersPage({ desktopState, apiBase }: ProvidersPageProps) {
         <form className="provider-form" onSubmit={handleCreateProvider}>
           <label>
             <span>Name</span>
-            <input value={name} onChange={(event) => setName(event.target.value)} />
+            <input
+              required
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
           </label>
           <label>
             <span>Base URL</span>
             <input
+              required
               value={baseUrl}
               onChange={(event) => setBaseUrl(event.target.value)}
               placeholder="https://api.example.com/v1"
@@ -313,32 +329,32 @@ export function ProvidersPage({ desktopState, apiBase }: ProvidersPageProps) {
           <label>
             <span>API Key</span>
             <input
+              required
               value={apiKey}
               onChange={(event) => setApiKey(event.target.value)}
               placeholder="sk-example"
+              type="password"
             />
+            <span className="field-hint">
+              Authentication header is detected automatically from the provider name
+              and base URL.
+            </span>
           </label>
-          <label>
-            <span>Auth Mode</span>
-            <select
-              value={authMode}
-              onChange={(event) =>
-                setAuthMode(event.target.value as "bearer" | "x-api-key" | "both")
-              }
-            >
-              <option value="bearer">bearer</option>
-              <option value="x-api-key">x-api-key</option>
-              <option value="both">both</option>
-            </select>
-          </label>
-          <button type="submit">
-            {editingId ? "Save Provider" : "Create Provider"}
+          <button type="submit" disabled={submitting}>
+            {submitting
+              ? editingId
+                ? "Saving..."
+                : "Creating..."
+              : editingId
+                ? "Save Provider"
+                : "Create Provider"}
           </button>
           {editingId ? (
             <button
               type="button"
               className="secondary-button"
               onClick={resetForm}
+              disabled={submitting}
             >
               Cancel
             </button>
@@ -370,9 +386,6 @@ export function ProvidersPage({ desktopState, apiBase }: ProvidersPageProps) {
                   )}
                 </div>
                 <p className="mono">{provider.base_url}</p>
-                <p className="meta">
-                  auth: <span className="mono">{provider.auth_mode}</span>
-                </p>
                 <p className="meta">
                   health:{" "}
                   <span className="mono">{provider.status.last_health_status}</span>
