@@ -200,7 +200,7 @@ app.whenReady().then(() => {
 
   ipcMain.handle("app:ping", async () => ({
     ok: true,
-    runtime: "electron",
+    runtime: "desktop",
     platform: process.platform,
     apiBase: coreRuntime.state.apiBase,
     config: {

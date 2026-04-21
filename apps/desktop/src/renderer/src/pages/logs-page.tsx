@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ToastRegion, type ToastItem } from "../components/toast-region";
 import { useI18n } from "../i18n/i18n-provider";
 import { getLogs } from "../services/api";
@@ -12,17 +12,13 @@ import {
   heroClass,
   heroCopyClass,
   heroTitleClass,
-  iconBadgeClass,
   inputClass,
-  metaClass,
-  monoClass,
   pageShellClass,
   sectionCardClass,
   sectionHeadClass,
   sectionMetaClass,
   sectionTitleClass,
   statusDotClass,
-  surfaceCardClass,
   statusPillClass
 } from "../ui";
 
@@ -30,11 +26,15 @@ interface LogsPageProps {
   apiBase?: string;
 }
 
+const PAGE_SIZE = 50;
+
 export function LogsPage({ apiBase }: LogsPageProps) {
   const { locale, t } = useI18n();
   const [logs, setLogs] = useState<RequestLog[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [limit, setLimit] = useState(PAGE_SIZE);
   const [providerFilter, setProviderFilter] = useState("all");
   const [errorFilter, setErrorFilter] = useState("all");
   const [search, setSearch] = useState("");
@@ -55,25 +55,18 @@ export function LogsPage({ apiBase }: LogsPageProps) {
     setError(null);
   }, [error]);
 
-  async function loadLogs() {
-    setLoading(true);
-    try {
-      const items = await getLogs(50, apiBase);
-      setLogs(items);
-      setError(null);
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t("common.unknownError"));
-    } finally {
-      setLoading(false);
-    }
-  }
-
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
+      if (limit === PAGE_SIZE) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
+
       try {
-        const items = await getLogs(50, apiBase);
+        const items = await getLogs(limit, apiBase);
         if (cancelled) {
           return;
         }
@@ -87,6 +80,7 @@ export function LogsPage({ apiBase }: LogsPageProps) {
       } finally {
         if (!cancelled) {
           setLoading(false);
+          setLoadingMore(false);
         }
       }
     }
@@ -96,13 +90,18 @@ export function LogsPage({ apiBase }: LogsPageProps) {
     return () => {
       cancelled = true;
     };
-  }, [apiBase, t]);
+  }, [apiBase, limit, t]);
 
-  const providerOptions = Array.from(
-    new Set(logs.map((log) => log.provider_name).filter(Boolean))
+  const visibleLogs = useMemo(
+    () => logs.filter((log) => log.path !== "/v1/models"),
+    [logs]
   );
 
-  const filteredLogs = logs.filter((log) => {
+  const providerOptions = Array.from(
+    new Set(visibleLogs.map((log) => log.provider_name).filter(Boolean))
+  );
+
+  const filteredLogs = visibleLogs.filter((log) => {
     if (providerFilter !== "all" && log.provider_name !== providerFilter) {
       return false;
     }
@@ -126,17 +125,12 @@ export function LogsPage({ apiBase }: LogsPageProps) {
     return true;
   });
 
-  const successCount = filteredLogs.filter((log) => !log.error_type).length;
-  const errorCount = filteredLogs.filter((log) => Boolean(log.error_type)).length;
-  const averageLatency = filteredLogs.length
-    ? Math.round(
-        filteredLogs.reduce((total, log) => total + log.latency_ms, 0) / filteredLogs.length
-      )
-    : 0;
+  const canLoadMore = logs.length >= limit;
 
   return (
     <main className={pageShellClass}>
       <ToastRegion items={toasts} onDismiss={dismissToast} />
+
       <section className={heroClass}>
         <div className="space-y-4">
           <div>
@@ -165,7 +159,7 @@ export function LogsPage({ apiBase }: LogsPageProps) {
               type="button"
               className={buttonClass("secondary")}
               onClick={() => {
-                void loadLogs();
+                setLimit(PAGE_SIZE);
               }}
             >
               {t("common.refresh")}
@@ -218,27 +212,6 @@ export function LogsPage({ apiBase }: LogsPageProps) {
           </label>
         </div>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          <div className={surfaceCardClass}>
-            <p className={fieldLabelClass}>{t("logs.summary.success")}</p>
-            <p className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-[color:var(--color-heading)]">
-              {successCount}
-            </p>
-          </div>
-          <div className={surfaceCardClass}>
-            <p className={fieldLabelClass}>{t("logs.summary.errors")}</p>
-            <p className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-[color:var(--color-heading)]">
-              {errorCount}
-            </p>
-          </div>
-          <div className={surfaceCardClass}>
-            <p className={fieldLabelClass}>{t("logs.summary.avgLatency")}</p>
-            <p className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-[color:var(--color-heading)]">
-              {averageLatency} ms
-            </p>
-          </div>
-        </div>
-
         {filteredLogs.length === 0 ? (
           <div className="mt-6">
             <div className={emptyStateClass}>
@@ -247,77 +220,72 @@ export function LogsPage({ apiBase }: LogsPageProps) {
             </div>
           </div>
         ) : (
-          <div className="mt-6 grid gap-4">
-            {filteredLogs.map((log) => (
-              <article
-                key={log.id}
-                className={surfaceCardClass}
-              >
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="flex items-start gap-3">
-                    <span className={iconBadgeClass}>
-                      <span
-                        className={statusDotClass(log.error_type ? "danger" : "success")}
-                      />
-                    </span>
-                    <div className="space-y-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className={statusPillClass("default")}>{log.method}</span>
-                        <p className="text-lg font-semibold tracking-[-0.02em] text-[color:var(--color-heading)]">
-                          {log.path}
-                        </p>
-                      </div>
-                    <p className={metaClass}>
-                      {t("logs.meta.provider")} <span className={monoClass}>{log.provider_name}</span>
-                    </p>
-                  </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <span className={statusPillClass("default")}>
-                      {log.status_code ?? t("logs.status.na")}
-                    </span>
-                    {log.error_type ? (
-                      <span className={statusPillClass("danger")}>{log.error_type}</span>
-                    ) : (
-                      <span className={statusPillClass("success")}>{t("logs.filter.success")}</span>
-                    )}
-                  </div>
-                </div>
+          <div className="mt-6 overflow-hidden rounded-[28px] border [border-color:var(--border-soft)] [background:var(--panel-solid)]">
+            <div className="grid grid-cols-[1.05fr_80px_1.25fr_1fr_1.2fr_100px_88px] gap-3 border-b [border-color:var(--border-soft)] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--color-subtle)]">
+              <span>{t("logs.columns.time")}</span>
+              <span>{t("logs.columns.method")}</span>
+              <span>{t("logs.columns.path")}</span>
+              <span>{t("logs.columns.provider")}</span>
+              <span>{t("logs.columns.model")}</span>
+              <span>{t("logs.columns.status")}</span>
+              <span>{t("logs.columns.latency")}</span>
+            </div>
 
-                <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  <p className={metaClass}>
-                    {t("logs.meta.model")} <span className={monoClass}>{log.model ?? "-"}</span>
-                  </p>
-                  <p className={metaClass}>
-                    {t("logs.meta.upstream")} <span className={monoClass}>{log.upstream_host}</span>
-                  </p>
-                  <p className={metaClass}>
-                    {t("logs.meta.latency")} <span className={monoClass}>{log.latency_ms} ms</span>
-                  </p>
-                  <p className={metaClass}>
-                    {t("logs.meta.firstByte")}{" "}
-                    <span className={monoClass}>{log.first_byte_ms ?? "-"} ms</span>
-                  </p>
-                  <p className={metaClass}>
-                    {t("logs.meta.at")} <span className={monoClass}>{log.timestamp}</span>
-                  </p>
-                  <p className={metaClass}>
-                    {t("logs.meta.localTime")}{" "}
-                    <span className={monoClass}>
-                      {new Date(log.timestamp).toLocaleString(locale === "zh" ? "zh-CN" : "en-US")}
-                    </span>
-                  </p>
-                </div>
+            <div className="divide-y [divide-color:var(--border-soft)]">
+              {filteredLogs.map((log) => {
+                const localTime = new Date(log.timestamp).toLocaleString(
+                  locale === "zh" ? "zh-CN" : "en-US"
+                );
 
-                {log.error_message ? (
-                  <p className="mt-5 rounded-2xl border [border-color:var(--danger-border)] [background:var(--danger-soft)] px-4 py-3 text-sm text-[color:var(--danger-text)]">
-                    <span className={monoClass}>{log.error_message}</span>
-                  </p>
-                ) : null}
-              </article>
-            ))}
+                return (
+                  <article
+                    key={log.id}
+                    className="grid grid-cols-[1.05fr_80px_1.25fr_1fr_1.2fr_100px_88px] items-center gap-3 px-4 py-3 text-sm"
+                    title={
+                      log.error_message
+                        ? `${localTime}\n${log.method} ${log.path}\n${log.provider_name}\n${log.model ?? "-"}\n${log.error_message}`
+                        : `${localTime}\n${log.method} ${log.path}\n${log.provider_name}\n${log.model ?? "-"}`
+                    }
+                  >
+                    <span className="truncate text-[color:var(--color-muted)]">{localTime}</span>
+                    <span className="truncate">
+                      <span className={statusPillClass("default")}>{log.method}</span>
+                    </span>
+                    <span className="truncate font-mono text-[13px] text-[color:var(--color-text)]">
+                      {log.path}
+                    </span>
+                    <span className="truncate text-[color:var(--color-text)]">{log.provider_name}</span>
+                    <span className="truncate font-mono text-[13px] text-[color:var(--color-text)]">
+                      {log.model ?? "-"}
+                    </span>
+                    <span className="inline-flex items-center gap-2 truncate">
+                      <span className={statusDotClass(log.error_type ? "danger" : "success")} />
+                      <span className="truncate text-[color:var(--color-muted)]">
+                        {log.error_type ? t("logs.filter.errors") : t("logs.filter.success")}
+                      </span>
+                    </span>
+                    <span className="truncate text-[color:var(--color-text)]">{log.latency_ms} ms</span>
+                  </article>
+                );
+              })}
+            </div>
           </div>
         )}
+
+        {canLoadMore ? (
+          <div className="mt-5 flex justify-center">
+            <button
+              type="button"
+              className={buttonClass("secondary")}
+              disabled={loadingMore}
+              onClick={() => {
+                setLimit((current) => current + PAGE_SIZE);
+              }}
+            >
+              {loadingMore ? t("logs.button.loadingMore") : t("logs.button.loadMore")}
+            </button>
+          </div>
+        ) : null}
       </section>
     </main>
   );
