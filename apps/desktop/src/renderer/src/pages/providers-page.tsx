@@ -278,11 +278,6 @@ export function ProvidersPage({
           >
             {t("providers.coreHealth", { status: health })}
           </div>
-          <div className={statusPillClass(desktopState?.ok ? "success" : "danger")}>
-            {t("providers.desktopRuntime", {
-              runtime: runtimeLabel
-            })}
-          </div>
         </div>
       </section>
 

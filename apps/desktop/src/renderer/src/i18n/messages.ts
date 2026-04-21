@@ -42,7 +42,6 @@ export const messages = {
     "providers.subtitle":
       "Manage provider connections here. Supported models are now managed from the Models menu for the active provider.",
     "providers.connectedApiBase": "connected api base:",
-    "providers.desktopRuntime": "desktop: {runtime}",
     "providers.coreHealth": "core: {status}",
     "providers.form.addTitle": "Add Provider",
     "providers.form.editTitle": "Edit Provider",
@@ -286,7 +285,6 @@ export const messages = {
     "providers.title": "供应商",
     "providers.subtitle": "在这里管理供应商连接。当前激活供应商支持的模型已移动到“模型”菜单管理。",
     "providers.connectedApiBase": "当前 API Base：",
-    "providers.desktopRuntime": "桌面端：{runtime}",
     "providers.coreHealth": "核心服务：{status}",
     "providers.form.addTitle": "新增供应商",
     "providers.form.editTitle": "编辑供应商",

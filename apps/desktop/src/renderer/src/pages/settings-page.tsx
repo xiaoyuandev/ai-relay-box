@@ -403,9 +403,6 @@ export function SettingsPage({
           <span className={statusPillClass(desktopState?.core.running ? "success" : "danger")}>
             {desktopState?.core.running ? t("app.coreRunning") : t("app.coreStopped")}
           </span>
-          <span className={statusPillClass("default")}>
-            {runtimeLabel}
-          </span>
         </div>
       </section>
 
