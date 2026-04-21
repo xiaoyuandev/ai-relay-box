@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { ToastRegion, type ToastItem } from "../components/toast-region";
 import { useI18n } from "../i18n/i18n-provider";
 import {
   activateProvider,
@@ -10,6 +11,29 @@ import {
   updateProvider
 } from "../services/api";
 import type { Provider } from "../types/provider";
+import {
+  buttonClass,
+  emptyStateClass,
+  eyebrowClass,
+  fieldLabelClass,
+  heroClass,
+  heroCopyClass,
+  heroPillsClass,
+  heroTitleClass,
+  iconBadgeClass,
+  inputClass,
+  labelClass,
+  listClass,
+  metaClass,
+  monoClass,
+  pageShellClass,
+  sectionCardClass,
+  sectionHeadClass,
+  sectionMetaClass,
+  sectionTitleClass,
+  selectableItemClass,
+  statusPillClass
+} from "../ui";
 
 interface ProvidersPageProps {
   desktopState: {
@@ -34,17 +58,45 @@ export function ProvidersPage({
   const [providers, setProviders] = useState<Provider[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [name, setName] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [expandedProviderId, setExpandedProviderId] = useState<string | null>(null);
 
   const selectedProvider =
     providers.find((provider) => provider.id === selectedProviderId) ??
     providers.find((provider) => provider.status.is_active) ??
     providers[0] ??
     null;
+
+  const dismissToast = useCallback((id: string) => {
+    setToasts((current) => current.filter((item) => item.id !== id));
+  }, []);
+
+  useEffect(() => {
+    if (!error) {
+      return;
+    }
+    setToasts((current) => [
+      ...current,
+      { id: `${Date.now()}-error`, message: error, tone: "error" }
+    ]);
+    setError(null);
+  }, [error]);
+
+  useEffect(() => {
+    if (!feedback) {
+      return;
+    }
+    setToasts((current) => [
+      ...current,
+      { id: `${Date.now()}-success`, message: feedback, tone: "success" }
+    ]);
+    setFeedback(null);
+  }, [feedback]);
 
   useEffect(() => {
     let cancelled = false;
@@ -67,6 +119,7 @@ export function ProvidersPage({
           providersData.find((provider) => provider.status.is_active) ??
           providersData[0] ??
           null;
+        setExpandedProviderId(nextSelected?.id ?? null);
         onSelectedProviderChange(nextSelected);
       } catch (loadError) {
         if (cancelled) {
@@ -83,7 +136,7 @@ export function ProvidersPage({
     return () => {
       cancelled = true;
     };
-  }, [apiBase, onSelectedProviderChange, selectedProviderId]);
+  }, [apiBase, onSelectedProviderChange, selectedProviderId, t]);
 
   async function refreshProviders(preferredProviderId?: string) {
     const providersData = await getProviders(apiBase);
@@ -94,6 +147,7 @@ export function ProvidersPage({
       providersData.find((provider) => provider.status.is_active) ??
       providersData[0] ??
       null;
+    setExpandedProviderId(nextSelected?.id ?? null);
     onSelectedProviderChange(nextSelected);
   }
 
@@ -194,217 +248,251 @@ export function ProvidersPage({
   }
 
   return (
-    <main className="page-shell">
-      <section className="hero">
-        <div>
-          <p className="eyebrow">Clash for AI</p>
-          <h1>{t("providers.title")}</h1>
-          <p className="subcopy">{t("providers.subtitle")}</p>
-          <p className="meta">
+    <main className={pageShellClass}>
+      <ToastRegion items={toasts} onDismiss={dismissToast} />
+      <section className={heroClass}>
+        <div className="space-y-4">
+          <div>
+            <p className={eyebrowClass}>Clash for AI</p>
+            <h1 className={heroTitleClass}>{t("providers.title")}</h1>
+          </div>
+          <p className={heroCopyClass}>{t("providers.subtitle")}</p>
+          <p className={metaClass}>
             {t("providers.connectedApiBase")}{" "}
-            <span className="mono">{desktopState?.apiBase ?? apiBase ?? "http://127.0.0.1:3456"}</span>
+            <span className={monoClass}>
+              {desktopState?.apiBase ?? apiBase ?? "http://127.0.0.1:3456"}
+            </span>
           </p>
         </div>
-        <div className="hero-pills">
-          <div className={`health-pill health-${health}`}>
-            {t("providers.coreHealth", { status: health })}
-          </div>
+        <div className={heroPillsClass}>
           <div
-            className={`health-pill ${
-              desktopState?.ok ? "health-ok" : "health-offline"
-            }`}
+            className={statusPillClass(
+              health === "ok" ? "success" : health === "offline" ? "danger" : "default"
+            )}
           >
-            {t("providers.desktopRuntime", {
-              runtime: desktopState?.runtime ?? t("settings.value.browser")
-            })}
+            {t("providers.coreHealth", { status: health })}
           </div>
         </div>
       </section>
 
-      {error ? <p className="panel error-panel">{error}</p> : null}
-      {feedback ? <p className="panel info-panel">{feedback}</p> : null}
-
-      <section className="panel form-panel">
-        <div className="section-head">
-          <h2>{editingId ? t("providers.form.editTitle") : t("providers.form.addTitle")}</h2>
-          <span>{editingId ? t("providers.form.editMeta") : t("providers.form.addMeta")}</span>
+      <section className={sectionCardClass}>
+        <div className={sectionHeadClass}>
+          <div className="space-y-1">
+            <h2 className={sectionTitleClass}>
+              {editingId ? t("providers.form.editTitle") : t("providers.form.addTitle")}
+            </h2>
+            <p className={sectionMetaClass}>
+              {editingId ? t("providers.form.editMeta") : t("providers.form.addMeta")}
+            </p>
+          </div>
         </div>
 
-        <form className="provider-form" onSubmit={handleCreateProvider}>
-          <label>
-            <span>{t("providers.form.name")}</span>
-            <input required value={name} onChange={(event) => setName(event.target.value)} />
-          </label>
-          <label>
-            <span>{t("providers.form.baseUrl")}</span>
+        <form className="mt-6 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1fr)_auto]" onSubmit={handleCreateProvider}>
+          <label className={labelClass}>
+            <span className={fieldLabelClass}>{t("providers.form.name")}</span>
             <input
               required
+              className={inputClass}
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
+          </label>
+          <label className={labelClass}>
+            <span className={fieldLabelClass}>{t("providers.form.baseUrl")}</span>
+            <input
+              required
+              className={inputClass}
               value={baseUrl}
               onChange={(event) => setBaseUrl(event.target.value)}
               placeholder="https://api.example.com/v1"
             />
           </label>
-          <label>
-            <span>{t("providers.form.apiKey")}</span>
+          <label className={labelClass}>
+            <span className={fieldLabelClass}>{t("providers.form.apiKey")}</span>
             <input
               required
+              className={inputClass}
               value={apiKey}
               onChange={(event) => setApiKey(event.target.value)}
               placeholder="sk-example"
               type="password"
             />
           </label>
-          <button type="submit" disabled={submitting}>
-            {submitting
-              ? t("common.saving")
-              : editingId
-                ? t("providers.form.save")
-                : t("providers.form.create")}
-          </button>
-          {editingId ? (
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={resetForm}
-              disabled={submitting}
-            >
-              {t("common.cancel")}
+          <div className="flex flex-wrap items-center gap-3 xl:self-end xl:pb-0.5">
+            <button type="submit" className={buttonClass("primary")} disabled={submitting}>
+              {submitting
+                ? t("common.saving")
+                : editingId
+                  ? t("providers.form.save")
+                  : t("providers.form.create")}
             </button>
-          ) : null}
+            {editingId ? (
+              <button
+                type="button"
+                className={buttonClass("secondary")}
+                onClick={resetForm}
+                disabled={submitting}
+              >
+                {t("common.cancel")}
+              </button>
+            ) : null}
+          </div>
         </form>
       </section>
 
-      <section className="providers-layout">
-        <aside className="panel providers-sidebar">
-          <div className="section-head">
-            <h2>{t("providers.list.title")}</h2>
-            <span>{t("providers.list.configured", { count: providers.length })}</span>
+      <section className={sectionCardClass}>
+        <div className={sectionHeadClass}>
+          <div className="space-y-1">
+            <h2 className={sectionTitleClass}>{t("providers.list.title")}</h2>
+            <p className={sectionMetaClass}>
+              {t("providers.list.configured", { count: providers.length })}
+            </p>
           </div>
+        </div>
 
-          {providers.length === 0 ? (
-            <div className="empty-state">
+        {providers.length === 0 ? (
+          <div className="mt-5">
+            <div className={emptyStateClass}>
               <p>{t("providers.list.empty")}</p>
             </div>
-          ) : (
-            <div className="provider-list">
-              {providers.map((provider) => (
-                <button
-                  key={provider.id}
-                  type="button"
-                  className={
-                    selectedProvider?.id === provider.id
-                      ? "provider-list-item active-provider-list-item"
-                      : "provider-list-item"
-                  }
-                  onClick={() => {
-                    onSelectedProviderChange(provider);
-                  }}
-                >
-                  <div className="provider-list-head">
-                    <strong>{provider.name}</strong>
-                    <span className={provider.status.is_active ? "status-badge active" : "status-badge"}>
-                      {provider.status.is_active
-                        ? t("providers.status.active")
-                        : t("providers.status.standby")}
-                    </span>
+          </div>
+        ) : (
+          <div className={`${listClass} mt-5`}>
+            {providers.map((provider) => (
+              <article
+                key={provider.id}
+                className={selectableItemClass(selectedProvider?.id === provider.id)}
+              >
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <button
+                      type="button"
+                      className="min-w-0 flex-1 text-left"
+                      onClick={() => {
+                        onSelectedProviderChange(provider);
+                        setExpandedProviderId((current) =>
+                          current === provider.id ? null : provider.id
+                        );
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className={iconBadgeClass}>
+                          <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5zM6.5 7a.5.5 0 0 0-.5.5V10h12V7.5a.5.5 0 0 0-.5-.5zM18 12H6v4.5a.5.5 0 0 0 .5.5h11a.5.5 0 0 0 .5-.5z" />
+                          </svg>
+                        </span>
+                        <div className="min-w-0">
+                          <strong className="block truncate text-base font-semibold text-[color:var(--color-heading)]">
+                            {provider.name}
+                          </strong>
+                          <p className="mt-1 text-xs text-[color:var(--color-muted)]">
+                            {provider.api_key_masked}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border [border-color:var(--border-soft)] [background:var(--panel-solid)] text-[color:var(--color-text)] transition hover:[border-color:var(--border-strong)] hover:[background:var(--panel-soft)]"
+                      onClick={() => {
+                        onSelectedProviderChange(provider);
+                        setExpandedProviderId((current) =>
+                          current === provider.id ? null : provider.id
+                        );
+                      }}
+                      aria-label={expandedProviderId === provider.id ? "Collapse" : "Expand"}
+                    >
+                      <svg
+                        className={`h-4 w-4 fill-current transition-transform ${expandedProviderId === provider.id ? "rotate-180" : ""}`}
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                      >
+                        <path d="m12 15.5-6-6 1.4-1.4 4.6 4.6 4.6-4.6L18 9.5z" />
+                      </svg>
+                    </button>
                   </div>
-                  <p className="meta mono">{provider.base_url}</p>
-                </button>
-              ))}
-            </div>
-          )}
-        </aside>
 
-        <section className="providers-main">
-          <section className="panel detail-panel">
-            <div className="section-head">
-              <h2>
-                {selectedProvider
-                  ? t("providers.detail.title", { name: selectedProvider.name })
-                  : t("providers.detail.fallbackTitle")}
-              </h2>
-              <span>
-                {selectedProvider?.status.is_active
-                  ? t("providers.status.active")
-                  : t("providers.status.standby")}
-              </span>
-            </div>
-
-            {!selectedProvider ? (
-              <div className="empty-state">
-                <p>{t("providers.detail.inspectHint")}</p>
-              </div>
-            ) : (
-              <>
-                <div className="settings-grid">
-                  <div className="settings-card">
-                    <p className="settings-label">{t("providers.detail.baseUrl")}</p>
-                    <p className="mono">{selectedProvider.base_url}</p>
-                  </div>
-                  <div className="settings-card">
-                    <p className="settings-label">{t("providers.detail.health")}</p>
-                    <p className="mono">{selectedProvider.status.last_health_status}</p>
-                  </div>
-                  <div className="settings-card">
-                    <p className="settings-label">{t("providers.detail.apiKey")}</p>
-                    <p className="mono">{selectedProvider.api_key_masked}</p>
-                  </div>
-                  <div className="settings-card">
-                    <p className="settings-label">{t("providers.detail.capabilities")}</p>
-                    <p className="mono">
-                      {selectedProvider.capabilities.supports_models_api
-                        ? `${t("providers.detail.capability.models")} `
-                        : ""}
-                      {selectedProvider.capabilities.supports_balance_api
-                        ? `${t("providers.detail.capability.balance")} `
-                        : ""}
-                      {selectedProvider.capabilities.supports_stream
-                        ? t("providers.detail.capability.stream")
-                        : ""}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="settings-actions settings-actions-split">
-                  <div className="settings-action-row">
-                    {!selectedProvider.status.is_active ? (
-                      <button type="button" onClick={() => void handleActivateProvider(selectedProvider)}>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {provider.status.is_active ? (
+                      <span className={statusPillClass("success")}>
+                        {t("providers.status.active")}
+                      </span>
+                    ) : null}
+                    {!provider.status.is_active ? (
+                      <button
+                        type="button"
+                        className={buttonClass("primary")}
+                        onClick={() => void handleActivateProvider(provider)}
+                      >
                         {t("providers.action.activate")}
                       </button>
                     ) : null}
                     <button
                       type="button"
-                      className="secondary-button"
+                      className={buttonClass("secondary")}
                       onClick={() => {
-                        startEditing(selectedProvider);
+                        onSelectedProviderChange(provider);
+                        startEditing(provider);
                       }}
                     >
                       {t("common.edit")}
                     </button>
+                      <button
+                        type="button"
+                        className={buttonClass("secondary")}
+                        onClick={() => {
+                          void handleHealthcheck(provider.id);
+                        }}
+                      >
+                        {t("providers.action.test")}
+                      </button>
                     <button
                       type="button"
-                      className="secondary-button"
+                      className={buttonClass("danger")}
                       onClick={() => {
-                        void handleHealthcheck(selectedProvider.id);
-                      }}
-                    >
-                      {t("common.check")}
-                    </button>
-                    <button
-                      type="button"
-                      className="danger-button"
-                      onClick={() => {
-                        void handleDeleteProvider(selectedProvider.id);
+                        void handleDeleteProvider(provider.id);
                       }}
                     >
                       {t("common.delete")}
                     </button>
                   </div>
+
+                  {expandedProviderId === provider.id ? (
+                    <div className="grid gap-3 rounded-3xl border [border-color:var(--border-soft)] [background:var(--panel-solid)] p-4">
+                      <p className={metaClass}>
+                        {t("providers.detail.baseUrl")} <span className={monoClass}>{provider.base_url}</span>
+                      </p>
+                      <p className={metaClass}>
+                        {t("providers.detail.health")}{" "}
+                        <span className={monoClass}>{provider.status.last_health_status}</span>
+                      </p>
+                      <p className={metaClass}>
+                        {t("providers.detail.apiKey")}{" "}
+                        <span className={monoClass}>
+                          {provider.api_key_masked}
+                        </span>
+                      </p>
+                      <p className={metaClass}>
+                        {t("providers.detail.capabilities")}{" "}
+                        <span className={monoClass}>
+                          {provider.capabilities.supports_models_api
+                            ? `${t("providers.detail.capability.models")} `
+                            : ""}
+                          {provider.capabilities.supports_balance_api
+                            ? `${t("providers.detail.capability.balance")} `
+                            : ""}
+                          {provider.capabilities.supports_stream
+                            ? t("providers.detail.capability.stream")
+                            : ""}
+                        </span>
+                      </p>
+                    </div>
+                  ) : null}
                 </div>
-              </>
-            )}
-          </section>
-        </section>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
     </main>
   );
