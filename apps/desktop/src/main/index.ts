@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, ipcMain, shell } from "electron";
+import { app, BrowserWindow, clipboard, ipcMain, nativeImage, shell } from "electron";
 import { join } from "path";
 import { electronApp, is, optimizer } from "@electron-toolkit/utils";
 import { autoUpdater } from "electron-updater";
@@ -52,6 +52,11 @@ let updateState: UpdateState = {
     : "Update checks are only available in packaged builds."
 };
 
+function resolveIconPath() {
+  const iconFile = process.platform === "win32" ? "icon.ico" : "icon.png";
+  return join(app.getAppPath(), "build", iconFile);
+}
+
 async function bootstrapCoreRuntime() {
   const portInfo = resolveConfiguredPort(desktopConfig);
   configuredPortSource = portInfo.source;
@@ -75,6 +80,8 @@ async function bootstrapCoreRuntime() {
 }
 
 function createWindow(): void {
+  const iconPath = resolveIconPath();
+
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 860,
@@ -83,6 +90,7 @@ function createWindow(): void {
     show: false,
     autoHideMenuBar: true,
     backgroundColor: "#171310",
+    icon: iconPath,
     webPreferences: {
       preload: join(__dirname, "../preload/index.js"),
       sandbox: false
@@ -193,6 +201,13 @@ app.whenReady().then(() => {
   electronApp.setAppUserModelId("com.xiaoyuandev.clash-for-ai");
   configureAutoUpdater();
   desktopConfig = loadDesktopConfig();
+
+  if (process.platform === "darwin" && app.dock) {
+    const dockIcon = nativeImage.createFromPath(resolveIconPath());
+    if (!dockIcon.isEmpty()) {
+      app.dock.setIcon(dockIcon);
+    }
+  }
 
   app.on("browser-window-created", (_, window) => {
     optimizer.watchWindowShortcuts(window);
