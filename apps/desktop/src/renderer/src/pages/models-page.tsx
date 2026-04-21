@@ -9,6 +9,31 @@ import {
 import type { Provider } from "../types/provider";
 import type { ProviderModel } from "../types/provider-model";
 import type { SelectedModel } from "../types/selected-model";
+import {
+  buttonClass,
+  columnCardClass,
+  dangerNoticeClass,
+  emptyStateClass,
+  eyebrowClass,
+  heroClass,
+  heroCopyClass,
+  heroTitleClass,
+  iconBadgeClass,
+  iconButtonClass,
+  inputClass,
+  metaClass,
+  monoClass,
+  pageShellClass,
+  queueItemClass,
+  scrollListClass,
+  sectionCardClass,
+  sectionHeadClass,
+  sectionMetaClass,
+  sectionTitleClass,
+  successNoticeClass,
+  statusPillClass,
+  stickySearchClass
+} from "../ui";
 
 interface ModelsPageProps {
   apiBase?: string;
@@ -62,7 +87,7 @@ export function ModelsPage({
     return () => {
       cancelled = true;
     };
-  }, [apiBase, onSelectedProviderChange, selectedProvider?.id]);
+  }, [apiBase, onSelectedProviderChange, selectedProvider?.id, t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -105,7 +130,7 @@ export function ModelsPage({
     return () => {
       cancelled = true;
     };
-  }, [activeProvider, apiBase]);
+  }, [activeProvider, apiBase, t]);
 
   const selectedModelIds = new Set(selectedModels.map((item) => item.model_id));
 
@@ -206,26 +231,22 @@ export function ModelsPage({
   }
 
   return (
-    <main className="page-shell">
-      <section className="hero">
-        <div>
-          <p className="eyebrow">Clash for AI</p>
-          <h1>{t("models.title")}</h1>
-          <p className="subcopy">{t("models.subtitle")}</p>
+    <main className={pageShellClass}>
+      <section className={heroClass}>
+        <div className="space-y-4">
+          <div>
+            <p className={eyebrowClass}>Clash for AI</p>
+            <h1 className={heroTitleClass}>{t("models.title")}</h1>
+          </div>
+          <p className={heroCopyClass}>{t("models.subtitle")}</p>
         </div>
-      </section>
-
-      {error ? <p className="panel error-panel">{error}</p> : null}
-      {feedback ? <p className="panel info-panel">{feedback}</p> : null}
-
-      <section className="panel">
-        <div className="section-head">
-          <h2>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className={statusPillClass(activeProvider ? "success" : "default")}>
             {activeProvider
               ? t("models.section.title", { name: activeProvider.name })
               : t("models.section.fallbackTitle")}
-          </h2>
-          <span>
+          </span>
+          <span className={statusPillClass(saving ? "warning" : "default")}>
             {saving
               ? t("common.saving")
               : loading
@@ -233,32 +254,67 @@ export function ModelsPage({
                 : t("models.section.state.selected", { count: selectedModels.length })}
           </span>
         </div>
+      </section>
+
+      {error ? (
+        <p className={dangerNoticeClass}>{error}</p>
+      ) : null}
+      {feedback ? (
+        <p className={successNoticeClass}>{feedback}</p>
+      ) : null}
+
+      <section className={sectionCardClass}>
+        <div className={sectionHeadClass}>
+          <div className="space-y-1">
+            <h2 className={sectionTitleClass}>
+              {activeProvider
+                ? t("models.section.title", { name: activeProvider.name })
+                : t("models.section.fallbackTitle")}
+            </h2>
+            <p className={sectionMetaClass}>
+              {activeProvider
+                ? t("models.subtitle")
+                : t("models.empty.noActiveProvider")}
+            </p>
+          </div>
+        </div>
 
         {!activeProvider ? (
-          <div className="empty-state">
-            <p>{t("models.empty.noActiveProvider")}</p>
+          <div className="mt-6">
+            <div className={emptyStateClass}>
+              <p>{t("models.empty.noActiveProvider")}</p>
+            </div>
           </div>
         ) : (
           <div
-            className="models-layout models-resizable-layout"
+            className="mt-6 flex flex-col gap-4 xl:grid xl:items-stretch"
             style={{
-              gridTemplateColumns: `${leftPaneWidth}fr 16px ${100 - leftPaneWidth}fr`
+              gridTemplateColumns: `minmax(0, ${leftPaneWidth}fr) 16px minmax(0, ${
+                100 - leftPaneWidth
+              }fr)`
             }}
           >
-            <section className="settings-card models-column">
-              <div className="section-head">
-                <h3>{t("models.available.title")}</h3>
-                <span>{filteredAvailableModels.length}</span>
+            <section className={columnCardClass}>
+              <div className={sectionHeadClass}>
+                <div className="space-y-1">
+                  <h3 className={sectionTitleClass}>{t("models.available.title")}</h3>
+                  <p className={sectionMetaClass}>{filteredAvailableModels.length}</p>
+                </div>
               </div>
-              <div className="sticky-search-shell">
-                <label className="search-box compact-search-box">
+
+              <div className={`${stickySearchClass} mt-4`}>
+                <label className="relative block">
                   <input
+                    className={`${inputClass} pr-11`}
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder={t("models.available.searchPlaceholder")}
                   />
-                  <span className="search-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
+                  <span
+                    className="pointer-events-none absolute inset-y-0 right-4 inline-flex items-center text-[color:var(--color-subtle)]"
+                    aria-hidden="true"
+                  >
+                    <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24">
                       <path d="M10.5 4a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13Zm0 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
                       <path d="m15.3 14 4.7 4.7-1.4 1.4-4.7-4.7z" />
                     </svg>
@@ -266,29 +322,38 @@ export function ModelsPage({
                 </label>
               </div>
 
-              <div className="models-list models-scroll-list">
+              <div className={`${scrollListClass} mt-4`}>
                 {filteredAvailableModels.length === 0 ? (
-                  <div className="empty-state">
+                  <div className={emptyStateClass}>
                     <p>{loading ? t("common.loading") : t("models.available.empty")}</p>
                   </div>
                 ) : (
                   filteredAvailableModels.map((model) => (
-                    <article key={model.id} className="queue-item supported-model-card">
+                    <article key={model.id} className={queueItemClass}>
                       <button
                         type="button"
-                        className="icon-button icon-button-small supported-model-add"
+                        className={`${iconButtonClass} absolute right-3 top-3 min-h-9 min-w-9 rounded-xl`}
                         aria-label={t("models.available.add", { id: model.id })}
                         title={t("models.available.add", { id: model.id })}
                         onClick={() => addModel(model.id)}
                       >
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
                           <path d="M11 5h2v14h-2z" />
                           <path d="M5 11h14v2H5z" />
                         </svg>
                       </button>
-                      <div>
-                        <p className="mono">{model.id}</p>
-                        <p className="meta">{model.owned_by ?? t("models.available.ownerUnknown")}</p>
+                      <div className="flex items-start gap-3 pr-12">
+                        <span className={`${iconBadgeClass} mt-0.5`}>
+                          <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 3 4 7v10l8 4 8-4V7zm0 2.2L17.8 8 12 10.8 6.2 8zM6 9.6l5 2.5v6.2l-5-2.5zm7 8.7v-6.2l5-2.5v6.2z" />
+                          </svg>
+                        </span>
+                        <div>
+                          <p className={monoClass}>{model.id}</p>
+                        <p className={`${metaClass} mt-2`}>
+                          {model.owned_by ?? t("models.available.ownerUnknown")}
+                        </p>
+                        </div>
                       </div>
                     </article>
                   ))
@@ -306,23 +371,25 @@ export function ModelsPage({
               <span className="pane-resizer-line" />
             </div>
 
-            <section className="settings-card models-column">
-              <div className="section-head">
-                <h3>{t("models.fallback.title")}</h3>
-                <span>{selectedModels.length}</span>
+            <section className={columnCardClass}>
+              <div className={sectionHeadClass}>
+                <div className="space-y-1">
+                  <h3 className={sectionTitleClass}>{t("models.fallback.title")}</h3>
+                  <p className={sectionMetaClass}>{selectedModels.length}</p>
+                </div>
               </div>
-              <p className="meta">{t("models.fallback.subtitle")}</p>
+              <p className={`${metaClass} mt-4`}>{t("models.fallback.subtitle")}</p>
 
-              <div className="models-list models-scroll-list">
+              <div className={`${scrollListClass} mt-4`}>
                 {selectedModelDetails.length === 0 ? (
-                  <div className="empty-state">
+                  <div className={emptyStateClass}>
                     <p>{t("models.fallback.empty")}</p>
                   </div>
                 ) : (
                   selectedModelDetails.map((item, index) => (
                     <article
                       key={item.model_id}
-                      className="queue-item draggable-item"
+                      className={`${queueItemClass} cursor-grab`}
                       draggable
                       onDragStart={() => {
                         setDraggedModelId(item.model_id);
@@ -334,15 +401,21 @@ export function ModelsPage({
                         moveModel(item.model_id);
                       }}
                     >
-                      <div className="queue-item-head">
-                        <span className="drag-handle" aria-hidden="true">
-                          :::
-                        </span>
+                      <div className="flex items-start gap-4">
+                        <div className="grid gap-2">
+                          <span
+                            className="pt-1 text-[11px] font-bold uppercase tracking-[0.3em] text-[color:var(--accent)]/75"
+                            aria-hidden="true"
+                          >
+                            :::
+                          </span>
+                          <span className="text-xs font-semibold text-[color:var(--color-subtle)]">
+                            #{index + 1}
+                          </span>
+                        </div>
                         <div>
-                          <p className="mono">
-                            {index + 1}. {item.model_id}
-                          </p>
-                          <p className="meta">
+                          <p className={monoClass}>{item.model_id}</p>
+                          <p className={`${metaClass} mt-2`}>
                             {index === 0
                               ? t("models.fallback.primary")
                               : t("models.fallback.secondary", { index })}
@@ -352,7 +425,7 @@ export function ModelsPage({
                       </div>
                       <button
                         type="button"
-                        className="secondary-button"
+                        className={buttonClass("secondary")}
                         onClick={() => removeModel(item.model_id)}
                       >
                         {t("models.fallback.remove")}

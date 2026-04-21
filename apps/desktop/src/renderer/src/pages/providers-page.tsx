@@ -10,6 +10,39 @@ import {
   updateProvider
 } from "../services/api";
 import type { Provider } from "../types/provider";
+import {
+  actionRowClass,
+  buttonClass,
+  dangerNoticeClass,
+  emptyStateClass,
+  eyebrowClass,
+  fieldLabelClass,
+  gridStatsClass,
+  heroClass,
+  heroCopyClass,
+  heroPillsClass,
+  heroTitleClass,
+  hintClass,
+  iconBadgeClass,
+  infoCardClass,
+  inputClass,
+  labelClass,
+  listClass,
+  metaClass,
+  metricValueClass,
+  monoClass,
+  nestedCardClass,
+  pageShellClass,
+  sectionCardClass,
+  sectionHeadClass,
+  sectionMetaClass,
+  sectionTitleClass,
+  selectableItemClass,
+  statusDotClass,
+  splitLayoutClass,
+  successNoticeClass,
+  statusPillClass
+} from "../ui";
 
 interface ProvidersPageProps {
   desktopState: {
@@ -83,7 +116,7 @@ export function ProvidersPage({
     return () => {
       cancelled = true;
     };
-  }, [apiBase, onSelectedProviderChange, selectedProviderId]);
+  }, [apiBase, onSelectedProviderChange, selectedProviderId, t]);
 
   async function refreshProviders(preferredProviderId?: string) {
     const providersData = await getProviders(apiBase);
@@ -194,26 +227,30 @@ export function ProvidersPage({
   }
 
   return (
-    <main className="page-shell">
-      <section className="hero">
-        <div>
-          <p className="eyebrow">Clash for AI</p>
-          <h1>{t("providers.title")}</h1>
-          <p className="subcopy">{t("providers.subtitle")}</p>
-          <p className="meta">
+    <main className={pageShellClass}>
+      <section className={heroClass}>
+        <div className="space-y-4">
+          <div>
+            <p className={eyebrowClass}>Clash for AI</p>
+            <h1 className={heroTitleClass}>{t("providers.title")}</h1>
+          </div>
+          <p className={heroCopyClass}>{t("providers.subtitle")}</p>
+          <p className={metaClass}>
             {t("providers.connectedApiBase")}{" "}
-            <span className="mono">{desktopState?.apiBase ?? apiBase ?? "http://127.0.0.1:3456"}</span>
+            <span className={monoClass}>
+              {desktopState?.apiBase ?? apiBase ?? "http://127.0.0.1:3456"}
+            </span>
           </p>
         </div>
-        <div className="hero-pills">
-          <div className={`health-pill health-${health}`}>
+        <div className={heroPillsClass}>
+          <div
+            className={statusPillClass(
+              health === "ok" ? "success" : health === "offline" ? "danger" : "default"
+            )}
+          >
             {t("providers.coreHealth", { status: health })}
           </div>
-          <div
-            className={`health-pill ${
-              desktopState?.ok ? "health-ok" : "health-offline"
-            }`}
-          >
+          <div className={statusPillClass(desktopState?.ok ? "success" : "danger")}>
             {t("providers.desktopRuntime", {
               runtime: desktopState?.runtime ?? t("settings.value.browser")
             })}
@@ -221,137 +258,220 @@ export function ProvidersPage({
         </div>
       </section>
 
-      {error ? <p className="panel error-panel">{error}</p> : null}
-      {feedback ? <p className="panel info-panel">{feedback}</p> : null}
+      {error ? (
+        <p className={dangerNoticeClass}>
+          {error}
+        </p>
+      ) : null}
+      {feedback ? (
+        <p className={successNoticeClass}>
+          {feedback}
+        </p>
+      ) : null}
 
-      <section className="panel form-panel">
-        <div className="section-head">
-          <h2>{editingId ? t("providers.form.editTitle") : t("providers.form.addTitle")}</h2>
-          <span>{editingId ? t("providers.form.editMeta") : t("providers.form.addMeta")}</span>
+      <section className={sectionCardClass}>
+        <div className={sectionHeadClass}>
+          <div className="space-y-1">
+            <h2 className={sectionTitleClass}>
+              {editingId ? t("providers.form.editTitle") : t("providers.form.addTitle")}
+            </h2>
+            <p className={sectionMetaClass}>
+              {editingId ? t("providers.form.editMeta") : t("providers.form.addMeta")}
+            </p>
+          </div>
         </div>
 
-        <form className="provider-form" onSubmit={handleCreateProvider}>
-          <label>
-            <span>{t("providers.form.name")}</span>
-            <input required value={name} onChange={(event) => setName(event.target.value)} />
-          </label>
-          <label>
-            <span>{t("providers.form.baseUrl")}</span>
+        <form className="mt-6 grid gap-4 xl:grid-cols-4" onSubmit={handleCreateProvider}>
+          <label className={labelClass}>
+            <span className={fieldLabelClass}>{t("providers.form.name")}</span>
             <input
               required
+              className={inputClass}
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
+          </label>
+          <label className={labelClass}>
+            <span className={fieldLabelClass}>{t("providers.form.baseUrl")}</span>
+            <input
+              required
+              className={inputClass}
               value={baseUrl}
               onChange={(event) => setBaseUrl(event.target.value)}
               placeholder="https://api.example.com/v1"
             />
           </label>
-          <label>
-            <span>{t("providers.form.apiKey")}</span>
+          <label className={labelClass}>
+            <span className={fieldLabelClass}>{t("providers.form.apiKey")}</span>
             <input
               required
+              className={inputClass}
               value={apiKey}
               onChange={(event) => setApiKey(event.target.value)}
               placeholder="sk-example"
               type="password"
             />
           </label>
-          <button type="submit" disabled={submitting}>
-            {submitting
-              ? t("common.saving")
-              : editingId
-                ? t("providers.form.save")
-                : t("providers.form.create")}
-          </button>
-          {editingId ? (
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={resetForm}
-              disabled={submitting}
-            >
-              {t("common.cancel")}
+          <div className="flex flex-wrap items-end gap-3 xl:justify-end">
+            <button type="submit" className={buttonClass("primary")} disabled={submitting}>
+              {submitting
+                ? t("common.saving")
+                : editingId
+                  ? t("providers.form.save")
+                  : t("providers.form.create")}
             </button>
-          ) : null}
+            {editingId ? (
+              <button
+                type="button"
+                className={buttonClass("secondary")}
+                onClick={resetForm}
+                disabled={submitting}
+              >
+                {t("common.cancel")}
+              </button>
+            ) : null}
+          </div>
         </form>
       </section>
 
-      <section className="providers-layout">
-        <aside className="panel providers-sidebar">
-          <div className="section-head">
-            <h2>{t("providers.list.title")}</h2>
-            <span>{t("providers.list.configured", { count: providers.length })}</span>
+      <section className={splitLayoutClass}>
+        <aside className={sectionCardClass}>
+          <div className={sectionHeadClass}>
+            <div className="space-y-1">
+              <h2 className={sectionTitleClass}>{t("providers.list.title")}</h2>
+              <p className={sectionMetaClass}>
+                {t("providers.list.configured", { count: providers.length })}
+              </p>
+            </div>
           </div>
 
           {providers.length === 0 ? (
-            <div className="empty-state">
-              <p>{t("providers.list.empty")}</p>
+            <div className="mt-5">
+              <div className={emptyStateClass}>
+                <p>{t("providers.list.empty")}</p>
+              </div>
             </div>
           ) : (
-            <div className="provider-list">
+            <div className={`${listClass} mt-5`}>
               {providers.map((provider) => (
                 <button
                   key={provider.id}
                   type="button"
-                  className={
-                    selectedProvider?.id === provider.id
-                      ? "provider-list-item active-provider-list-item"
-                      : "provider-list-item"
-                  }
+                  className={selectableItemClass(selectedProvider?.id === provider.id)}
                   onClick={() => {
                     onSelectedProviderChange(provider);
                   }}
                 >
-                  <div className="provider-list-head">
-                    <strong>{provider.name}</strong>
-                    <span className={provider.status.is_active ? "status-badge active" : "status-badge"}>
+                  <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className={iconBadgeClass}>
+                        <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5zM6.5 7a.5.5 0 0 0-.5.5V10h12V7.5a.5.5 0 0 0-.5-.5zM18 12H6v4.5a.5.5 0 0 0 .5.5h11a.5.5 0 0 0 .5-.5z" />
+                        </svg>
+                      </span>
+                      <div>
+                        <strong className="text-base font-semibold text-[color:var(--color-heading)]">
+                          {provider.name}
+                        </strong>
+                        <p className="text-xs text-[color:var(--color-muted)]">
+                          {provider.status.last_health_status}
+                        </p>
+                      </div>
+                    </div>
+                    <span
+                      className={statusPillClass(
+                        provider.status.is_active ? "success" : "default"
+                      )}
+                    >
                       {provider.status.is_active
                         ? t("providers.status.active")
                         : t("providers.status.standby")}
                     </span>
                   </div>
-                  <p className="meta mono">{provider.base_url}</p>
+                  <p className={monoClass}>{provider.base_url}</p>
                 </button>
               ))}
             </div>
           )}
         </aside>
 
-        <section className="providers-main">
-          <section className="panel detail-panel">
-            <div className="section-head">
-              <h2>
-                {selectedProvider
-                  ? t("providers.detail.title", { name: selectedProvider.name })
-                  : t("providers.detail.fallbackTitle")}
-              </h2>
-              <span>
-                {selectedProvider?.status.is_active
-                  ? t("providers.status.active")
-                  : t("providers.status.standby")}
-              </span>
+        <section className="grid gap-4">
+          <section className={`${sectionCardClass} min-h-[460px]`}>
+            <div className={sectionHeadClass}>
+              <div className="space-y-1">
+                <h2 className={sectionTitleClass}>
+                  {selectedProvider
+                    ? t("providers.detail.title", { name: selectedProvider.name })
+                    : t("providers.detail.fallbackTitle")}
+                </h2>
+                <p className={sectionMetaClass}>
+                  {selectedProvider?.status.is_active
+                    ? t("providers.status.active")
+                    : t("providers.status.standby")}
+                </p>
+              </div>
             </div>
 
             {!selectedProvider ? (
-              <div className="empty-state">
-                <p>{t("providers.detail.inspectHint")}</p>
+              <div className="mt-6">
+                <div className={emptyStateClass}>
+                  <p>{t("providers.detail.inspectHint")}</p>
+                </div>
               </div>
             ) : (
-              <>
-                <div className="settings-grid">
-                  <div className="settings-card">
-                    <p className="settings-label">{t("providers.detail.baseUrl")}</p>
-                    <p className="mono">{selectedProvider.base_url}</p>
+              <div className="mt-6 space-y-5">
+                <div className={gridStatsClass}>
+                  <div className={infoCardClass}>
+                    <div className="flex items-center gap-3">
+                      <span className={iconBadgeClass}>
+                        <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M12 4a8 8 0 1 0 8 8h-2a6 6 0 1 1-1.8-4.2L13 11h7V4l-2.4 2.4A7.9 7.9 0 0 0 12 4" />
+                        </svg>
+                      </span>
+                      <p className={fieldLabelClass}>{t("providers.detail.baseUrl")}</p>
+                    </div>
+                    <p className={`${monoClass} mt-3`}>{selectedProvider.base_url}</p>
                   </div>
-                  <div className="settings-card">
-                    <p className="settings-label">{t("providers.detail.health")}</p>
-                    <p className="mono">{selectedProvider.status.last_health_status}</p>
+                  <div className={infoCardClass}>
+                    <div className="flex items-center gap-3">
+                      <span className={iconBadgeClass}>
+                        <span
+                          className={statusDotClass(
+                            selectedProvider.status.last_health_status === "ok"
+                              ? "success"
+                              : selectedProvider.status.last_health_status === "offline"
+                                ? "danger"
+                                : "warning"
+                          )}
+                        />
+                      </span>
+                      <p className={fieldLabelClass}>{t("providers.detail.health")}</p>
+                    </div>
+                    <p className={metricValueClass}>
+                      {selectedProvider.status.last_health_status}
+                    </p>
                   </div>
-                  <div className="settings-card">
-                    <p className="settings-label">{t("providers.detail.apiKey")}</p>
-                    <p className="mono">{selectedProvider.api_key_masked}</p>
+                  <div className={infoCardClass}>
+                    <div className="flex items-center gap-3">
+                      <span className={iconBadgeClass}>
+                        <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M7 10V8a5 5 0 0 1 10 0v2h1a2 2 0 0 1 2 2v7H4v-7a2 2 0 0 1 2-2zm2 0h6V8a3 3 0 1 0-6 0z" />
+                        </svg>
+                      </span>
+                      <p className={fieldLabelClass}>{t("providers.detail.apiKey")}</p>
+                    </div>
+                    <p className={`${monoClass} mt-3`}>{selectedProvider.api_key_masked}</p>
                   </div>
-                  <div className="settings-card">
-                    <p className="settings-label">{t("providers.detail.capabilities")}</p>
-                    <p className="mono">
+                  <div className={infoCardClass}>
+                    <div className="flex items-center gap-3">
+                      <span className={iconBadgeClass}>
+                        <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M5 5h14v4H5zm0 5h6v9H5zm7 0h7v9h-7z" />
+                        </svg>
+                      </span>
+                      <p className={fieldLabelClass}>{t("providers.detail.capabilities")}</p>
+                    </div>
+                    <p className={`${hintClass} mt-3`}>
                       {selectedProvider.capabilities.supports_models_api
                         ? `${t("providers.detail.capability.models")} `
                         : ""}
@@ -365,16 +485,35 @@ export function ProvidersPage({
                   </div>
                 </div>
 
-                <div className="settings-actions settings-actions-split">
-                  <div className="settings-action-row">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div className={nestedCardClass}>
+                    <p className="flex items-center gap-2">
+                      <span
+                        className={statusDotClass(
+                          selectedProvider.status.is_active ? "success" : "default"
+                        )}
+                      />
+                      <span className={fieldLabelClass}>Provider State</span>
+                    </p>
+                    <p className={`${metricValueClass} mt-2`}>
+                      {selectedProvider.status.is_active
+                        ? t("providers.status.active")
+                        : t("providers.status.standby")}
+                    </p>
+                  </div>
+                  <div className={actionRowClass}>
                     {!selectedProvider.status.is_active ? (
-                      <button type="button" onClick={() => void handleActivateProvider(selectedProvider)}>
+                      <button
+                        type="button"
+                        className={buttonClass("primary")}
+                        onClick={() => void handleActivateProvider(selectedProvider)}
+                      >
                         {t("providers.action.activate")}
                       </button>
                     ) : null}
                     <button
                       type="button"
-                      className="secondary-button"
+                      className={buttonClass("secondary")}
                       onClick={() => {
                         startEditing(selectedProvider);
                       }}
@@ -383,7 +522,7 @@ export function ProvidersPage({
                     </button>
                     <button
                       type="button"
-                      className="secondary-button"
+                      className={buttonClass("secondary")}
                       onClick={() => {
                         void handleHealthcheck(selectedProvider.id);
                       }}
@@ -392,7 +531,7 @@ export function ProvidersPage({
                     </button>
                     <button
                       type="button"
-                      className="danger-button"
+                      className={buttonClass("danger")}
                       onClick={() => {
                         void handleDeleteProvider(selectedProvider.id);
                       }}
@@ -401,7 +540,7 @@ export function ProvidersPage({
                     </button>
                   </div>
                 </div>
-              </>
+              </div>
             )}
           </section>
         </section>

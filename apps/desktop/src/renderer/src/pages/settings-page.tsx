@@ -1,5 +1,32 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useI18n } from "../i18n/i18n-provider";
+import {
+  actionRowClass,
+  buttonClass,
+  emptyStateClass,
+  eyebrowClass,
+  fieldLabelClass,
+  heroClass,
+  heroCopyClass,
+  heroTitleClass,
+  iconBadgeClass,
+  iconButtonClass,
+  iconButtonSmallClass,
+  infoCardClass,
+  inputClass,
+  metaClass,
+  modalBackdropClass,
+  modalPanelClass,
+  metricValueClass,
+  monoClass,
+  pageShellClass,
+  sectionCardClass,
+  sectionHeadClass,
+  sectionMetaClass,
+  sectionTitleClass,
+  successNoticeClass,
+  statusPillClass
+} from "../ui";
 
 type UpdateState = {
   currentVersion: string;
@@ -59,6 +86,29 @@ interface SettingsPageProps {
   onCoreRestart: () => Promise<void>;
   onUpdateCorePort: (port: number) => Promise<void>;
   onCopyText: (text: string) => Promise<void>;
+}
+
+function StatCard({
+  label,
+  value,
+  meta,
+  icon
+}: {
+  label: string;
+  value: string;
+  meta?: string;
+  icon?: ReactNode;
+}) {
+  return (
+    <div className={infoCardClass}>
+      <div className="flex items-center gap-3">
+        {icon ? <span className={iconBadgeClass}>{icon}</span> : null}
+        <p className={fieldLabelClass}>{label}</p>
+      </div>
+      <p className={metricValueClass}>{value}</p>
+      {meta ? <p className={`${metaClass} mt-2`}>{meta}</p> : null}
+    </div>
+  );
 }
 
 export function SettingsPage({
@@ -178,14 +228,10 @@ export function SettingsPage({
         case "windows-cmd":
           return pairs.map(([key, value]) => `set ${key}=${value}`).join("\n");
         case "powershell":
-          return pairs
-            .map(([key, value]) => `$env:${key}="${value}"`)
-            .join("\n");
+          return pairs.map(([key, value]) => `$env:${key}="${value}"`).join("\n");
         case "unix":
         default:
-          return pairs
-            .map(([key, value]) => `export ${key}="${value}"`)
-            .join("\n");
+          return pairs.map(([key, value]) => `export ${key}="${value}"`).join("\n");
       }
     };
 
@@ -308,70 +354,97 @@ export function SettingsPage({
   const portLocked = desktopState?.config.apiPortSource === "env";
 
   return (
-    <main className="page-shell">
-      <section className="hero">
-        <div>
-          <p className="eyebrow">Clash for AI</p>
-          <h1>{t("settings.title")}</h1>
-          <p className="subcopy">{t("settings.subtitle")}</p>
+    <main className={pageShellClass}>
+      <section className={heroClass}>
+        <div className="space-y-4">
+          <div>
+            <p className={eyebrowClass}>Clash for AI</p>
+            <h1 className={heroTitleClass}>{t("settings.title")}</h1>
+          </div>
+          <p className={heroCopyClass}>{t("settings.subtitle")}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className={statusPillClass(desktopState?.core.running ? "success" : "danger")}>
+            {desktopState?.core.running ? t("app.coreRunning") : t("app.coreStopped")}
+          </span>
+          <span className={statusPillClass("default")}>
+            {desktopState?.runtime ?? t("settings.value.unknown")}
+          </span>
         </div>
       </section>
 
-      {feedback ? <p className="panel info-panel">{feedback}</p> : null}
+      {feedback ? (
+        <p className={successNoticeClass}>{feedback}</p>
+      ) : null}
 
-      <section className="panel">
-        <div className="section-head">
-          <h2>{t("settings.section.connection")}</h2>
-          <span>{desktopState?.config.apiPortSource ?? t("settings.value.default")}</span>
+      <section className={sectionCardClass}>
+        <div className={sectionHeadClass}>
+          <div className="space-y-1">
+            <h2 className={sectionTitleClass}>{t("settings.section.connection")}</h2>
+            <p className={sectionMetaClass}>
+              {desktopState?.config.apiPortSource ?? t("settings.value.default")}
+            </p>
+          </div>
         </div>
 
-        <div className="settings-grid">
-          <div className="settings-card">
-            <p className="settings-label">{t("settings.fixedPort")}</p>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className={infoCardClass}>
+            <p className={fieldLabelClass}>{t("settings.fixedPort")}</p>
             <input
-              className="settings-input"
+              className={`${inputClass} mt-3`}
               value={portInput}
               disabled={portLocked || saveBusy}
               onChange={(event) => setPortInput(event.target.value)}
               inputMode="numeric"
             />
-            <p className="meta">{t("settings.meta.portConflict")}</p>
+            <p className={`${metaClass} mt-2`}>{t("settings.meta.portConflict")}</p>
           </div>
-          <div className="settings-card">
-            <p className="settings-label">{t("settings.connectedApiBase")}</p>
-            <p className="mono">{desktopState?.apiBase ?? "-"}</p>
-            <p className="meta">{t("settings.meta.apiBase")}</p>
-          </div>
-          <div className="settings-card">
-            <p className="settings-label">{t("settings.portSource")}</p>
-            <p className="mono">{desktopState?.config.apiPortSource ?? "-"}</p>
-            <p className="meta">
-              {portLocked
-                ? t("settings.meta.envLocked")
-                : t("settings.meta.configStored")}
-            </p>
-          </div>
-          <div className="settings-card">
-            <p className="settings-label">{t("settings.launchFlow")}</p>
-            <p className="mono">
-              {desktopState?.core.managed ? t("settings.flow.managed") : t("settings.flow.reuse")}
-            </p>
-            <p className="meta">{t("settings.meta.managedLaunch")}</p>
-          </div>
+          <StatCard
+            label={t("settings.connectedApiBase")}
+            value={desktopState?.apiBase ?? "-"}
+            meta={t("settings.meta.apiBase")}
+            icon={
+              <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 4a8 8 0 1 0 8 8h-2a6 6 0 1 1-1.8-4.2L13 11h7V4l-2.4 2.4A7.9 7.9 0 0 0 12 4" />
+              </svg>
+            }
+          />
+          <StatCard
+            label={t("settings.portSource")}
+            value={desktopState?.config.apiPortSource ?? "-"}
+            meta={portLocked ? t("settings.meta.envLocked") : t("settings.meta.configStored")}
+            icon={
+              <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 2 4 6v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V6zm0 2.2 5.8 2.6V12c0 3.8-2.4 7.3-5.8 8.6C8.6 19.3 6.2 15.8 6.2 12V6.8z" />
+              </svg>
+            }
+          />
+          <StatCard
+            label={t("settings.launchFlow")}
+            value={
+              desktopState?.core.managed ? t("settings.flow.managed") : t("settings.flow.reuse")
+            }
+            meta={t("settings.meta.managedLaunch")}
+            icon={
+              <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 6h14v9H5zm2 2v5h10V8zm-3 9h16v2H4z" />
+              </svg>
+            }
+          />
         </div>
 
-        <div className="settings-actions settings-actions-split">
+        <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <button
             type="button"
-            className="secondary-button"
+            className={buttonClass("secondary")}
             onClick={() => setConnectOpen(true)}
           >
             {t("settings.button.connectTool")}
           </button>
-          <div className="settings-action-row">
+          <div className={actionRowClass}>
             <button
               type="button"
-              className="secondary-button"
+              className={buttonClass("secondary")}
               onClick={() => void handleRestart()}
               disabled={busy}
             >
@@ -379,6 +452,7 @@ export function SettingsPage({
             </button>
             <button
               type="button"
+              className={buttonClass("primary")}
               onClick={() => void handleSavePort()}
               disabled={portLocked || saveBusy}
             >
@@ -388,91 +462,103 @@ export function SettingsPage({
         </div>
 
         {desktopState?.core.lastError ? (
-          <p className="log-error">
-            <span className="mono">{desktopState.core.lastError}</span>
+          <p className="mt-5 rounded-2xl border [border-color:var(--danger-border)] [background:var(--danger-soft)] px-4 py-3 text-sm text-[color:var(--danger-text)]">
+            <span className={monoClass}>{desktopState.core.lastError}</span>
           </p>
         ) : null}
       </section>
 
-      <section className="panel">
-        <div className="section-head">
-          <h2>{t("settings.section.runtime")}</h2>
-          <span>{desktopState?.runtime ?? t("settings.value.unknown")}</span>
+      <section className={sectionCardClass}>
+        <div className={sectionHeadClass}>
+          <div className="space-y-1">
+            <h2 className={sectionTitleClass}>{t("settings.section.runtime")}</h2>
+            <p className={sectionMetaClass}>{desktopState?.runtime ?? t("settings.value.unknown")}</p>
+          </div>
         </div>
 
-        <div className="settings-grid">
-          <div className="settings-card">
-            <p className="settings-label">{t("settings.runtime.platform")}</p>
-            <p className="mono">{desktopState?.platform ?? "-"}</p>
-          </div>
-          <div className="settings-card">
-            <p className="settings-label">{t("settings.runtime.corePort")}</p>
-            <p className="mono">{desktopState?.core.port ?? "-"}</p>
-          </div>
-          <div className="settings-card">
-            <p className="settings-label">{t("settings.runtime.corePid")}</p>
-            <p className="mono">{desktopState?.core.pid ?? "-"}</p>
-            <p className="meta">{t("settings.meta.pid")}</p>
-          </div>
-          <div className="settings-card">
-            <p className="settings-label">{t("settings.runtime.coreManaged")}</p>
-            <p className="mono">{desktopState?.core.managed ? t("settings.runtime.yes") : t("settings.runtime.no")}</p>
-          </div>
-          <div className="settings-card">
-            <p className="settings-label">{t("settings.runtime.coreRunning")}</p>
-            <p className="mono">{desktopState?.core.running ? t("settings.runtime.yes") : t("settings.runtime.no")}</p>
-          </div>
-          <div className="settings-card">
-            <p className="settings-label">{t("settings.runtime.launchCommand")}</p>
-            <p className="mono">{desktopState?.core.command ?? "-"}</p>
-          </div>
-          <div className="settings-card">
-            <p className="settings-label">{t("settings.runtime.logRetention")}</p>
-            <p className="mono">
-              {desktopState
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <StatCard
+            label={t("settings.runtime.platform")}
+            value={desktopState?.platform ?? "-"}
+            icon={
+              <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 5h16v11H4zm2 2v7h12V7zm-2 11h16v2H4z" />
+              </svg>
+            }
+          />
+          <StatCard
+            label={t("settings.runtime.corePort")}
+            value={String(desktopState?.core.port ?? "-")}
+            icon={
+              <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M7 7h10v10H7zm2 2v6h6V9zM4 11h2v2H4zm14 0h2v2h-2zM11 4h2v2h-2zm0 14h2v2h-2z" />
+              </svg>
+            }
+          />
+          <StatCard
+            label={t("settings.runtime.corePid")}
+            value={String(desktopState?.core.pid ?? "-")}
+            meta={t("settings.meta.pid")}
+          />
+          <StatCard
+            label={t("settings.runtime.coreManaged")}
+            value={desktopState?.core.managed ? t("settings.runtime.yes") : t("settings.runtime.no")}
+          />
+          <StatCard
+            label={t("settings.runtime.coreRunning")}
+            value={desktopState?.core.running ? t("settings.runtime.yes") : t("settings.runtime.no")}
+          />
+          <StatCard
+            label={t("settings.runtime.launchCommand")}
+            value={desktopState?.core.command ?? "-"}
+          />
+          <StatCard
+            label={t("settings.runtime.logRetention")}
+            value={
+              desktopState
                 ? t("settings.runtime.daysRecords", {
                     days: desktopState.core.logRetentionDays,
                     records: desktopState.core.logMaxRecords.toLocaleString()
                   })
-                : "-"}
-            </p>
-            <p className="meta">{t("settings.meta.logRetention")}</p>
-          </div>
+                : "-"
+            }
+            meta={t("settings.meta.logRetention")}
+          />
         </div>
       </section>
 
-      <section className="panel">
-        <div className="section-head">
-          <h2>{t("settings.section.updates")}</h2>
-          <span>{desktopState?.updates.currentVersion ?? "-"}</span>
-        </div>
-
-        <div className="settings-grid">
-          <div className="settings-card">
-            <p className="settings-label">{t("settings.updates.currentVersion")}</p>
-            <p className="mono">{desktopState?.updates.currentVersion ?? "-"}</p>
-          </div>
-          <div className="settings-card">
-            <p className="settings-label">{t("settings.updates.status")}</p>
-            <p className="mono">{desktopState?.updates.status ?? "-"}</p>
-            {desktopState?.updates.message ? (
-              <p className="meta">{desktopState.updates.message}</p>
-            ) : null}
-          </div>
-          <div className="settings-card">
-            <p className="settings-label">{t("settings.updates.availableVersion")}</p>
-            <p className="mono">
-              {desktopState?.updates.availableVersion ??
-                desktopState?.updates.downloadedVersion ??
-                "-"}
-            </p>
+      <section className={sectionCardClass}>
+        <div className={sectionHeadClass}>
+          <div className="space-y-1">
+            <h2 className={sectionTitleClass}>{t("settings.section.updates")}</h2>
+            <p className={sectionMetaClass}>{desktopState?.updates.currentVersion ?? "-"}</p>
           </div>
         </div>
 
-        <div className="settings-actions">
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <StatCard
+            label={t("settings.updates.currentVersion")}
+            value={desktopState?.updates.currentVersion ?? "-"}
+          />
+          <StatCard
+            label={t("settings.updates.status")}
+            value={desktopState?.updates.status ?? "-"}
+            meta={desktopState?.updates.message}
+          />
+          <StatCard
+            label={t("settings.updates.availableVersion")}
+            value={
+              desktopState?.updates.availableVersion ??
+              desktopState?.updates.downloadedVersion ??
+              "-"
+            }
+          />
+        </div>
+
+        <div className={`${actionRowClass} mt-6`}>
           <button
             type="button"
-            className="secondary-button"
+            className={buttonClass("secondary")}
             onClick={() => void handleCheckUpdates()}
             disabled={updateBusy || desktopState?.updates.status === "unsupported"}
           >
@@ -482,7 +568,7 @@ export function SettingsPage({
           </button>
           <button
             type="button"
-            className="secondary-button"
+            className={buttonClass("secondary")}
             onClick={() => void handleDownloadUpdate()}
             disabled={
               updateBusy ||
@@ -498,6 +584,7 @@ export function SettingsPage({
           </button>
           <button
             type="button"
+            className={buttonClass("primary")}
             onClick={() => void handleQuitAndInstallUpdate()}
             disabled={updateBusy || desktopState?.updates.status !== "downloaded"}
           >
@@ -507,33 +594,33 @@ export function SettingsPage({
       </section>
 
       {connectOpen ? (
-        <div className="modal-backdrop" role="presentation" onClick={() => setConnectOpen(false)}>
+        <div className={modalBackdropClass} role="presentation" onClick={() => setConnectOpen(false)}>
           <section
-            className="modal-panel"
+            className={modalPanelClass}
             role="dialog"
             aria-modal="true"
             aria-label={t("settings.modal.aria")}
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="section-head">
-              <div>
-                <h2>{t("settings.modal.title")}</h2>
-                <p className="meta">{connectionGuide.summary}</p>
+            <div className={sectionHeadClass}>
+              <div className="space-y-1">
+                <h2 className={sectionTitleClass}>{t("settings.modal.title")}</h2>
+                <p className={sectionMetaClass}>{connectionGuide.summary}</p>
               </div>
               <button
                 type="button"
-                className="secondary-button"
+                className={buttonClass("secondary")}
                 onClick={() => setConnectOpen(false)}
               >
                 {t("common.close")}
               </button>
             </div>
 
-            <div className="connect-grid">
-              <label>
-                <span>{t("settings.modal.tool")}</span>
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <label className="flex flex-col gap-2">
+                <span className={fieldLabelClass}>{t("settings.modal.tool")}</span>
                 <select
-                  className="settings-input"
+                  className={inputClass}
                   value={toolPreset}
                   onChange={(event) => setToolPreset(event.target.value as ToolPreset)}
                 >
@@ -545,14 +632,12 @@ export function SettingsPage({
                   <option value="openai-sdk">OpenAI SDK</option>
                 </select>
               </label>
-              <label>
-                <span>{t("settings.modal.platform")}</span>
+              <label className="flex flex-col gap-2">
+                <span className={fieldLabelClass}>{t("settings.modal.platform")}</span>
                 <select
-                  className="settings-input"
+                  className={inputClass}
                   value={platformPreset}
-                  onChange={(event) =>
-                    setPlatformPreset(event.target.value as PlatformPreset)
-                  }
+                  onChange={(event) => setPlatformPreset(event.target.value as PlatformPreset)}
                 >
                   <option value="unix">{t("settings.platform.unix")}</option>
                   <option value="windows-cmd">{t("settings.platform.windowsCmd")}</option>
@@ -562,17 +647,25 @@ export function SettingsPage({
             </div>
 
             {connectionGuide.supportsManual ? (
-              <div className="mode-switch">
+              <div className="mt-6 inline-flex rounded-full border [border-color:var(--border-soft)] [background:var(--panel-solid)] p-1">
                 <button
                   type="button"
-                  className={connectMode === "command" ? "mode-tab active-mode-tab" : "mode-tab"}
+                  className={
+                    connectMode === "command"
+                      ? buttonClass("primary")
+                      : buttonClass("ghost")
+                  }
                   onClick={() => setConnectMode("command")}
                 >
                   {t("settings.modal.mode.command")}
                 </button>
                 <button
                   type="button"
-                  className={connectMode === "manual" ? "mode-tab active-mode-tab" : "mode-tab"}
+                  className={
+                    connectMode === "manual"
+                      ? buttonClass("primary")
+                      : buttonClass("ghost")
+                  }
                   onClick={() => setConnectMode("manual")}
                 >
                   {t("settings.modal.mode.manual")}
@@ -581,12 +674,19 @@ export function SettingsPage({
             ) : null}
 
             {connectMode === "command" || !connectionGuide.supportsManual ? (
-              <div className="settings-card connect-command-card">
-                <div className="command-card-head">
-                  <p className="settings-label">{connectionGuide.title}</p>
+              <div className={`${infoCardClass} mt-6`}>
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <div>
+                    <p className={fieldLabelClass}>{connectionGuide.title}</p>
+                    {copyFeedback ? <p className={`${metaClass} mt-2`}>{copyFeedback}</p> : null}
+                  </div>
                   <button
                     type="button"
-                    className={`icon-button ${copyFeedback === t("settings.copy.copied") ? "icon-button-success" : ""}`}
+                    className={
+                      copyFeedback === t("settings.copy.copied")
+                        ? `${iconButtonClass} [border-color:var(--success-border)] [background:var(--success-soft)] text-[color:var(--success-text)]`
+                        : iconButtonClass
+                    }
                     aria-label={t("settings.copy.command")}
                     title={t("settings.copy.command")}
                     onClick={() => {
@@ -594,60 +694,67 @@ export function SettingsPage({
                     }}
                   >
                     {copyFeedback === t("settings.copy.copied") ? (
-                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <svg className="h-5 w-5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M9.2 16.6 4.9 12.3l1.4-1.4 2.9 2.9 8.5-8.5 1.4 1.4z" />
                       </svg>
                     ) : (
-                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <svg className="h-5 w-5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M9 9h10v10H9z" />
                         <path d="M5 5h10v2H7v8H5z" />
                       </svg>
                     )}
                   </button>
                 </div>
-                <pre className="command-preview">
+                <pre className="rounded-3xl border [border-color:var(--border-soft)] [background:var(--panel-input)] p-4 text-sm leading-7 text-[color:var(--color-text)]">
                   <code>{connectionGuide.command}</code>
                 </pre>
-                {copyFeedback ? <p className="copy-feedback">{copyFeedback}</p> : null}
-                <p className="meta">{connectionGuide.note}</p>
+                <p className={`${metaClass} mt-4`}>{connectionGuide.note}</p>
               </div>
             ) : (
-              <div className="settings-card connect-command-card">
-                <div className="command-card-head">
-                  <p className="settings-label">{connectionGuide.manualTitle}</p>
+              <div className={`${infoCardClass} mt-6`}>
+                <div className="mb-4">
+                  <p className={fieldLabelClass}>{connectionGuide.manualTitle}</p>
                 </div>
-                <div className="manual-grid">
-                  {connectionGuide.manualItems?.map((item) => (
-                    <div key={item.label} className="manual-item">
-                      <div className="manual-item-head">
-                        <p className="settings-label">{item.label}</p>
-                        <button
-                          type="button"
-                          className={`icon-button icon-button-small ${manualCopyFeedback === item.label ? "icon-button-success" : ""}`}
-                          aria-label={t("settings.copy.value", { label: item.label })}
-                          title={t("settings.copy.value", { label: item.label })}
-                          onClick={() => {
-                            void handleCopyValue(item.value, item.label);
-                          }}
-                        >
-                          {manualCopyFeedback === item.label ? (
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                              <path d="M9.2 16.6 4.9 12.3l1.4-1.4 2.9 2.9 8.5-8.5 1.4 1.4z" />
-                            </svg>
-                          ) : (
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                              <path d="M9 9h10v10H9z" />
-                              <path d="M5 5h10v2H7v8H5z" />
-                            </svg>
-                          )}
-                        </button>
+                {connectionGuide.manualItems?.length ? (
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    {connectionGuide.manualItems.map((item) => (
+                      <div key={item.label} className="rounded-3xl border [border-color:var(--border-soft)] [background:var(--panel-solid)] p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <p className={fieldLabelClass}>{item.label}</p>
+                          <button
+                            type="button"
+                            className={
+                              manualCopyFeedback === item.label
+                                ? `${iconButtonSmallClass} [border-color:var(--success-border)] [background:var(--success-soft)] text-[color:var(--success-text)]`
+                                : iconButtonSmallClass
+                            }
+                            aria-label={t("settings.copy.value", { label: item.label })}
+                            title={t("settings.copy.value", { label: item.label })}
+                            onClick={() => {
+                              void handleCopyValue(item.value, item.label);
+                            }}
+                          >
+                            {manualCopyFeedback === item.label ? (
+                              <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M9.2 16.6 4.9 12.3l1.4-1.4 2.9 2.9 8.5-8.5 1.4 1.4z" />
+                              </svg>
+                            ) : (
+                              <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M9 9h10v10H9z" />
+                                <path d="M5 5h10v2H7v8H5z" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
+                        <p className={`${monoClass} mt-3`}>{item.value}</p>
+                        {item.hint ? <p className={`${metaClass} mt-2`}>{item.hint}</p> : null}
                       </div>
-                      <p className="mono">{item.value}</p>
-                      {item.hint ? <p className="meta">{item.hint}</p> : null}
-                    </div>
-                  ))}
-                </div>
-                <p className="meta">{connectionGuide.note}</p>
+                    ))}
+                  </div>
+                ) : (
+                  <div className={emptyStateClass}>No manual settings available.</div>
+                )}
+                <p className={`${metaClass} mt-4`}>{connectionGuide.note}</p>
               </div>
             )}
           </section>
