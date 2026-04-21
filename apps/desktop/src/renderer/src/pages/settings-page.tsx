@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { ToastRegion, type ToastItem } from "../components/toast-region";
 import { useI18n } from "../i18n/i18n-provider";
+import { getRuntimeLabel } from "../utils/runtime-label";
 import {
   actionRowClass,
   buttonClass,
@@ -134,6 +135,11 @@ export function SettingsPage({
   const [manualCopyFeedback, setManualCopyFeedback] = useState<string | null>(null);
   const [connectMode, setConnectMode] = useState<ConnectMode>("command");
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const runtimeLabel = getRuntimeLabel(desktopState?.runtime, {
+    desktopApp: t("settings.value.desktopApp"),
+    browser: t("settings.value.browser"),
+    unknown: t("settings.value.unknown")
+  });
 
   useEffect(() => {
     setPortInput(String(desktopState?.config.apiPort ?? 3456));
@@ -398,7 +404,7 @@ export function SettingsPage({
             {desktopState?.core.running ? t("app.coreRunning") : t("app.coreStopped")}
           </span>
           <span className={statusPillClass("default")}>
-            {desktopState?.runtime ?? t("settings.value.unknown")}
+            {runtimeLabel}
           </span>
         </div>
       </section>
@@ -476,7 +482,7 @@ export function SettingsPage({
         <div className={sectionHeadClass}>
           <div className="space-y-1">
             <h2 className={sectionTitleClass}>{t("settings.section.runtime")}</h2>
-            <p className={sectionMetaClass}>{desktopState?.runtime ?? t("settings.value.unknown")}</p>
+            <p className={sectionMetaClass}>{runtimeLabel}</p>
           </div>
         </div>
 

@@ -248,6 +248,7 @@ export const messages = {
     "settings.platform.windowsCmd": "Windows CMD",
     "settings.platform.powershell": "PowerShell",
     "settings.value.default": "default",
+    "settings.value.desktopApp": "Desktop App",
     "settings.value.unknown": "unknown",
     "settings.value.browser": "browser",
     "settings.value.openaiCompatible": "OpenAI Compatible"
@@ -468,6 +469,7 @@ export const messages = {
     "settings.platform.windowsCmd": "Windows CMD",
     "settings.platform.powershell": "PowerShell",
     "settings.value.default": "默认",
+    "settings.value.desktopApp": "桌面应用",
     "settings.value.unknown": "未知",
     "settings.value.browser": "浏览器",
     "settings.value.openaiCompatible": "OpenAI 兼容"

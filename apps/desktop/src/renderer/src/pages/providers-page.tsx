@@ -11,6 +11,7 @@ import {
   updateProvider
 } from "../services/api";
 import type { Provider } from "../types/provider";
+import { getRuntimeLabel } from "../utils/runtime-label";
 import {
   buttonClass,
   emptyStateClass,
@@ -71,6 +72,11 @@ export function ProvidersPage({
     providers.find((provider) => provider.status.is_active) ??
     providers[0] ??
     null;
+  const runtimeLabel = getRuntimeLabel(desktopState?.runtime, {
+    desktopApp: t("settings.value.desktopApp"),
+    browser: t("settings.value.browser"),
+    unknown: t("settings.value.unknown")
+  });
 
   const dismissToast = useCallback((id: string) => {
     setToasts((current) => current.filter((item) => item.id !== id));
@@ -274,7 +280,7 @@ export function ProvidersPage({
           </div>
           <div className={statusPillClass(desktopState?.ok ? "success" : "danger")}>
             {t("providers.desktopRuntime", {
-              runtime: desktopState?.runtime ?? t("settings.value.browser")
+              runtime: runtimeLabel
             })}
           </div>
         </div>

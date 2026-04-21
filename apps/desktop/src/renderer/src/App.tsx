@@ -6,6 +6,7 @@ import { ProvidersPage } from "./pages/providers-page";
 import { SettingsPage } from "./pages/settings-page";
 import { useTheme } from "./theme/theme-provider";
 import type { Provider } from "./types/provider";
+import { getRuntimeLabel } from "./utils/runtime-label";
 import {
   appBackdropClass,
   appShellClass,
@@ -69,6 +70,11 @@ export default function App() {
   const [view, setView] = useState<"providers" | "models" | "logs" | "settings">("providers");
   const [bootError, setBootError] = useState<string | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
+  const runtimeLabel = getRuntimeLabel(desktopState?.runtime, {
+    desktopApp: t("settings.value.desktopApp"),
+    browser: t("settings.value.browser"),
+    unknown: t("settings.value.unknown")
+  });
   const navItems = [
     {
       id: "providers",
@@ -260,7 +266,7 @@ export default function App() {
                 Runtime
               </p>
               <p className="text-sm text-[color:var(--color-text)]">
-                {desktopState?.runtime ?? "-"} · {desktopState?.platform ?? "-"}
+                {runtimeLabel} · {desktopState?.platform ?? "-"}
               </p>
               <p className={sectionMetaClass}>{desktopState?.apiBase ?? "-"}</p>
             </div>
