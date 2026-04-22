@@ -1,6 +1,6 @@
 import { app } from "electron";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { createServer } from "node:net";
 import {
@@ -100,7 +100,7 @@ export async function startCoreProcess(
     return spawnCoreBinary(explicitCoreExecutable, runtimePaths.coreDir, port, apiBase);
   }
 
-  if (existsSync(runtimePaths.binaryPath)) {
+  if (app.isPackaged && existsSync(runtimePaths.binaryPath)) {
     return spawnCoreBinary(runtimePaths.binaryPath, runtimePaths.coreDir, port, apiBase);
   }
 
@@ -120,6 +120,13 @@ export async function startCoreProcess(
   }
 
   const goBinary = resolveGoBinary();
+  const hasFreshBinary =
+    existsSync(runtimePaths.binaryPath) &&
+    isDevelopmentBinaryFresh(runtimePaths.coreDir, runtimePaths.binaryPath);
+  if (hasFreshBinary) {
+    return spawnCoreBinary(runtimePaths.binaryPath, runtimePaths.coreDir, port, apiBase);
+  }
+
   if (goBinary) {
     const builtBinary = buildCoreBinary(goBinary, runtimePaths.coreDir, runtimePaths.binaryPath);
     if (builtBinary) {
@@ -355,20 +362,93 @@ function buildCoreBinary(
 }
 
 function resolveGoBinary(): string | null {
-  const candidates = [
-    process.env.GO_BINARY,
-    "/tmp/go-toolchain/go/bin/go",
-    "go"
-  ].filter(Boolean) as string[];
+  const candidates = [process.env.GO_BINARY, "go"].filter(Boolean) as string[];
 
   for (const candidate of candidates) {
-    const result = spawnSync(candidate, ["version"], { stdio: "ignore" });
-    if (result.status === 0) {
+    if (isUsableGoBinary(candidate)) {
       return candidate;
     }
   }
 
   return null;
+}
+
+function isUsableGoBinary(candidate: string): boolean {
+  const versionResult = spawnSync(candidate, ["version"], {
+    stdio: "ignore"
+  });
+  if (versionResult.status !== 0) {
+    return false;
+  }
+
+  const gorootResult = spawnSync(candidate, ["env", "GOROOT"], {
+    encoding: "utf8"
+  });
+  if (gorootResult.status !== 0) {
+    return false;
+  }
+
+  const goroot = gorootResult.stdout.trim();
+  if (!goroot) {
+    return false;
+  }
+
+  // Only accept Go binaries that can resolve a usable stdlib from GOROOT.
+  const stdlibFiles = [
+    join(goroot, "src", "context", "context.go"),
+    join(goroot, "src", "fmt", "print.go"),
+    join(goroot, "src", "log", "log.go")
+  ];
+
+  try {
+    return stdlibFiles.every((file) => existsSync(file) && statSync(file).size > 0);
+  } catch {
+    return false;
+  }
+}
+
+function isDevelopmentBinaryFresh(coreDir: string, binaryPath: string): boolean {
+  try {
+    const binaryMtime = statSync(binaryPath).mtimeMs;
+    const latestSourceMtime = getLatestCoreSourceMtime(coreDir);
+    return binaryMtime >= latestSourceMtime;
+  } catch {
+    return false;
+  }
+}
+
+function getLatestCoreSourceMtime(coreDir: string): number {
+  const pathsToCheck = [
+    join(coreDir, "go.mod"),
+    join(coreDir, "go.sum"),
+    join(coreDir, "cmd"),
+    join(coreDir, "internal")
+  ];
+
+  let latest = 0;
+  for (const path of pathsToCheck) {
+    latest = Math.max(latest, getPathLatestMtime(path));
+  }
+
+  return latest;
+}
+
+function getPathLatestMtime(targetPath: string): number {
+  if (!existsSync(targetPath)) {
+    return 0;
+  }
+
+  const stats = statSync(targetPath);
+  if (!stats.isDirectory()) {
+    return stats.mtimeMs;
+  }
+
+  let latest = stats.mtimeMs;
+  for (const entry of readdirSync(targetPath, { withFileTypes: true })) {
+    latest = Math.max(latest, getPathLatestMtime(join(targetPath, entry.name)));
+  }
+
+  return latest;
 }
 
 function resolveWorkspaceRoot(startDir: string): string {
