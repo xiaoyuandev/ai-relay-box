@@ -311,7 +311,7 @@ func (s *Service) FetchModels(ctx context.Context, id string) ([]ModelInfo, erro
 	}
 
 	target := *baseURL
-	target.Path = joinURLPath(baseURL.Path, "/models")
+	target.Path = resolveModelsPath(baseURL.Path)
 	target.RawPath = target.Path
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target.String(), nil)
@@ -364,6 +364,19 @@ func (s *Service) FetchModels(ctx context.Context, id string) ([]ModelInfo, erro
 	}
 
 	return nil, fmt.Errorf("models response format not recognized")
+}
+
+func resolveModelsPath(basePath string) string {
+	trimmed := strings.TrimRight(basePath, "/")
+
+	switch {
+	case trimmed == "":
+		return "/v1/models"
+	case strings.HasSuffix(trimmed, "/v1"):
+		return trimmed + "/models"
+	default:
+		return trimmed + "/v1/models"
+	}
 }
 
 func joinURLPath(basePath string, requestPath string) string {

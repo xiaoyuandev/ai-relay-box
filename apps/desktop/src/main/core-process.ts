@@ -1,6 +1,6 @@
 import { app } from "electron";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
-import { existsSync, mkdirSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { createServer } from "node:net";
 import {
@@ -100,7 +100,7 @@ export async function startCoreProcess(
     return spawnCoreBinary(explicitCoreExecutable, runtimePaths.coreDir, port, apiBase);
   }
 
-  if (existsSync(runtimePaths.binaryPath)) {
+  if (app.isPackaged && existsSync(runtimePaths.binaryPath)) {
     return spawnCoreBinary(runtimePaths.binaryPath, runtimePaths.coreDir, port, apiBase);
   }
 
@@ -120,6 +120,13 @@ export async function startCoreProcess(
   }
 
   const goBinary = resolveGoBinary();
+  const hasFreshBinary =
+    existsSync(runtimePaths.binaryPath) &&
+    isDevelopmentBinaryFresh(runtimePaths.coreDir, runtimePaths.binaryPath);
+  if (hasFreshBinary) {
+    return spawnCoreBinary(runtimePaths.binaryPath, runtimePaths.coreDir, port, apiBase);
+  }
+
   if (goBinary) {
     const builtBinary = buildCoreBinary(goBinary, runtimePaths.coreDir, runtimePaths.binaryPath);
     if (builtBinary) {
@@ -398,6 +405,50 @@ function isUsableGoBinary(candidate: string): boolean {
   } catch {
     return false;
   }
+}
+
+function isDevelopmentBinaryFresh(coreDir: string, binaryPath: string): boolean {
+  try {
+    const binaryMtime = statSync(binaryPath).mtimeMs;
+    const latestSourceMtime = getLatestCoreSourceMtime(coreDir);
+    return binaryMtime >= latestSourceMtime;
+  } catch {
+    return false;
+  }
+}
+
+function getLatestCoreSourceMtime(coreDir: string): number {
+  const pathsToCheck = [
+    join(coreDir, "go.mod"),
+    join(coreDir, "go.sum"),
+    join(coreDir, "cmd"),
+    join(coreDir, "internal")
+  ];
+
+  let latest = 0;
+  for (const path of pathsToCheck) {
+    latest = Math.max(latest, getPathLatestMtime(path));
+  }
+
+  return latest;
+}
+
+function getPathLatestMtime(targetPath: string): number {
+  if (!existsSync(targetPath)) {
+    return 0;
+  }
+
+  const stats = statSync(targetPath);
+  if (!stats.isDirectory()) {
+    return stats.mtimeMs;
+  }
+
+  let latest = stats.mtimeMs;
+  for (const entry of readdirSync(targetPath, { withFileTypes: true })) {
+    latest = Math.max(latest, getPathLatestMtime(join(targetPath, entry.name)));
+  }
+
+  return latest;
 }
 
 function resolveWorkspaceRoot(startDir: string): string {
