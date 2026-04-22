@@ -34,12 +34,12 @@ linux:
     - tar.gz
   category: Utility
 dmg:
-  artifactName: ${productName}-${version}-${arch}.${ext}
+  artifactName: Clash-for-AI-${version}-${arch}.${ext}
 nsis:
-  artifactName: ${productName}-${version}-${arch}-setup.${ext}
+  artifactName: Clash-for-AI-${version}-${arch}-setup.${ext}
 appImage:
-  artifactName: ${productName}-${version}-${arch}.${ext}
-artifactName: ${productName}-${version}-${os}-${arch}.${ext}
+  artifactName: Clash-for-AI-${version}-${arch}.${ext}
+artifactName: Clash-for-AI-${version}-${os}-${arch}.${ext}
 publish:
   provider: github
   owner: xiaoyuandev
