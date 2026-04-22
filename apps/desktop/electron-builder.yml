@@ -19,11 +19,12 @@ mac:
   target:
     - dmg
     - zip
+  entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
   notarize: false
   extendInfo:
-    - NSDocumentsFolderUsageDescription: Clash for AI may access files in Documents for local tooling workflows.
-    - NSDownloadsFolderUsageDescription: Clash for AI may access files in Downloads for local tooling workflows.
+    NSDocumentsFolderUsageDescription: Clash for AI may access files in Documents for local tooling workflows.
+    NSDownloadsFolderUsageDescription: Clash for AI may access files in Downloads for local tooling workflows.
 win:
   target:
     - nsis
