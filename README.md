@@ -1,12 +1,42 @@
 # Clash for AI
 
-Clash for AI is a local desktop gateway for people who use multiple AI API providers across different coding tools.
+Clash for AI is a local desktop gateway for people who switch between multiple AI gateways or API relay providers.
+
+[中文 README](./README.zh-CN.md)
 
 It gives you:
 
 1. One stable local endpoint for your tools
 2. A desktop control plane for switching providers
 3. Local request logs and health checks for debugging provider issues
+
+## What Problem It Solves
+
+Clash for AI is designed for people who depend on multiple AI gateways in daily use.
+
+It mainly addresses two problems:
+
+1. API relay providers can be unstable, so you may need to switch between different gateways frequently
+2. If you use multiple coding tools, chat clients, or SDK scripts, changing providers often means repeatedly updating configuration in each tool
+
+Clash for AI puts one local gateway in front of those tools.
+
+You configure a single local endpoint once, then switch the upstream relay provider from the desktop app.
+
+## How It Differs From cc-switch
+
+The difference is mainly in product focus and integration model.
+
+| Aspect | cc-switch | Clash for AI |
+|---|---|---|
+| Public positioning | An all-in-one desktop manager for Claude Code, Codex, Gemini CLI, OpenCode, and OpenClaw | A local desktop gateway for managing multiple AI gateways / relay providers |
+| Primary target | Tool-side provider management across specific coding CLIs | Upstream gateway switching behind one shared local endpoint |
+| How switching works | Its public docs focus on managing tool configs and provider presets for supported apps | Tools point to one localhost endpoint, and the desktop app switches the upstream gateway |
+| Effect on tool configuration | Built around per-tool management flows for its supported apps | Avoids repeated per-tool rewrites after the initial Base URL setup |
+| Supported integration style | Publicly documented around five coding CLIs, plus related MCP / Skills / prompt workflows | General local endpoint that can be reused by coding tools, chat clients such as Cherry Studio, and SDK or script-based integrations |
+| Current built-in capabilities | Broad app management features such as MCP, Skills, prompts, sessions, proxy/failover, and cloud sync | Focused local gateway features such as provider switching, health checks, request logs, and stable local access |
+
+In short: cc-switch is centered on managing specific AI coding tools, while Clash for AI is centered on managing upstream relay gateways behind a stable local API entry point.
 
 ## What It Does
 
@@ -42,6 +72,7 @@ This means:
 See the end-user setup guide:
 
 - [User Guide](./docs/user-guide.md)
+- [中文 README](./README.zh-CN.md)
 
 In most supported tools, you configure:
 
