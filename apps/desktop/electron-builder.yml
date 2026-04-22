@@ -8,16 +8,37 @@ files:
   - "!electron.vite.config.{js,ts,mjs,cjs}"
   - "!{.env,.env.*,README.md}"
   - "!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}"
+extraResources:
+  - from: ../../core/bin
+    to: core/bin
+    filter:
+      - "**/*"
 asarUnpack:
   - resources/**
 mac:
+  target:
+    - dmg
+    - zip
   entitlementsInherit: build/entitlements.mac.plist
   notarize: false
   extendInfo:
     - NSDocumentsFolderUsageDescription: Clash for AI may access files in Documents for local tooling workflows.
     - NSDownloadsFolderUsageDescription: Clash for AI may access files in Downloads for local tooling workflows.
+win:
+  target:
+    - nsis
+linux:
+  target:
+    - AppImage
+    - tar.gz
+  category: Utility
 dmg:
-  artifactName: ${name}-${version}.${ext}
+  artifactName: ${productName}-${version}-${arch}.${ext}
+nsis:
+  artifactName: ${productName}-${version}-${arch}-setup.${ext}
+appImage:
+  artifactName: ${productName}-${version}-${arch}.${ext}
+artifactName: ${productName}-${version}-${os}-${arch}.${ext}
 publish:
   provider: github
   owner: xiaoyuandev

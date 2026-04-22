@@ -10,8 +10,18 @@ permissions:
   contents: write
 
 jobs:
-  release-macos:
-    runs-on: macos-latest
+  release-desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: mac
+          - os: windows-latest
+            target: win
+          - os: ubuntu-latest
+            target: linux
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,10 +37,15 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: core/go.mod
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build and publish macOS release
+      - name: Build and publish desktop release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm --filter desktop release:mac
+        run: pnpm --filter desktop release:${{ matrix.target }}
