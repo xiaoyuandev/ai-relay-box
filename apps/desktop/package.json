@@ -16,10 +16,10 @@
     "build": "pnpm clean && pnpm typecheck && electron-vite build",
     "postinstall": "electron-builder install-app-deps",
     "build:unpack": "pnpm build && pnpm build:core && electron-builder --dir",
-    "build:mac": "pnpm build && pnpm build:core && electron-builder --mac dmg zip",
+    "build:mac": "pnpm build && pnpm build:core && electron-builder --mac dmg pkg zip",
     "build:win": "pnpm build && pnpm build:core && electron-builder --win nsis",
     "build:linux": "pnpm build && pnpm build:core && electron-builder --linux AppImage tar.gz",
-    "release:mac": "pnpm build && pnpm build:core && electron-builder --mac dmg zip --publish always",
+    "release:mac": "pnpm build && pnpm build:core && electron-builder --mac dmg pkg zip --publish always",
     "release:win": "pnpm build && pnpm build:core && electron-builder --win nsis --publish always",
     "release:linux": "pnpm build && pnpm build:core && electron-builder --linux AppImage tar.gz --publish always"
   },

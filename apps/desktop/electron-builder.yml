@@ -18,6 +18,7 @@ asarUnpack:
 mac:
   target:
     - dmg
+    - pkg
     - zip
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
@@ -34,6 +35,8 @@ linux:
     - tar.gz
   category: Utility
 dmg:
+  artifactName: Clash-for-AI-${version}-${arch}.${ext}
+pkg:
   artifactName: Clash-for-AI-${version}-${arch}.${ext}
 nsis:
   artifactName: Clash-for-AI-${version}-${arch}-setup.${ext}
