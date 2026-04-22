@@ -1,5 +1,6 @@
 appId: com.xiaoyuandev.clash-for-ai
 productName: Clash for AI
+afterAllArtifactBuild: scripts/cleanup-mac-artifacts.cjs
 directories:
   buildResources: build
 files:
