@@ -342,7 +342,11 @@ func (h *Handler) forwardWithFallback(ctx context.Context, input forwardInput) f
 
 	for index, attempt := range input.attempts {
 		reqURL := *input.baseURL
-		reqURL.Path = joinURLPath(input.baseURL.Path, strings.TrimPrefix(input.path, "/v1"))
+		if input.path == "/v1/models" {
+			reqURL.Path = provider.ResolveModelsPath(input.baseURL.Path)
+		} else {
+			reqURL.Path = joinURLPath(input.baseURL.Path, strings.TrimPrefix(input.path, "/v1"))
+		}
 		reqURL.RawPath = reqURL.Path
 		reqURL.RawQuery = input.rawQuery
 

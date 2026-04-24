@@ -84,6 +84,7 @@ interface SettingsPageProps {
   onCheckUpdates: () => Promise<void>;
   onDownloadUpdate: () => Promise<void>;
   onQuitAndInstallUpdate: () => Promise<void>;
+  onOpenReleasePage: () => Promise<void>;
   onCoreRestart: () => Promise<void>;
   onUpdateCorePort: (port: number) => Promise<void>;
   onCopyText: (text: string) => Promise<void>;
@@ -117,6 +118,7 @@ export function SettingsPage({
   onCheckUpdates,
   onDownloadUpdate,
   onQuitAndInstallUpdate,
+  onOpenReleasePage,
   onCoreRestart,
   onUpdateCorePort,
   onCopyText
@@ -222,6 +224,22 @@ export function SettingsPage({
     } catch (error) {
       setFeedbackTone("error");
       setFeedback(error instanceof Error ? error.message : t("settings.feedback.updateDownloadFailed"));
+    } finally {
+      setUpdateBusy(false);
+    }
+  }
+
+  async function handleOpenReleasePage() {
+    setUpdateBusy(true);
+    setFeedback(null);
+
+    try {
+      await onOpenReleasePage();
+    } catch (error) {
+      setFeedbackTone("error");
+      setFeedback(
+        error instanceof Error ? error.message : t("settings.feedback.updateOpenReleaseFailed")
+      );
     } finally {
       setUpdateBusy(false);
     }
@@ -387,6 +405,7 @@ export function SettingsPage({
   }
 
   const portLocked = desktopState?.config.apiPortSource === "env";
+  const isMacPlatform = desktopState?.platform === "darwin";
 
   return (
     <main className={pageShellClass}>
@@ -572,28 +591,40 @@ export function SettingsPage({
           <button
             type="button"
             className={buttonClass("secondary")}
-            onClick={() => void handleDownloadUpdate()}
+            onClick={() => void (isMacPlatform ? handleOpenReleasePage() : handleDownloadUpdate())}
             disabled={
               updateBusy ||
               (desktopState?.updates.status !== "available" &&
-                desktopState?.updates.status !== "downloading")
+                desktopState?.updates.status !== "downloading" &&
+                desktopState?.updates.status !== "downloaded")
             }
           >
-            {desktopState?.updates.status === "downloading"
-              ? t("settings.button.downloading", {
-                  progress: Math.round(desktopState.updates.progressPercent ?? 0)
-                })
-              : t("settings.button.downloadUpdate")}
+            {isMacPlatform
+              ? t("settings.button.openReleasePage")
+              : desktopState?.updates.status === "downloading"
+                ? t("settings.button.downloading", {
+                    progress: Math.round(desktopState.updates.progressPercent ?? 0)
+                  })
+                : t("settings.button.downloadUpdate")}
           </button>
           <button
             type="button"
             className={buttonClass("primary")}
             onClick={() => void handleQuitAndInstallUpdate()}
-            disabled={updateBusy || desktopState?.updates.status !== "downloaded"}
+            disabled={
+              isMacPlatform || updateBusy || desktopState?.updates.status !== "downloaded"
+            }
           >
-            {t("settings.button.installUpdate")}
+            {isMacPlatform
+              ? t("settings.button.manualInstallOnly")
+              : t("settings.button.installUpdate")}
           </button>
         </div>
+        {isMacPlatform ? (
+          <p className={`${metaClass} mt-4`}>
+            {t("settings.meta.macManualUpdate")}
+          </p>
+        ) : null}
       </section>
 
       {connectOpen ? (
