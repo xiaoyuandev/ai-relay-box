@@ -158,6 +158,7 @@ declare global {
         progressPercent?: number;
         message?: string;
       }>;
+      openReleasePage: () => Promise<{ ok: boolean; url: string }>;
     };
   }
 }

@@ -8,7 +8,8 @@ const api = {
   copyText: (text: string) => ipcRenderer.invoke("app:copy-text", text),
   checkUpdates: () => ipcRenderer.invoke("app:check-updates"),
   downloadUpdate: () => ipcRenderer.invoke("app:download-update"),
-  quitAndInstallUpdate: () => ipcRenderer.invoke("app:quit-and-install-update")
+  quitAndInstallUpdate: () => ipcRenderer.invoke("app:quit-and-install-update"),
+  openReleasePage: () => ipcRenderer.invoke("app:open-release-page")
 };
 
 if (process.contextIsolated) {

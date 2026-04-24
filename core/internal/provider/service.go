@@ -311,7 +311,7 @@ func (s *Service) FetchModels(ctx context.Context, id string) ([]ModelInfo, erro
 	}
 
 	target := *baseURL
-	target.Path = resolveModelsPath(baseURL.Path)
+	target.Path = ResolveModelsPath(baseURL.Path)
 	target.RawPath = target.Path
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target.String(), nil)
@@ -366,7 +366,7 @@ func (s *Service) FetchModels(ctx context.Context, id string) ([]ModelInfo, erro
 	return nil, fmt.Errorf("models response format not recognized")
 }
 
-func resolveModelsPath(basePath string) string {
+func ResolveModelsPath(basePath string) string {
 	trimmed := strings.TrimRight(basePath, "/")
 
 	switch {

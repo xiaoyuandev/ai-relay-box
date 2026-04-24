@@ -349,6 +349,13 @@ export default function App() {
                 const updates = await window.desktopBridge.quitAndInstallUpdate();
                 setDesktopState((current) => (current ? { ...current, updates } : current));
               }}
+              onOpenReleasePage={async () => {
+                if (!window.desktopBridge) {
+                  return;
+                }
+
+                await window.desktopBridge.openReleasePage();
+              }}
               onCoreRestart={async () => {
                 if (!window.desktopBridge) {
                   return;

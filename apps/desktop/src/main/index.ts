@@ -59,6 +59,15 @@ function resolveIconPath() {
   return join(app.getAppPath(), "build", iconFile);
 }
 
+function resolveReleaseURL() {
+  const version = updateState.availableVersion ?? updateState.downloadedVersion;
+  if (version) {
+    return `https://github.com/xiaoyuandev/clash-for-ai/releases/tag/v${version}`;
+  }
+
+  return "https://github.com/xiaoyuandev/clash-for-ai/releases/latest";
+}
+
 async function bootstrapCoreRuntime() {
   const portInfo = resolveConfiguredPort(desktopConfig);
   configuredPortSource = portInfo.source;
@@ -320,6 +329,12 @@ app.whenReady().then(() => {
 
     autoUpdater.quitAndInstall();
     return updateState;
+  });
+
+  ipcMain.handle("app:open-release-page", async () => {
+    const url = resolveReleaseURL();
+    await shell.openExternal(url);
+    return { ok: true, url };
   });
 
   void bootstrapCoreRuntime()
