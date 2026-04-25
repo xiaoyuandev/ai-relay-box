@@ -18,6 +18,7 @@ export interface Provider {
   id: string;
   name: string;
   base_url: string;
+  api_key: string;
   auth_mode: AuthMode;
   extra_headers: Record<string, string>;
   capabilities: ProviderCapabilities;

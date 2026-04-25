@@ -171,6 +171,7 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (Provider, erro
 		Name:         input.Name,
 		BaseURL:      input.BaseURL,
 		APIKeyRef:    apiKeyRef,
+		APIKey:       input.APIKey,
 		AuthMode:     input.AuthMode,
 		ExtraHeaders: input.ExtraHeaders,
 		Capabilities: Capabilities{
@@ -225,6 +226,7 @@ func (s *Service) Update(ctx context.Context, id string, input UpdateInput) (Pro
 		}
 
 		item.APIKeyRef = apiKeyRef
+		item.APIKey = input.APIKey
 		item.APIKeyMasked = maskAPIKey(input.APIKey)
 	}
 
@@ -420,6 +422,7 @@ func (s *Service) refreshMaskedKey(ctx context.Context, item Provider) Provider 
 		return item
 	}
 
+	item.APIKey = apiKey
 	item.APIKeyMasked = maskAPIKey(apiKey)
 	return item
 }
