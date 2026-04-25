@@ -27,6 +27,7 @@ type Provider struct {
 	Name         string            `json:"name"`
 	BaseURL      string            `json:"base_url"`
 	APIKeyRef    string            `json:"-"`
+	APIKey       string            `json:"api_key"`
 	AuthMode     AuthMode          `json:"auth_mode"`
 	ExtraHeaders map[string]string `json:"extra_headers"`
 	Capabilities Capabilities      `json:"capabilities"`

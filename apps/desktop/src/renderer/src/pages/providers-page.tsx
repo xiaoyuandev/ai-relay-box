@@ -14,7 +14,6 @@ import {
 import type { Provider } from "../types/provider";
 import type { ProviderModel } from "../types/provider-model";
 import {
-  actionRowClass,
   buttonClass,
   columnCardClass,
   emptyStateClass,
@@ -70,6 +69,7 @@ export function ProvidersPage({
   const [baseUrl, setBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
+  const [showSelectedProviderApiKey, setShowSelectedProviderApiKey] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -91,6 +91,19 @@ export function ProvidersPage({
       return model.id.toLowerCase().includes(keyword) || owner.includes(keyword);
     });
   }, [modelSearch, providerModels]);
+
+  const maskApiKey = useCallback((value: string) => {
+    const trimmed = value.trim();
+    if (trimmed.length <= 4) {
+      return "****";
+    }
+
+    if (trimmed.length <= 12) {
+      return `${trimmed.slice(0, trimmed.length - 4)}****`;
+    }
+
+    return `${trimmed.slice(0, 8)}••••${trimmed.slice(-4)}`;
+  }, []);
 
   const dismissToast = useCallback((id: string) => {
     setToasts((current) => current.filter((item) => item.id !== id));
@@ -192,6 +205,10 @@ export function ProvidersPage({
     };
   }, [apiBase, selectedProvider, t]);
 
+  useEffect(() => {
+    setShowSelectedProviderApiKey(false);
+  }, [selectedProvider?.id]);
+
   async function refreshProviders(preferredProviderId?: string) {
     const providersData = await getProviders(apiBase);
     setProviders(providersData);
@@ -289,7 +306,7 @@ export function ProvidersPage({
     setEditingId(provider.id);
     setName(provider.name);
     setBaseUrl(provider.base_url);
-    setApiKey("");
+    setApiKey(provider.api_key ?? "");
     setFeedback(null);
     setError(null);
     setShowApiKey(false);
@@ -312,7 +329,7 @@ export function ProvidersPage({
   }
 
   return (
-    <main className={pageShellClass}>
+    <main className={`${pageShellClass} h-full overflow-hidden`}>
       <ToastRegion items={toasts} onDismiss={dismissToast} />
       <section className={sectionCardClass}>
         <div className={sectionHeadClass}>
@@ -342,8 +359,8 @@ export function ProvidersPage({
         </div>
       </section>
 
-      <section className={`${splitLayoutClass} min-h-0 xl:h-[min(62vh,720px)]`}>
-        <section className={`${columnCardClass} min-h-0`}>
+      <section className={`${splitLayoutClass} min-h-0 flex-1 overflow-hidden`}>
+        <section className={`${columnCardClass} min-h-0 h-full overflow-hidden`}>
           <div className={sectionHeadClass}>
             <div className="space-y-1">
               <h2 className={sectionTitleClass}>{t("providers.list.title")}</h2>
@@ -390,7 +407,7 @@ export function ProvidersPage({
                             {provider.base_url}
                           </p>
                           <p className={`${metaClass} mt-1 truncate`}>
-                            {provider.api_key_masked}
+                            {maskApiKey(provider.api_key ?? "")}
                           </p>
                         </div>
                       </div>
@@ -410,46 +427,58 @@ export function ProvidersPage({
                           {t("providers.action.activate")}
                         </button>
                       )}
-                      <button
-                        type="button"
-                        className={iconButtonSmallClass}
-                        title={t("common.edit")}
-                        aria-label={t("common.edit")}
-                        onClick={() => {
-                          onSelectedProviderChange(provider);
-                          startEditing(provider);
-                        }}
-                      >
-                        <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
-                          <path d="M13.4 3.4a2 2 0 0 1 2.8 0l4.4 4.4a2 2 0 0 1 0 2.8l-2.1 2.1-7.2-7.2zM10.1 6.7 3 13.8V21h7.2l7.1-7.1zM6 18H5v-1l7.4-7.4 1 1z" />
-                        </svg>
-                      </button>
-                      <button
-                        type="button"
-                        className={iconButtonSmallClass}
-                        title={t("providers.action.test")}
-                        aria-label={t("providers.action.test")}
-                        onClick={() => {
-                          void handleHealthcheck(provider.id);
-                        }}
-                      >
-                        <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
-                          <path d="M12 5c5.5 0 9.5 4.6 10.7 6.2.4.5.4 1.1 0 1.6C21.5 14.4 17.5 19 12 19S2.5 14.4 1.3 12.8a1.3 1.3 0 0 1 0-1.6C2.5 9.6 6.5 5 12 5m0 2C8.2 7 5 10 3.4 12 5 14 8.2 17 12 17s7-3 8.6-5C19 10 15.8 7 12 7m0 2.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5" />
-                        </svg>
-                      </button>
-                      <button
-                        type="button"
-                        className={iconButtonSmallClass}
-                        title={t("common.delete")}
-                        aria-label={t("common.delete")}
-                        onClick={() => {
-                          void handleDeleteProvider(provider.id);
-                        }}
-                      >
-                        <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
-                          <path d="M9 3h6l1 2h4v2H4V5h4zm1 6h2v8h-2zm4 0h2v8h-2zM7 9h2v8H7zm1 12a2 2 0 0 1-2-2V8h12v11a2 2 0 0 1-2 2z" />
-                        </svg>
-                      </button>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          className={`${iconButtonSmallClass} peer`}
+                          aria-label={t("common.edit")}
+                          onClick={() => {
+                            onSelectedProviderChange(provider);
+                            startEditing(provider);
+                          }}
+                        >
+                          <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M13.4 3.4a2 2 0 0 1 2.8 0l4.4 4.4a2 2 0 0 1 0 2.8l-2.1 2.1-7.2-7.2zM10.1 6.7 3 13.8V21h7.2l7.1-7.1zM6 18H5v-1l7.4-7.4 1 1z" />
+                          </svg>
+                        </button>
+                        <span className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 hidden -translate-x-1/2 whitespace-nowrap rounded-md border [border-color:var(--border-soft)] [background:var(--panel-solid)] px-2 py-1 text-[11px] text-[color:var(--color-text)] shadow-[var(--shadow-soft)] peer-hover:block">
+                          {t("common.edit")}
+                        </span>
+                      </div>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          className={`${iconButtonSmallClass} peer`}
+                          aria-label={t("providers.action.test")}
+                          onClick={() => {
+                            void handleHealthcheck(provider.id);
+                          }}
+                        >
+                          <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M4 13h3l2-6 3 10 2-6h6v2h-4.6l-3 9-3-10-1.8 5H4z" />
+                          </svg>
+                        </button>
+                        <span className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 hidden -translate-x-1/2 whitespace-nowrap rounded-md border [border-color:var(--border-soft)] [background:var(--panel-solid)] px-2 py-1 text-[11px] text-[color:var(--color-text)] shadow-[var(--shadow-soft)] peer-hover:block">
+                          {t("providers.action.test")}
+                        </span>
+                      </div>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          className={`${iconButtonSmallClass} peer`}
+                          aria-label={t("common.delete")}
+                          onClick={() => {
+                            void handleDeleteProvider(provider.id);
+                          }}
+                        >
+                          <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M9 3h6l1 2h4v2H4V5h4zm1 6h2v8h-2zm4 0h2v8h-2zM7 9h2v8H7zm1 12a2 2 0 0 1-2-2V8h12v11a2 2 0 0 1-2 2z" />
+                          </svg>
+                        </button>
+                        <span className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 hidden -translate-x-1/2 whitespace-nowrap rounded-md border [border-color:var(--border-soft)] [background:var(--panel-solid)] px-2 py-1 text-[11px] text-[color:var(--color-text)] shadow-[var(--shadow-soft)] peer-hover:block">
+                          {t("common.delete")}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </article>
@@ -458,7 +487,7 @@ export function ProvidersPage({
           )}
         </section>
 
-        <section className={`${columnCardClass} min-h-0`}>
+        <section className={`${columnCardClass} min-h-0 h-full overflow-hidden`}>
           <div className={sectionHeadClass}>
             <div className="space-y-1">
               <h2 className={sectionTitleClass}>
@@ -481,7 +510,7 @@ export function ProvidersPage({
               </div>
             </div>
           ) : (
-            <div className="mt-4 flex min-h-0 flex-1 flex-col overflow-y-auto pr-1">
+            <div className="mt-4 flex min-h-0 flex-1 flex-col overflow-hidden pr-1">
               <div className={listClass}>
                 <div className={selectableItemClass(true)}>
                   <div className="flex flex-col gap-2.5">
@@ -501,24 +530,42 @@ export function ProvidersPage({
                     </p>
                     <p className={metaClass}>
                       {t("providers.detail.apiKey")}{" "}
-                      <span className={monoClass}>{selectedProvider.api_key_masked}</span>
+                      <span className={monoClass}>
+                        {showSelectedProviderApiKey
+                          ? selectedProvider.api_key
+                          : maskApiKey(selectedProvider.api_key ?? "")}
+                      </span>
+                      <button
+                        type="button"
+                        className={`${iconButtonSmallClass} ml-2 align-middle`}
+                        aria-label={
+                          showSelectedProviderApiKey
+                            ? t("providers.form.hideApiKey")
+                            : t("providers.form.showApiKey")
+                        }
+                        title={
+                          showSelectedProviderApiKey
+                            ? t("providers.form.hideApiKey")
+                            : t("providers.form.showApiKey")
+                        }
+                        onClick={() => setShowSelectedProviderApiKey((current) => !current)}
+                      >
+                        {showSelectedProviderApiKey ? (
+                          <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M2.7 1.3 1.3 2.7l3 3C2.9 6.9 1.9 8.2 1.3 9.2a1.3 1.3 0 0 0 0 1.6C2.5 12.4 6.5 17 12 17c2 0 3.8-.6 5.3-1.5l4 4 1.4-1.4zM9.9 11.3l2.8 2.8a2.5 2.5 0 0 1-2.8-2.8m4.1 1.3-3.6-3.6A2.5 2.5 0 0 1 14 12.6M12 7c3.8 0 7 3 8.6 5-.5.6-1.1 1.3-2 2l1.4 1.4c1.1-.8 2-1.8 2.7-2.8.4-.5.4-1.1 0-1.6C21.5 9.4 17.5 5 12 5c-1.4 0-2.7.3-3.9.8l1.7 1.7A9 9 0 0 1 12 7" />
+                          </svg>
+                        ) : (
+                          <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 5c5.5 0 9.5 4.6 10.7 6.2.4.5.4 1.1 0 1.6C21.5 14.4 17.5 19 12 19S2.5 14.4 1.3 12.8a1.3 1.3 0 0 1 0-1.6C2.5 9.6 6.5 5 12 5m0 2C8.2 7 5 10 3.4 12 5 14 8.2 17 12 17s7-3 8.6-5C19 10 15.8 7 12 7m0 2.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5" />
+                          </svg>
+                        )}
+                      </button>
                     </p>
-                    {!selectedProvider.status.is_active ? (
-                      <div className={actionRowClass}>
-                        <button
-                          type="button"
-                          className={buttonClass("primary")}
-                          onClick={() => void handleActivateProvider(selectedProvider)}
-                        >
-                          {t("providers.action.activate")}
-                        </button>
-                      </div>
-                    ) : null}
                   </div>
                 </div>
               </div>
 
-              <div className="mt-4 flex min-h-0 flex-1 flex-col">
+              <div className="mt-4 flex min-h-0 flex-1 flex-col overflow-hidden">
                 <div className={sectionHeadClass}>
                   <div className="space-y-1">
                     <h3 className={sectionTitleClass}>{t("models.available.title")}</h3>
