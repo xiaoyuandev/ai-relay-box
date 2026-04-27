@@ -72,7 +72,7 @@ export function ProvidersPage({
   const [showSelectedProviderApiKey, setShowSelectedProviderApiKey] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
-  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailProviderID, setDetailProviderID] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [claudeCodeModelMap, setClaudeCodeModelMap] = useState<ClaudeCodeModelMap>({
     opus: "",
@@ -89,6 +89,8 @@ export function ProvidersPage({
     providers.find((provider) => provider.status.is_active) ??
     providers[0] ??
     null;
+  const detailProvider =
+    providers.find((provider) => provider.id === detailProviderID) ?? null;
 
   const filteredModels = useMemo(() => {
     const keyword = modelSearch.trim().toLowerCase();
@@ -434,10 +436,7 @@ export function ProvidersPage({
   }
 
   function openProviderDetail(provider: Provider) {
-    onSelectedProviderChange(provider);
-    setFeedback(null);
-    setError(null);
-    setDetailOpen(true);
+    setDetailProviderID(provider.id);
   }
 
   return (
@@ -934,26 +933,26 @@ export function ProvidersPage({
         </div>
       ) : null}
 
-      {detailOpen && selectedProvider ? (
-        <div className={modalBackdropClass} role="presentation" onClick={() => setDetailOpen(false)}>
+      {detailProvider ? (
+        <div className={modalBackdropClass} role="presentation" onClick={() => setDetailProviderID(null)}>
           <section
             className={`${modalPanelClass} max-w-3xl`}
             role="dialog"
             aria-modal="true"
-            aria-label={t("providers.detail.title", { name: selectedProvider.name })}
+            aria-label={t("providers.detail.title", { name: detailProvider.name })}
             onClick={(event) => event.stopPropagation()}
           >
             <div className={sectionHeadClass}>
               <div className="space-y-1">
                 <h2 className={sectionTitleClass}>
-                  {t("providers.detail.title", { name: selectedProvider.name })}
+                  {t("providers.detail.title", { name: detailProvider.name })}
                 </h2>
                 <p className={sectionMetaClass}>{t("providers.detail.inspectHint")}</p>
               </div>
               <button
                 type="button"
                 className={buttonClass("secondary")}
-                onClick={() => setDetailOpen(false)}
+                onClick={() => setDetailProviderID(null)}
               >
                 {t("common.close")}
               </button>
@@ -964,25 +963,25 @@ export function ProvidersPage({
                 <div className={selectableItemClass(true)}>
                   <div className="flex flex-col gap-2.5">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className={statusPillClass(selectedProvider.status.is_active ? "success" : "default")}>
-                        {selectedProvider.status.is_active
+                      <span className={statusPillClass(detailProvider.status.is_active ? "success" : "default")}>
+                        {detailProvider.status.is_active
                           ? t("providers.status.active")
                           : t("providers.status.standby")}
                       </span>
                       <span className={statusPillClass("default")}>
-                        {selectedProvider.status.last_health_status}
+                        {detailProvider.status.last_health_status}
                       </span>
                     </div>
                     <p className={metaClass}>
                       {t("providers.detail.baseUrl")}{" "}
-                      <span className={monoClass}>{selectedProvider.base_url}</span>
+                      <span className={monoClass}>{detailProvider.base_url}</span>
                     </p>
                     <p className={metaClass}>
                       {t("providers.detail.apiKey")}{" "}
                       <span className={monoClass}>
                         {showSelectedProviderApiKey
-                          ? selectedProvider.api_key
-                          : maskApiKey(selectedProvider.api_key ?? "")}
+                          ? detailProvider.api_key
+                          : maskApiKey(detailProvider.api_key ?? "")}
                       </span>
                       <button
                         type="button"
