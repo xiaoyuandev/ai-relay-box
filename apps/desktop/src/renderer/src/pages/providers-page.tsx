@@ -11,7 +11,7 @@ import {
   runProviderHealthcheck,
   updateProvider
 } from "../services/api";
-import type { Provider } from "../types/provider";
+import type { ClaudeCodeModelMap, Provider } from "../types/provider";
 import type { ProviderModel } from "../types/provider-model";
 import {
   buttonClass,
@@ -73,6 +73,12 @@ export function ProvidersPage({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [claudeCodeModelMap, setClaudeCodeModelMap] = useState<ClaudeCodeModelMap>({
+    opus: "",
+    sonnet: "",
+    haiku: ""
+  });
+  const [savingClaudeMap, setSavingClaudeMap] = useState(false);
 
   const selectedProvider =
     providers.find((provider) => provider.id === selectedProviderId) ??
@@ -209,6 +215,16 @@ export function ProvidersPage({
     setShowSelectedProviderApiKey(false);
   }, [selectedProvider?.id]);
 
+  useEffect(() => {
+    setClaudeCodeModelMap(
+      selectedProvider?.claude_code_model_map ?? {
+        opus: "",
+        sonnet: "",
+        haiku: ""
+      }
+    );
+  }, [selectedProvider?.claude_code_model_map, selectedProvider?.id]);
+
   async function refreshProviders(preferredProviderId?: string) {
     const providersData = await getProviders(apiBase);
     setProviders(providersData);
@@ -231,13 +247,24 @@ export function ProvidersPage({
       return;
     }
 
+    const existingProvider = editingId
+      ? providers.find((provider) => provider.id === editingId) ?? null
+      : null;
+
     try {
       setSubmitting(true);
       const payload = {
         name: name.trim(),
         base_url: baseUrl.trim(),
         api_key: apiKey.trim(),
-        extra_headers: {}
+        auth_mode: existingProvider?.auth_mode,
+        extra_headers: {},
+        claude_code_model_map:
+          existingProvider?.claude_code_model_map ?? {
+            opus: "",
+            sonnet: "",
+            haiku: ""
+          }
       };
 
       const provider = editingId
@@ -262,6 +289,7 @@ export function ProvidersPage({
     try {
       await activateProvider(provider.id, apiBase);
       await refreshProviders(provider.id);
+      await syncClaudeCodeIntegrationIfConfigured();
       setFeedback(t("providers.feedback.activated", { name: provider.name }));
     } catch (activateError) {
       setError(activateError instanceof Error ? activateError.message : t("common.unknownError"));
@@ -302,6 +330,44 @@ export function ProvidersPage({
     }
   }
 
+  async function handleSaveClaudeCodeModelMap() {
+    if (!selectedProvider) {
+      return;
+    }
+
+    setSavingClaudeMap(true);
+    setError(null);
+    setFeedback(null);
+
+    try {
+      await updateProvider(
+        selectedProvider.id,
+        {
+          name: selectedProvider.name,
+          base_url: selectedProvider.base_url,
+          api_key: selectedProvider.api_key,
+          auth_mode: selectedProvider.auth_mode,
+          extra_headers: selectedProvider.extra_headers ?? {},
+          claude_code_model_map: {
+            opus: claudeCodeModelMap.opus.trim(),
+            sonnet: claudeCodeModelMap.sonnet.trim(),
+            haiku: claudeCodeModelMap.haiku.trim()
+          }
+        },
+        apiBase
+      );
+      await refreshProviders(selectedProvider.id);
+      if (selectedProvider.status.is_active) {
+        await syncClaudeCodeIntegrationIfConfigured();
+      }
+      setFeedback(t("providers.feedback.claudeSlotsSaved"));
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : t("common.unknownError"));
+    } finally {
+      setSavingClaudeMap(false);
+    }
+  }
+
   function startEditing(provider: Provider) {
     setEditingId(provider.id);
     setName(provider.name);
@@ -326,6 +392,20 @@ export function ProvidersPage({
     setFeedback(null);
     setError(null);
     setFormOpen(true);
+  }
+
+  async function syncClaudeCodeIntegrationIfConfigured() {
+    if (!window.desktopBridge) {
+      return;
+    }
+
+    const tools = await window.desktopBridge.listTools();
+    const claudeTool = tools.find((item) => item.id === "claude-code");
+    if (!claudeTool?.configured) {
+      return;
+    }
+
+    await window.desktopBridge.configureTool("claude-code");
   }
 
   return (
@@ -566,6 +646,57 @@ export function ProvidersPage({
               </div>
 
               <div className="mt-4 flex min-h-0 flex-1 flex-col overflow-hidden">
+                <div className={sectionHeadClass}>
+                  <div className="space-y-1">
+                    <h3 className={sectionTitleClass}>{t("providers.detail.claudeSlotsTitle")}</h3>
+                    <p className={sectionMetaClass}>{t("providers.detail.claudeSlotsMeta")}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className={buttonClass("secondary")}
+                    disabled={savingClaudeMap}
+                    onClick={() => {
+                      void handleSaveClaudeCodeModelMap();
+                    }}
+                  >
+                    {savingClaudeMap
+                      ? t("providers.detail.claudeSlotsSaving")
+                      : t("providers.detail.claudeSlotsSave")}
+                  </button>
+                </div>
+
+                <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                  {(
+                    [
+                      ["opus", t("providers.detail.claudeSlot.opus")],
+                      ["sonnet", t("providers.detail.claudeSlot.sonnet")],
+                      ["haiku", t("providers.detail.claudeSlot.haiku")]
+                    ] as const
+                  ).map(([slot, label]) => (
+                    <label key={slot} className={labelClass}>
+                      <span className={fieldLabelClass}>{label}</span>
+                      <select
+                        className={inputClass}
+                        value={claudeCodeModelMap[slot]}
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          setClaudeCodeModelMap((current) => ({
+                            ...current,
+                            [slot]: value
+                          }));
+                        }}
+                      >
+                        <option value="">{t("providers.detail.claudeSlot.unset")}</option>
+                        {providerModels.map((model) => (
+                          <option key={`${slot}-${model.id}`} value={model.id}>
+                            {model.id}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ))}
+                </div>
+
                 <div className={sectionHeadClass}>
                   <div className="space-y-1">
                     <h3 className={sectionTitleClass}>{t("models.available.title")}</h3>
