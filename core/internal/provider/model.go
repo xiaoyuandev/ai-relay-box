@@ -40,6 +40,10 @@ type Provider struct {
 	Status             Status             `json:"status"`
 	APIKeyMasked       string             `json:"api_key_masked"`
 	ClaudeCodeModelMap ClaudeCodeModelMap `json:"claude_code_model_map"`
+	IsSystemManaged    bool               `json:"is_system_managed"`
+	IsEditable         bool               `json:"is_editable"`
+	IsDeletable        bool               `json:"is_deletable"`
+	RuntimeKind        string             `json:"runtime_kind"`
 }
 
 type SelectedModel struct {

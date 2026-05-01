@@ -124,6 +124,21 @@ func NewService(repository Repository, credentials credential.Store) *Service {
 	}
 }
 
+func normalizeProviderManagement(item Provider) Provider {
+	if item.RuntimeKind == "" {
+		item.RuntimeKind = "external"
+	}
+	if !item.IsSystemManaged {
+		item.IsEditable = true
+		item.IsDeletable = true
+		return item
+	}
+	if !item.IsEditable && !item.IsDeletable {
+		return item
+	}
+	return item
+}
+
 func (s *Service) List(ctx context.Context) ([]Provider, error) {
 	items, err := s.repository.List(ctx)
 	if err != nil {
@@ -192,6 +207,7 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (Provider, erro
 	}
 
 	item.Status.LastHealthcheckAt = now
+	item = normalizeProviderManagement(item)
 
 	return s.repository.Create(ctx, item)
 }
@@ -234,7 +250,9 @@ func (s *Service) Update(ctx context.Context, id string, input UpdateInput) (Pro
 		item.APIKeyMasked = maskAPIKey(input.APIKey)
 	}
 
-	return s.repository.Update(ctx, *item)
+	normalized := normalizeProviderManagement(*item)
+
+	return s.repository.Update(ctx, normalized)
 }
 
 func normalizeClaudeCodeModelMap(input ClaudeCodeModelMap) ClaudeCodeModelMap {

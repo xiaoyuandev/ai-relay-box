@@ -60,7 +60,11 @@ CREATE TABLE IF NOT EXISTS providers (
 	is_active INTEGER NOT NULL DEFAULT 0,
 	last_health_status TEXT NOT NULL DEFAULT 'pending',
 	last_healthcheck_at TEXT NOT NULL DEFAULT '',
-	api_key_masked TEXT NOT NULL DEFAULT ''
+	api_key_masked TEXT NOT NULL DEFAULT '',
+	is_system_managed INTEGER NOT NULL DEFAULT 0,
+	is_editable INTEGER NOT NULL DEFAULT 1,
+	is_deletable INTEGER NOT NULL DEFAULT 1,
+	runtime_kind TEXT NOT NULL DEFAULT 'external'
 );`
 
 	if _, err := s.DB.Exec(providersTable); err != nil {
@@ -74,6 +78,42 @@ CREATE TABLE IF NOT EXISTS providers (
 		"TEXT NOT NULL DEFAULT '{}'",
 	); err != nil {
 		return fmt.Errorf("migrate providers claude_code_model_map_json column: %w", err)
+	}
+
+	if err := addColumnIfMissing(
+		s.DB,
+		"providers",
+		"is_system_managed",
+		"INTEGER NOT NULL DEFAULT 0",
+	); err != nil {
+		return fmt.Errorf("migrate providers is_system_managed column: %w", err)
+	}
+
+	if err := addColumnIfMissing(
+		s.DB,
+		"providers",
+		"is_editable",
+		"INTEGER NOT NULL DEFAULT 1",
+	); err != nil {
+		return fmt.Errorf("migrate providers is_editable column: %w", err)
+	}
+
+	if err := addColumnIfMissing(
+		s.DB,
+		"providers",
+		"is_deletable",
+		"INTEGER NOT NULL DEFAULT 1",
+	); err != nil {
+		return fmt.Errorf("migrate providers is_deletable column: %w", err)
+	}
+
+	if err := addColumnIfMissing(
+		s.DB,
+		"providers",
+		"runtime_kind",
+		"TEXT NOT NULL DEFAULT 'external'",
+	); err != nil {
+		return fmt.Errorf("migrate providers runtime_kind column: %w", err)
 	}
 
 	const requestLogsTable = `
@@ -126,6 +166,54 @@ ON provider_selected_models (provider_id, position ASC);`
 
 	if _, err := s.DB.Exec(providerSelectedModelsIndex); err != nil {
 		return fmt.Errorf("migrate provider_selected_models index: %w", err)
+	}
+
+	const localGatewayModelSourcesTable = `
+CREATE TABLE IF NOT EXISTS local_gateway_model_sources (
+	id TEXT PRIMARY KEY,
+	name TEXT NOT NULL,
+	base_url TEXT NOT NULL,
+	api_key_ref TEXT NOT NULL,
+	provider_type TEXT NOT NULL,
+	default_model_id TEXT NOT NULL,
+	exposed_model_ids_json TEXT NOT NULL DEFAULT '[]',
+	enabled INTEGER NOT NULL DEFAULT 1,
+	position INTEGER NOT NULL DEFAULT 0,
+	api_key_masked TEXT NOT NULL DEFAULT '',
+	last_sync_status TEXT NOT NULL DEFAULT 'pending',
+	last_sync_error TEXT NOT NULL DEFAULT '',
+	created_at TEXT NOT NULL,
+	updated_at TEXT NOT NULL
+);`
+
+	if _, err := s.DB.Exec(localGatewayModelSourcesTable); err != nil {
+		return fmt.Errorf("migrate local_gateway_model_sources table: %w", err)
+	}
+
+	const localGatewayModelSourcesIndex = `
+CREATE INDEX IF NOT EXISTS idx_local_gateway_model_sources_position
+ON local_gateway_model_sources (position ASC, id ASC);`
+
+	if _, err := s.DB.Exec(localGatewayModelSourcesIndex); err != nil {
+		return fmt.Errorf("migrate local_gateway_model_sources index: %w", err)
+	}
+
+	const localGatewaySelectedModelsTable = `
+CREATE TABLE IF NOT EXISTS local_gateway_selected_models (
+	model_id TEXT PRIMARY KEY,
+	position INTEGER NOT NULL
+);`
+
+	if _, err := s.DB.Exec(localGatewaySelectedModelsTable); err != nil {
+		return fmt.Errorf("migrate local_gateway_selected_models table: %w", err)
+	}
+
+	const localGatewaySelectedModelsIndex = `
+CREATE INDEX IF NOT EXISTS idx_local_gateway_selected_models_position
+ON local_gateway_selected_models (position ASC, model_id ASC);`
+
+	if _, err := s.DB.Exec(localGatewaySelectedModelsIndex); err != nil {
+		return fmt.Errorf("migrate local_gateway_selected_models index: %w", err)
 	}
 
 	return nil
