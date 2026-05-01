@@ -62,7 +62,7 @@ interface AvailableModel {
 
 const emptyRuntime: LocalGatewayRuntimeResponse = {
   runtime: {
-    runtime_kind: "ai-mini-gateway",
+    runtime_kind: "",
     state: "stopped",
     managed: true,
     running: false,

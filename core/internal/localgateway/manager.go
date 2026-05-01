@@ -62,7 +62,7 @@ func (m *Manager) Bootstrap(ctx context.Context) error {
 func (m *Manager) GetRuntimeStatus(ctx context.Context) (RuntimeStatus, error) {
 	if !m.runtimeConfigured() {
 		return RuntimeStatus{
-			RuntimeKind: RuntimeKindAIMiniGateway,
+			RuntimeKind: m.runtimeKind(),
 			State:       RuntimeStateStopped,
 			Managed:     true,
 			Running:     false,
@@ -181,7 +181,7 @@ func (m *Manager) Sync(ctx context.Context) (SyncResult, error) {
 		return SyncResult{}, &AdapterError{
 			Code:        AdapterErrorInvalidConfig,
 			Operation:   "sync_runtime",
-			RuntimeKind: RuntimeKindAIMiniGateway,
+			RuntimeKind: m.runtimeKind(),
 			Message:     syncErr,
 		}
 	}
@@ -238,6 +238,13 @@ func (m *Manager) GetLastSyncResult() (SyncResult, string) {
 
 func (m *Manager) runtimeConfigured() bool {
 	return m.adapter != nil && m.service != nil && m.runtime.Executable != "" && m.runtime.Host != "" && m.runtime.Port > 0 && m.runtime.DataDir != ""
+}
+
+func (m *Manager) runtimeKind() string {
+	if m.adapter == nil {
+		return DefaultRuntimeKind
+	}
+	return m.adapter.RuntimeKind()
 }
 
 func (m *Manager) String() string {

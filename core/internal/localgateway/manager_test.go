@@ -102,6 +102,20 @@ func TestManagerSyncMarksSourcesSynced(t *testing.T) {
 	}
 }
 
+func TestManagerStatusUsesAdapterRuntimeKindWhenUnconfigured(t *testing.T) {
+	t.Parallel()
+
+	manager := newTestManager(t, NewUnsupportedAdapter("portkey"))
+	status, err := manager.GetRuntimeStatus(context.Background())
+	if err != nil {
+		t.Fatalf("get runtime status: %v", err)
+	}
+
+	if status.RuntimeKind != "portkey" {
+		t.Fatalf("unexpected runtime kind: %s", status.RuntimeKind)
+	}
+}
+
 func newTestManager(t *testing.T, adapter GatewayAdapter) *Manager {
 	t.Helper()
 

@@ -13,6 +13,7 @@ type AppConfig struct {
 	GatewayBind                   string
 	LogRetentionDays              int
 	LogMaxRecords                 int
+	LocalGatewayRuntimeKind       string
 	LocalGatewayRuntimeExecutable string
 	LocalGatewayRuntimeHost       string
 	LocalGatewayRuntimePort       int
@@ -70,9 +71,17 @@ func Load() AppConfig {
 		GatewayBind:                   "127.0.0.1",
 		LogRetentionDays:              logRetentionDays,
 		LogMaxRecords:                 logMaxRecords,
+		LocalGatewayRuntimeKind:       envOrDefault("LOCAL_GATEWAY_RUNTIME_KIND", "ai-mini-gateway"),
 		LocalGatewayRuntimeExecutable: os.Getenv("LOCAL_GATEWAY_RUNTIME_EXECUTABLE"),
 		LocalGatewayRuntimeHost:       localGatewayHost,
 		LocalGatewayRuntimePort:       localGatewayPort,
 		LocalGatewayRuntimeDataDir:    localGatewayDataDir,
 	}
+}
+
+func envOrDefault(key string, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return fallback
 }

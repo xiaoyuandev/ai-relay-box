@@ -39,7 +39,7 @@ func Run() error {
 	logService := logging.NewService(logRepository, cfg.LogRetentionDays, cfg.LogMaxRecords)
 	providerService := provider.NewService(providerRepository, credentialStore)
 	localGatewayService := localgateway.NewService(localGatewayRepository, credentialStore)
-	localGatewayAdapter := localgateway.NewAIMiniGatewayAdapter(nil)
+	localGatewayAdapter := localgateway.NewAdapter(cfg.LocalGatewayRuntimeKind, nil)
 	localGatewayManager := localgateway.NewManager(localGatewayService, localGatewayAdapter, localgateway.RuntimeConfig{
 		Executable: cfg.LocalGatewayRuntimeExecutable,
 		Host:       cfg.LocalGatewayRuntimeHost,

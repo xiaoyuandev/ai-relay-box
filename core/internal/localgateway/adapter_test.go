@@ -88,3 +88,23 @@ func TestIsAdapterErrorCode(t *testing.T) {
 		t.Fatal("did not expect conflict error code match")
 	}
 }
+
+func TestNewAdapter(t *testing.T) {
+	t.Parallel()
+
+	if _, ok := NewAdapter("", nil).(*AIMiniGatewayAdapter); !ok {
+		t.Fatal("expected default adapter to be ai-mini-gateway")
+	}
+
+	if _, ok := NewAdapter(RuntimeKindAIMiniGateway, nil).(*AIMiniGatewayAdapter); !ok {
+		t.Fatal("expected ai-mini-gateway adapter")
+	}
+
+	unsupported, ok := NewAdapter("portkey", nil).(*UnsupportedAdapter)
+	if !ok {
+		t.Fatal("expected unsupported adapter")
+	}
+	if unsupported.RuntimeKind() != "portkey" {
+		t.Fatalf("unexpected unsupported runtime kind: %s", unsupported.RuntimeKind())
+	}
+}
