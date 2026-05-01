@@ -86,7 +86,7 @@ func (s *Service) CreateSource(ctx context.Context, input CreateModelSourceInput
 		Enabled:         input.Enabled,
 		Position:        input.Position,
 		APIKeyMasked:    maskAPIKey(input.APIKey),
-		LastSyncStatus:  "pending",
+		LastSyncStatus:  SourceSyncStatusPending,
 		CreatedAt:       now,
 		UpdatedAt:       now,
 	}
@@ -107,6 +107,8 @@ func (s *Service) UpdateSource(ctx context.Context, id string, input UpdateModel
 	item.ExposedModelIDs = normalizeModelIDs(input.ExposedModelIDs)
 	item.Enabled = input.Enabled
 	item.Position = input.Position
+	item.LastSyncStatus = SourceSyncStatusPending
+	item.LastSyncError = ""
 	item.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
 
 	if strings.TrimSpace(input.APIKey) != "" {
@@ -199,6 +201,20 @@ func (s *Service) ReplaceSelectedModels(ctx context.Context, items []SelectedMod
 	}
 
 	return s.repository.ListSelectedModels(ctx)
+}
+
+func (s *Service) UpdateAllSourcesSyncState(ctx context.Context, status string, syncError string) error {
+	items, err := s.repository.ListSources(ctx)
+	if err != nil {
+		return err
+	}
+
+	ids := make([]string, 0, len(items))
+	for _, item := range items {
+		ids = append(ids, item.ID)
+	}
+
+	return s.repository.UpdateSourcesSyncState(ctx, ids, status, syncError)
 }
 
 func (s *Service) refreshMaskedKey(ctx context.Context, item ModelSource) ModelSource {

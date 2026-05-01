@@ -8,6 +8,7 @@ type Repository interface {
 	CreateSource(ctx context.Context, item ModelSource) (ModelSource, error)
 	UpdateSource(ctx context.Context, item ModelSource) (ModelSource, error)
 	DeleteSource(ctx context.Context, id string) error
+	UpdateSourcesSyncState(ctx context.Context, ids []string, status string, syncError string) error
 	ListSelectedModels(ctx context.Context) ([]SelectedModel, error)
 	ReplaceSelectedModels(ctx context.Context, items []SelectedModel) error
 }

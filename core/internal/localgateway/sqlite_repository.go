@@ -154,6 +154,48 @@ func (r *SQLiteRepository) DeleteSource(ctx context.Context, id string) error {
 	return nil
 }
 
+func (r *SQLiteRepository) UpdateSourcesSyncState(ctx context.Context, ids []string, status string, syncError string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin update local gateway sync state tx: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	for _, id := range ids {
+		result, err := tx.ExecContext(ctx, `
+UPDATE local_gateway_model_sources
+SET last_sync_status = ?, last_sync_error = ?
+WHERE id = ?`,
+			status,
+			syncError,
+			id,
+		)
+		if err != nil {
+			return fmt.Errorf("update local gateway sync state: %w", err)
+		}
+
+		affected, err := result.RowsAffected()
+		if err != nil {
+			return fmt.Errorf("rows affected for local gateway sync state update: %w", err)
+		}
+		if affected == 0 {
+			return ErrModelSourceNotFound
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit local gateway sync state tx: %w", err)
+	}
+
+	return nil
+}
+
 func (r *SQLiteRepository) ListSelectedModels(ctx context.Context) ([]SelectedModel, error) {
 	rows, err := r.db.QueryContext(ctx, `
 SELECT model_id, position

@@ -1,5 +1,11 @@
 package localgateway
 
+const (
+	SourceSyncStatusPending = "pending"
+	SourceSyncStatusSynced  = "synced"
+	SourceSyncStatusError   = "error"
+)
+
 type ModelSource struct {
 	ID              string   `json:"id"`
 	Name            string   `json:"name"`
