@@ -5,12 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -29,6 +31,12 @@ type AIMiniGatewayAdapter struct {
 	client *http.Client
 	cmd    *exec.Cmd
 	status RuntimeStatus
+}
+
+type tailBuffer struct {
+	mu   sync.Mutex
+	max  int
+	data []byte
 }
 
 func NewAIMiniGatewayAdapter(client *http.Client) *AIMiniGatewayAdapter {
@@ -59,6 +67,15 @@ func (a *AIMiniGatewayAdapter) StartRuntime(ctx context.Context, input StartRunt
 		}
 	}
 
+	if isClashForAICoreExecutable(input.Executable) {
+		return RuntimeStatus{}, &AdapterError{
+			Code:        AdapterErrorInvalidConfig,
+			Operation:   "start_runtime",
+			RuntimeKind: a.RuntimeKind(),
+			Message:     "local gateway runtime executable points to clash-for-ai-core; set LOCAL_GATEWAY_RUNTIME_EXECUTABLE to ai-mini-gateway instead",
+		}
+	}
+
 	if err := os.MkdirAll(filepath.Clean(input.DataDir), 0o755); err != nil {
 		return RuntimeStatus{}, &AdapterError{
 			Code:        AdapterErrorInvalidConfig,
@@ -83,10 +100,11 @@ func (a *AIMiniGatewayAdapter) StartRuntime(ctx context.Context, input StartRunt
 		"CORE_DATA_DIR":              input.DataDir,
 	})
 
+	output := &tailBuffer{max: 8192}
 	cmd := exec.Command(input.Executable, args...)
 	cmd.Env = env
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stdout = output
+	cmd.Stderr = output
 
 	if err := cmd.Start(); err != nil {
 		return RuntimeStatus{}, &AdapterError{
@@ -119,7 +137,7 @@ func (a *AIMiniGatewayAdapter) StartRuntime(ctx context.Context, input StartRunt
 
 	if err := a.waitForHealth(ctx, apiBase); err != nil {
 		_ = a.StopRuntime(context.Background())
-		return a.currentStatus(), err
+		return a.currentStatus(), wrapStartupError(a.RuntimeKind(), err, output.String())
 	}
 
 	a.mu.Lock()
@@ -127,7 +145,58 @@ func (a *AIMiniGatewayAdapter) StartRuntime(ctx context.Context, input StartRunt
 	a.status.Healthy = true
 	a.mu.Unlock()
 
+	log.Printf("[local-gateway] ai-mini-gateway listening on %s", apiBase)
+
 	return a.currentStatus(), nil
+}
+
+func isClashForAICoreExecutable(executable string) bool {
+	base := filepath.Base(filepath.Clean(executable))
+	return base == "clash-for-ai-core" || base == "clash-for-ai-core.exe"
+}
+
+func (b *tailBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if len(p) >= b.max {
+		b.data = append(b.data[:0], p[len(p)-b.max:]...)
+		return len(p), nil
+	}
+
+	total := len(b.data) + len(p)
+	if total > b.max {
+		keep := b.max - len(p)
+		if keep < 0 {
+			keep = 0
+		}
+		if len(b.data) > keep {
+			b.data = append(b.data[:0], b.data[len(b.data)-keep:]...)
+		}
+	}
+	b.data = append(b.data, p...)
+	return len(p), nil
+}
+
+func (b *tailBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return string(bytes.TrimSpace(b.data))
+}
+
+func wrapStartupError(runtimeKind string, err error, output string) error {
+	message := "start ai-mini-gateway runtime failed"
+	if trimmed := strings.TrimSpace(output); trimmed != "" {
+		message = fmt.Sprintf("%s: %s", message, trimmed)
+	}
+
+	return &AdapterError{
+		Code:        AdapterErrorUnavailable,
+		Operation:   "start_runtime",
+		RuntimeKind: runtimeKind,
+		Message:     message,
+		Err:         err,
+	}
 }
 
 func (a *AIMiniGatewayAdapter) StopRuntime(ctx context.Context) error {

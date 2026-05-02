@@ -1,6 +1,7 @@
 import { app, BrowserWindow, clipboard, ipcMain, nativeImage, shell } from "electron";
 import { join } from "path";
 import { electronApp, is, optimizer } from "@electron-toolkit/utils";
+import { loadWorkspaceEnvLocal } from "./dev-env";
 import { startCoreProcess, type CoreRuntimeHandle } from "./core-process";
 import {
   applyToolIntegration,
@@ -17,6 +18,8 @@ import {
   type DesktopConfig,
   type PortSource
 } from "./app-config";
+
+loadWorkspaceEnvLocal();
 
 interface UpdateState {
   currentVersion: string;
