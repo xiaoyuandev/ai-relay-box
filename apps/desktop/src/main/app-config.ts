@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 export interface DesktopConfig {
   apiPort: number;
+  localGatewayPort: number;
 }
 
 export type PortSource = "default" | "config" | "env";
@@ -18,7 +19,8 @@ export interface CoreProcessRecord {
 }
 
 const DEFAULT_CONFIG: DesktopConfig = {
-  apiPort: 3456
+  apiPort: 3456,
+  localGatewayPort: 3457
 };
 
 export function loadDesktopConfig(): DesktopConfig {
@@ -33,7 +35,8 @@ export function loadDesktopConfig(): DesktopConfig {
     const parsed = JSON.parse(raw) as Partial<DesktopConfig>;
 
     return {
-      apiPort: normalizePort(parsed.apiPort, DEFAULT_CONFIG.apiPort)
+      apiPort: normalizePort(parsed.apiPort, DEFAULT_CONFIG.apiPort),
+      localGatewayPort: normalizePort(parsed.localGatewayPort, DEFAULT_CONFIG.localGatewayPort)
     };
   } catch (error) {
     console.error("[desktop-config] failed to read config:", error);
@@ -43,7 +46,11 @@ export function loadDesktopConfig(): DesktopConfig {
 
 export function saveDesktopConfig(nextConfig: DesktopConfig): DesktopConfig {
   const normalized: DesktopConfig = {
-    apiPort: normalizePort(nextConfig.apiPort, DEFAULT_CONFIG.apiPort)
+    apiPort: normalizePort(nextConfig.apiPort, DEFAULT_CONFIG.apiPort),
+    localGatewayPort: normalizePort(
+      nextConfig.localGatewayPort,
+      DEFAULT_CONFIG.localGatewayPort
+    )
   };
 
   mkdirSync(app.getPath("userData"), { recursive: true });
@@ -55,22 +62,41 @@ export function resolveConfiguredPort(config: DesktopConfig): {
   port: number;
   source: PortSource;
 } {
-  if (process.env.ELECTRON_API_PORT) {
+  return resolvePortSetting(process.env.ELECTRON_API_PORT, config.apiPort, DEFAULT_CONFIG.apiPort);
+}
+
+export function resolveConfiguredLocalGatewayPort(config: DesktopConfig): {
+  port: number;
+  source: PortSource;
+} {
+  return resolvePortSetting(
+    process.env.LOCAL_GATEWAY_RUNTIME_PORT,
+    config.localGatewayPort,
+    DEFAULT_CONFIG.localGatewayPort
+  );
+}
+
+function resolvePortSetting(
+  envValue: string | undefined,
+  configPort: number,
+  defaultPort: number
+): { port: number; source: PortSource } {
+  if (envValue) {
     return {
-      port: normalizePort(Number(process.env.ELECTRON_API_PORT), config.apiPort),
+      port: normalizePort(Number(envValue), configPort),
       source: "env"
     };
   }
 
-  if (config.apiPort !== DEFAULT_CONFIG.apiPort) {
+  if (configPort !== defaultPort) {
     return {
-      port: config.apiPort,
+      port: configPort,
       source: "config"
     };
   }
 
   return {
-    port: DEFAULT_CONFIG.apiPort,
+    port: defaultPort,
     source: "default"
   };
 }

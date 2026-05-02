@@ -266,11 +266,14 @@ export const messages = {
     "settings.section.runtime": "Runtime",
     "settings.section.updates": "Updates",
     "settings.fixedPort": "Fixed Port",
+    "settings.localGatewayFixedPort": "Local Gateway Port",
     "settings.connectedApiBase": "Connected API Base",
     "settings.portSource": "Port Source",
     "settings.launchFlow": "Launch Flow",
     "settings.meta.portConflict":
       "No fallback ports. If this port is occupied by another process, startup now fails with a clear error.",
+    "settings.meta.localGatewayPortConflict":
+      "This controls the embedded ai-mini-gateway port. Save and restart to relaunch it on the new port.",
     "settings.meta.apiBase":
       "Use this value when a tool expects an OpenAI-compatible base URL.",
     "settings.meta.envLocked":
@@ -288,6 +291,7 @@ export const messages = {
     "settings.button.restartCore": "Restart Core",
     "settings.button.restarting": "Restarting...",
     "settings.button.savePort": "Save Port and Restart",
+    "settings.button.saveLocalGatewayPort": "Save Local Gateway Port",
     "settings.button.checkUpdates": "Check for Updates",
     "settings.button.checking": "Checking...",
     "settings.button.downloadUpdate": "Download Update",
@@ -297,6 +301,7 @@ export const messages = {
     "settings.button.manualInstallOnly": "Manual Install Required",
     "settings.runtime.platform": "Platform",
     "settings.runtime.corePort": "Core Port",
+    "settings.runtime.localGatewayPort": "Local Gateway Port",
     "settings.runtime.corePid": "Core PID",
     "settings.runtime.coreManaged": "Core Managed",
     "settings.runtime.coreRunning": "Core Running",
@@ -326,6 +331,10 @@ export const messages = {
     "settings.feedback.invalidPort": "Port must be an integer between 1 and 65535.",
     "settings.feedback.portUpdated": "Fixed port updated to {port}. Core restarted.",
     "settings.feedback.portUpdateFailed": "Failed to update core port",
+    "settings.feedback.localGatewayPortUpdated":
+      "Local gateway port updated to {port}. Core restarted.",
+    "settings.feedback.localGatewayPortUpdateFailed":
+      "Failed to update local gateway port",
     "settings.feedback.updateCheckFailed": "Failed to check updates",
     "settings.feedback.updateDownloadFailed": "Failed to download update",
     "settings.feedback.updateInstallFailed": "Failed to install downloaded update",
@@ -627,10 +636,13 @@ export const messages = {
     "settings.section.runtime": "运行时",
     "settings.section.updates": "更新",
     "settings.fixedPort": "固定端口",
+    "settings.localGatewayFixedPort": "Local Gateway 端口",
     "settings.connectedApiBase": "当前 API Base",
     "settings.portSource": "端口来源",
     "settings.launchFlow": "启动方式",
     "settings.meta.portConflict": "不再尝试回退端口。如果该端口已被其他进程占用，启动会直接报出清晰错误。",
+    "settings.meta.localGatewayPortConflict":
+      "这里控制内嵌 ai-mini-gateway 的端口。保存后会通过重启 Core 按新端口重新拉起。",
     "settings.meta.apiBase": "当工具需要 OpenAI 兼容 Base URL 时，使用这个值。",
     "settings.meta.envLocked": "已设置 ELECTRON_API_PORT，因此桌面 UI 中该值为只读。",
     "settings.meta.configStored": "该值保存在桌面应用配置中，每次启动都会复用。",
@@ -643,6 +655,7 @@ export const messages = {
     "settings.button.restartCore": "重启 Core",
     "settings.button.restarting": "重启中...",
     "settings.button.savePort": "保存端口并重启",
+    "settings.button.saveLocalGatewayPort": "保存 Local Gateway 端口",
     "settings.button.checkUpdates": "检查更新",
     "settings.button.checking": "检查中...",
     "settings.button.downloadUpdate": "下载更新",
@@ -652,6 +665,7 @@ export const messages = {
     "settings.button.manualInstallOnly": "需手动安装",
     "settings.runtime.platform": "平台",
     "settings.runtime.corePort": "Core 端口",
+    "settings.runtime.localGatewayPort": "Local Gateway 端口",
     "settings.runtime.corePid": "Core PID",
     "settings.runtime.coreManaged": "Core 是否托管",
     "settings.runtime.coreRunning": "Core 是否运行",
@@ -681,6 +695,10 @@ export const messages = {
     "settings.feedback.invalidPort": "端口必须是 1 到 65535 之间的整数。",
     "settings.feedback.portUpdated": "固定端口已更新为 {port}，Core 已重启。",
     "settings.feedback.portUpdateFailed": "更新 Core 端口失败",
+    "settings.feedback.localGatewayPortUpdated":
+      "Local Gateway 端口已更新为 {port}，Core 已重启。",
+    "settings.feedback.localGatewayPortUpdateFailed":
+      "更新 Local Gateway 端口失败",
     "settings.feedback.updateCheckFailed": "检查更新失败",
     "settings.feedback.updateDownloadFailed": "下载更新失败",
     "settings.feedback.updateInstallFailed": "安装已下载更新失败",

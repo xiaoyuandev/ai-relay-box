@@ -14,6 +14,7 @@ import {
   loadDesktopConfig,
   normalizePort,
   resolveConfiguredPort,
+  resolveConfiguredLocalGatewayPort,
   saveDesktopConfig,
   type DesktopConfig,
   type PortSource
@@ -51,8 +52,9 @@ let coreRuntime: CoreRuntimeHandle = {
   },
   stop() {}
 };
-let desktopConfig: DesktopConfig = { apiPort: 3456 };
+let desktopConfig: DesktopConfig = { apiPort: 3456, localGatewayPort: 3457 };
 let configuredPortSource: PortSource = "default";
+let configuredLocalGatewayPortSource: PortSource = "default";
 let isBootstrapped = false;
 let mainWindow: BrowserWindow | null = null;
 let autoUpdater: AutoUpdaterType | null = null;
@@ -80,10 +82,15 @@ function resolveReleaseURL() {
 
 async function bootstrapCoreRuntime() {
   const portInfo = resolveConfiguredPort(desktopConfig);
+  const localGatewayPortInfo = resolveConfiguredLocalGatewayPort(desktopConfig);
   configuredPortSource = portInfo.source;
+  configuredLocalGatewayPortSource = localGatewayPortInfo.source;
 
   try {
-    coreRuntime = await startCoreProcess({ desiredPort: portInfo.port });
+    coreRuntime = await startCoreProcess({
+      desiredPort: portInfo.port,
+      desiredLocalGatewayPort: localGatewayPortInfo.port
+    });
   } catch (error) {
     coreRuntime = {
       state: {
@@ -253,7 +260,9 @@ app.whenReady().then(() => {
     apiBase: coreRuntime.state.apiBase,
     config: {
       apiPort: desktopConfig.apiPort,
-      apiPortSource: configuredPortSource
+      apiPortSource: configuredPortSource,
+      localGatewayPort: desktopConfig.localGatewayPort,
+      localGatewayPortSource: configuredLocalGatewayPortSource
     },
     updates: updateState,
     core: coreRuntime.state
@@ -266,7 +275,9 @@ app.whenReady().then(() => {
       ok: true,
       config: {
         apiPort: desktopConfig.apiPort,
-        apiPortSource: configuredPortSource
+        apiPortSource: configuredPortSource,
+        localGatewayPort: desktopConfig.localGatewayPort,
+        localGatewayPortSource: configuredLocalGatewayPortSource
       },
       updates: updateState,
       core: coreRuntime.state
@@ -290,7 +301,37 @@ app.whenReady().then(() => {
       ok: true,
       config: {
         apiPort: desktopConfig.apiPort,
-        apiPortSource: configuredPortSource
+        apiPortSource: configuredPortSource,
+        localGatewayPort: desktopConfig.localGatewayPort,
+        localGatewayPortSource: configuredLocalGatewayPortSource
+      },
+      updates: updateState,
+      core: coreRuntime.state
+    };
+  });
+
+  ipcMain.handle("app:update-local-gateway-port", async (_, nextPort: number) => {
+    if (process.env.LOCAL_GATEWAY_RUNTIME_PORT) {
+      throw new Error(
+        "Local gateway port is controlled by LOCAL_GATEWAY_RUNTIME_PORT and cannot be changed in-app."
+      );
+    }
+
+    desktopConfig = saveDesktopConfig({
+      ...desktopConfig,
+      localGatewayPort: normalizePort(Number(nextPort), 3457)
+    });
+
+    coreRuntime.stop();
+    await bootstrapCoreRuntime();
+
+    return {
+      ok: true,
+      config: {
+        apiPort: desktopConfig.apiPort,
+        apiPortSource: configuredPortSource,
+        localGatewayPort: desktopConfig.localGatewayPort,
+        localGatewayPortSource: configuredLocalGatewayPortSource
       },
       updates: updateState,
       core: coreRuntime.state

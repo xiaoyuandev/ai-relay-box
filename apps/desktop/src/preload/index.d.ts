@@ -32,6 +32,8 @@ declare global {
         config: {
           apiPort: number;
           apiPortSource: "default" | "config" | "env";
+          localGatewayPort: number;
+          localGatewayPortSource: "default" | "config" | "env";
         };
         updates: {
           currentVersion: string;
@@ -66,6 +68,8 @@ declare global {
         config: {
           apiPort: number;
           apiPortSource: "default" | "config" | "env";
+          localGatewayPort: number;
+          localGatewayPortSource: "default" | "config" | "env";
         };
         updates: {
           currentVersion: string;
@@ -100,6 +104,44 @@ declare global {
         config: {
           apiPort: number;
           apiPortSource: "default" | "config" | "env";
+          localGatewayPort: number;
+          localGatewayPortSource: "default" | "config" | "env";
+        };
+        updates: {
+          currentVersion: string;
+          status:
+            | "idle"
+            | "checking"
+            | "available"
+            | "not-available"
+            | "downloading"
+            | "downloaded"
+            | "error"
+            | "unsupported";
+          availableVersion?: string;
+          downloadedVersion?: string;
+          progressPercent?: number;
+          message?: string;
+        };
+        core: {
+          managed: boolean;
+          running: boolean;
+          apiBase: string;
+          port: number;
+          pid?: number;
+          logRetentionDays: number;
+          logMaxRecords: number;
+          lastError?: string;
+          command?: string;
+        };
+      }>;
+      updateLocalGatewayPort: (port: number) => Promise<{
+        ok: boolean;
+        config: {
+          apiPort: number;
+          apiPortSource: "default" | "config" | "env";
+          localGatewayPort: number;
+          localGatewayPortSource: "default" | "config" | "env";
         };
         updates: {
           currentVersion: string;
