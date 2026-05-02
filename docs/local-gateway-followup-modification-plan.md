@@ -85,31 +85,31 @@
 
 ### 阶段 3：补主数据一致性约束
 
-- [ ] 3.1 修改 `core/internal/localgateway/service.go`
+- [x] 3.1 修改 `core/internal/localgateway/service.go`
   目标：新增统一 source 校验逻辑
-- [ ] 3.2 source 校验覆盖以下规则
+- [x] 3.2 source 校验覆盖以下规则
   目标：
   `name` 非空
   `base_url` 必须是合法 URL
   `provider_type` 必须属于允许枚举
   `default_model_id` 非空
   `exposed_model_ids` 去重并裁剪空值
-- [ ] 3.3 后端统一接管 source `position`
+- [x] 3.3 后端统一接管 source `position`
   目标：
   创建时忽略前端 position
   更新时普通编辑不允许随意改顺序
   删除后 position 保持 `0..n-1` 连续
-- [ ] 3.4 建立“有效模型集合”计算逻辑
+- [x] 3.4 建立“有效模型集合”计算逻辑
   目标：只从 `enabled = true` 的 source 中汇总可用模型
-- [ ] 3.5 修改 `ReplaceSelectedModels`
+- [x] 3.5 修改 `ReplaceSelectedModels`
   目标：拒绝保存不存在于当前有效模型集合中的模型
-- [ ] 3.6 source 变更时自动清理失效 selected models
+- [x] 3.6 source 变更时自动清理失效 selected models
   触发场景：
   删除 source
   禁用 source
   修改 `default_model_id`
   修改 `exposed_model_ids`
-- [ ] 3.7 `BuildSyncInput` 增加最终一致性校验
+- [x] 3.7 `BuildSyncInput` 增加最终一致性校验
   目标：禁止把无效 selected models 下发到 runtime
 
 ### 阶段 4：收紧敏感信息返回
@@ -152,8 +152,8 @@
 - [x] 7.2 adapter 测试覆盖 fallback 旧路径
 - [x] 7.3 manager 测试覆盖并发 sync 冲突
 - [x] 7.4 service 测试覆盖 source 校验
-- [ ] 7.5 service 测试覆盖 selected models 有效性校验
-- [ ] 7.6 service/repository 测试覆盖 source 变更后的自动清理
+- [x] 7.5 service 测试覆盖 selected models 有效性校验
+- [x] 7.6 service/repository 测试覆盖 source 变更后的自动清理
 - [ ] 7.7 API 测试覆盖 local gateway source 响应不回传明文 key
 - [ ] 7.8 API/provider 测试覆盖 Local Gateway 激活保护
 - [ ] 7.9 前端手工验收以下场景

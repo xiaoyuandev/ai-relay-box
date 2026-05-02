@@ -154,6 +154,52 @@ func (r *SQLiteRepository) DeleteSource(ctx context.Context, id string) error {
 	return nil
 }
 
+func (r *SQLiteRepository) NormalizeSourcePositions(ctx context.Context) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin normalize local gateway source positions tx: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	rows, err := tx.QueryContext(ctx, `
+SELECT id
+FROM local_gateway_model_sources
+ORDER BY position ASC, id ASC`)
+	if err != nil {
+		return fmt.Errorf("list local gateway source positions: %w", err)
+	}
+	defer rows.Close()
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return fmt.Errorf("scan local gateway source position: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate local gateway source positions: %w", err)
+	}
+
+	for index, id := range ids {
+		if _, err := tx.ExecContext(ctx, `
+UPDATE local_gateway_model_sources
+SET position = ?
+WHERE id = ?`, index, id); err != nil {
+			return fmt.Errorf("update local gateway source position: %w", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit normalize local gateway source positions tx: %w", err)
+	}
+
+	return nil
+}
+
 func (r *SQLiteRepository) UpdateSourcesSyncState(ctx context.Context, ids []string, status string, syncError string) error {
 	if len(ids) == 0 {
 		return nil

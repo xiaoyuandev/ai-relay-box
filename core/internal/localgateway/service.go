@@ -68,25 +68,35 @@ func (s *Service) GetSourceByID(ctx context.Context, id string) (*ModelSource, e
 }
 
 func (s *Service) CreateSource(ctx context.Context, input CreateModelSourceInput) (ModelSource, error) {
+	normalizedInput, err := normalizeCreateSourceInput(input)
+	if err != nil {
+		return ModelSource{}, err
+	}
+
+	sources, err := s.repository.ListSources(ctx)
+	if err != nil {
+		return ModelSource{}, err
+	}
+
 	now := time.Now().UTC().Format(time.RFC3339)
 	id := fmt.Sprintf("local-source-%d", time.Now().UnixNano())
-	apiKeyRef, err := s.credentials.Save(ctx, fmt.Sprintf("local-gateway/%s/api-key", id), input.APIKey)
+	apiKeyRef, err := s.credentials.Save(ctx, fmt.Sprintf("local-gateway/%s/api-key", id), normalizedInput.APIKey)
 	if err != nil {
 		return ModelSource{}, err
 	}
 
 	item := ModelSource{
 		ID:              id,
-		Name:            strings.TrimSpace(input.Name),
-		BaseURL:         strings.TrimSpace(input.BaseURL),
+		Name:            normalizedInput.Name,
+		BaseURL:         normalizedInput.BaseURL,
 		APIKeyRef:       apiKeyRef,
-		APIKey:          input.APIKey,
-		ProviderType:    strings.TrimSpace(input.ProviderType),
-		DefaultModelID:  strings.TrimSpace(input.DefaultModelID),
-		ExposedModelIDs: normalizeModelIDs(input.ExposedModelIDs),
-		Enabled:         input.Enabled,
-		Position:        input.Position,
-		APIKeyMasked:    maskAPIKey(input.APIKey),
+		APIKey:          normalizedInput.APIKey,
+		ProviderType:    normalizedInput.ProviderType,
+		DefaultModelID:  normalizedInput.DefaultModelID,
+		ExposedModelIDs: normalizedInput.ExposedModelIDs,
+		Enabled:         normalizedInput.Enabled,
+		Position:        len(sources),
+		APIKeyMasked:    maskAPIKey(normalizedInput.APIKey),
 		LastSyncStatus:  SourceSyncStatusPending,
 		CreatedAt:       now,
 		UpdatedAt:       now,
@@ -101,33 +111,46 @@ func (s *Service) UpdateSource(ctx context.Context, id string, input UpdateModel
 		return ModelSource{}, err
 	}
 
-	item.Name = strings.TrimSpace(input.Name)
-	item.BaseURL = strings.TrimSpace(input.BaseURL)
-	item.ProviderType = strings.TrimSpace(input.ProviderType)
-	item.DefaultModelID = strings.TrimSpace(input.DefaultModelID)
-	item.ExposedModelIDs = normalizeModelIDs(input.ExposedModelIDs)
-	item.Enabled = input.Enabled
-	item.Position = input.Position
+	normalizedInput, err := normalizeUpdateSourceInput(input)
+	if err != nil {
+		return ModelSource{}, err
+	}
+
+	item.Name = normalizedInput.Name
+	item.BaseURL = normalizedInput.BaseURL
+	item.ProviderType = normalizedInput.ProviderType
+	item.DefaultModelID = normalizedInput.DefaultModelID
+	item.ExposedModelIDs = normalizedInput.ExposedModelIDs
+	item.Enabled = normalizedInput.Enabled
 	item.LastSyncStatus = SourceSyncStatusPending
 	item.LastSyncError = ""
 	item.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
 
-	if strings.TrimSpace(input.APIKey) != "" {
+	if normalizedInput.APIKey != "" {
 		if err := s.credentials.Delete(ctx, item.APIKeyRef); err != nil {
 			return ModelSource{}, err
 		}
 
-		apiKeyRef, err := s.credentials.Save(ctx, fmt.Sprintf("local-gateway/%s/api-key", id), input.APIKey)
+		apiKeyRef, err := s.credentials.Save(ctx, fmt.Sprintf("local-gateway/%s/api-key", id), normalizedInput.APIKey)
 		if err != nil {
 			return ModelSource{}, err
 		}
 
 		item.APIKeyRef = apiKeyRef
-		item.APIKey = input.APIKey
-		item.APIKeyMasked = maskAPIKey(input.APIKey)
+		item.APIKey = normalizedInput.APIKey
+		item.APIKeyMasked = maskAPIKey(normalizedInput.APIKey)
 	}
 
-	return s.repository.UpdateSource(ctx, *item)
+	updated, err := s.repository.UpdateSource(ctx, *item)
+	if err != nil {
+		return ModelSource{}, err
+	}
+
+	if _, err := s.removeInvalidSelectedModels(ctx); err != nil {
+		return ModelSource{}, err
+	}
+
+	return updated, nil
 }
 
 func (s *Service) DeleteSource(ctx context.Context, id string) error {
@@ -140,7 +163,15 @@ func (s *Service) DeleteSource(ctx context.Context, id string) error {
 		return err
 	}
 
-	return s.repository.DeleteSource(ctx, id)
+	if err := s.repository.DeleteSource(ctx, id); err != nil {
+		return err
+	}
+	if err := s.repository.NormalizeSourcePositions(ctx); err != nil {
+		return err
+	}
+
+	_, err = s.removeInvalidSelectedModels(ctx)
+	return err
 }
 
 func (s *Service) ListSelectedModels(ctx context.Context) ([]SelectedModel, error) {
@@ -179,10 +210,16 @@ func (s *Service) BuildSyncInput(ctx context.Context) (SyncInput, error) {
 		return SyncInput{}, err
 	}
 
-	return SyncInput{
+	input := SyncInput{
 		Sources:        resolvedSources,
 		SelectedModels: selectedModels,
-	}, nil
+	}
+
+	if err := s.ValidateSyncInput(input); err != nil {
+		return SyncInput{}, err
+	}
+
+	return input, nil
 }
 
 func (s *Service) ValidateSyncInput(input SyncInput) error {
@@ -217,15 +254,28 @@ func (s *Service) ValidateSyncInput(input SyncInput) error {
 }
 
 func (s *Service) ReplaceSelectedModels(ctx context.Context, items []SelectedModel) ([]SelectedModel, error) {
+	availableModels, err := s.availableModelSet(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	normalized := make([]SelectedModel, 0, len(items))
-	for index, item := range items {
+	seen := make(map[string]struct{}, len(items))
+	for _, item := range items {
 		modelID := strings.TrimSpace(item.ModelID)
 		if modelID == "" {
 			continue
 		}
+		if _, ok := seen[modelID]; ok {
+			continue
+		}
+		if _, ok := availableModels[modelID]; !ok {
+			return nil, fmt.Errorf("selected model %q is not available from enabled sources", modelID)
+		}
+		seen[modelID] = struct{}{}
 		normalized = append(normalized, SelectedModel{
 			ModelID:  modelID,
-			Position: index,
+			Position: len(normalized),
 		})
 	}
 
@@ -327,4 +377,113 @@ func validateSyncSource(source SyncModelSource) error {
 	default:
 		return fmt.Errorf("source provider_type %q is not supported", source.ProviderType)
 	}
+}
+
+func normalizeCreateSourceInput(input CreateModelSourceInput) (CreateModelSourceInput, error) {
+	normalized := CreateModelSourceInput{
+		Name:            strings.TrimSpace(input.Name),
+		BaseURL:         strings.TrimSpace(input.BaseURL),
+		APIKey:          strings.TrimSpace(input.APIKey),
+		ProviderType:    strings.TrimSpace(input.ProviderType),
+		DefaultModelID:  strings.TrimSpace(input.DefaultModelID),
+		ExposedModelIDs: normalizeModelIDs(input.ExposedModelIDs),
+		Enabled:         input.Enabled,
+	}
+	if err := validateSourceFields(normalized.Name, normalized.BaseURL, normalized.ProviderType, normalized.DefaultModelID); err != nil {
+		return CreateModelSourceInput{}, err
+	}
+	return normalized, nil
+}
+
+func normalizeUpdateSourceInput(input UpdateModelSourceInput) (UpdateModelSourceInput, error) {
+	normalized := UpdateModelSourceInput{
+		Name:            strings.TrimSpace(input.Name),
+		BaseURL:         strings.TrimSpace(input.BaseURL),
+		APIKey:          strings.TrimSpace(input.APIKey),
+		ProviderType:    strings.TrimSpace(input.ProviderType),
+		DefaultModelID:  strings.TrimSpace(input.DefaultModelID),
+		ExposedModelIDs: normalizeModelIDs(input.ExposedModelIDs),
+		Enabled:         input.Enabled,
+	}
+	if err := validateSourceFields(normalized.Name, normalized.BaseURL, normalized.ProviderType, normalized.DefaultModelID); err != nil {
+		return UpdateModelSourceInput{}, err
+	}
+	return normalized, nil
+}
+
+func validateSourceFields(name string, baseURL string, providerType string, defaultModelID string) error {
+	if name == "" {
+		return fmt.Errorf("source name is required")
+	}
+	if providerType == "" {
+		return fmt.Errorf("source provider_type is required")
+	}
+	if defaultModelID == "" {
+		return fmt.Errorf("source default_model_id is required")
+	}
+
+	parsed, err := url.Parse(baseURL)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return fmt.Errorf("source base_url must be a valid absolute URL")
+	}
+
+	switch providerType {
+	case "openai-compatible", "anthropic-compatible":
+		return nil
+	default:
+		return fmt.Errorf("source provider_type %q is not supported", providerType)
+	}
+}
+
+func (s *Service) removeInvalidSelectedModels(ctx context.Context) ([]SelectedModel, error) {
+	availableModels, err := s.availableModelSet(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	selectedModels, err := s.repository.ListSelectedModels(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]SelectedModel, 0, len(selectedModels))
+	for _, item := range selectedModels {
+		if _, ok := availableModels[item.ModelID]; !ok {
+			continue
+		}
+		filtered = append(filtered, SelectedModel{
+			ModelID:  item.ModelID,
+			Position: len(filtered),
+		})
+	}
+
+	if len(filtered) == len(selectedModels) {
+		return selectedModels, nil
+	}
+	if err := s.repository.ReplaceSelectedModels(ctx, filtered); err != nil {
+		return nil, err
+	}
+	return filtered, nil
+}
+
+func (s *Service) availableModelSet(ctx context.Context) (map[string]struct{}, error) {
+	sources, err := s.repository.ListSources(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	availableModels := make(map[string]struct{})
+	for _, source := range sources {
+		if !source.Enabled {
+			continue
+		}
+		if modelID := strings.TrimSpace(source.DefaultModelID); modelID != "" {
+			availableModels[modelID] = struct{}{}
+		}
+		for _, modelID := range normalizeModelIDs(source.ExposedModelIDs) {
+			availableModels[modelID] = struct{}{}
+		}
+	}
+
+	return availableModels, nil
 }

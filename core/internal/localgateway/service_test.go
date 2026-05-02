@@ -50,6 +50,25 @@ func TestServiceCreateAndUpdateSource(t *testing.T) {
 	if len(created.ExposedModelIDs) != 1 || created.ExposedModelIDs[0] != "gpt-4.1-mini" {
 		t.Fatalf("unexpected exposed model ids: %+v", created.ExposedModelIDs)
 	}
+	if created.Position != 0 {
+		t.Fatalf("unexpected created position: %d", created.Position)
+	}
+
+	second, err := service.CreateSource(ctx, CreateModelSourceInput{
+		Name:           "Another Source",
+		BaseURL:        "https://example.com/v1",
+		APIKey:         "sk-test-second",
+		ProviderType:   "openai-compatible",
+		DefaultModelID: "gpt-4o-mini",
+		Enabled:        true,
+		Position:       99,
+	})
+	if err != nil {
+		t.Fatalf("create second source: %v", err)
+	}
+	if second.Position != 1 {
+		t.Fatalf("unexpected second source position: %d", second.Position)
+	}
 
 	updated, err := service.UpdateSource(ctx, created.ID, UpdateModelSourceInput{
 		Name:            "Anthropic Direct",
@@ -74,7 +93,7 @@ func TestServiceCreateAndUpdateSource(t *testing.T) {
 	if updated.Enabled {
 		t.Fatal("expected source disabled")
 	}
-	if updated.Position != 1 {
+	if updated.Position != 0 {
 		t.Fatalf("unexpected position: %d", updated.Position)
 	}
 }
@@ -94,6 +113,18 @@ func TestServiceReplaceSelectedModels(t *testing.T) {
 	)
 
 	ctx := context.Background()
+	if _, err := service.CreateSource(ctx, CreateModelSourceInput{
+		Name:            "OpenAI Direct",
+		BaseURL:         "https://api.openai.com/v1",
+		APIKey:          "sk-test-openai",
+		ProviderType:    "openai-compatible",
+		DefaultModelID:  "gpt-4.1",
+		ExposedModelIDs: []string{"claude-sonnet-4-0"},
+		Enabled:         true,
+	}); err != nil {
+		t.Fatalf("create source: %v", err)
+	}
+
 	items, err := service.ReplaceSelectedModels(ctx, []SelectedModel{
 		{ModelID: "gpt-4.1", Position: 8},
 		{ModelID: " ", Position: 9},
@@ -111,6 +142,12 @@ func TestServiceReplaceSelectedModels(t *testing.T) {
 	}
 	if items[1].ModelID != "claude-sonnet-4-0" || items[1].Position != 1 {
 		t.Fatalf("unexpected second selected model: %+v", items[1])
+	}
+
+	if _, err := service.ReplaceSelectedModels(ctx, []SelectedModel{
+		{ModelID: "not-available", Position: 0},
+	}); err == nil {
+		t.Fatal("expected invalid selected model error")
 	}
 }
 
@@ -208,5 +245,167 @@ func TestServiceValidateSyncInput(t *testing.T) {
 		SelectedModels: []SelectedModel{{ModelID: "gpt-4.1"}},
 	}); err == nil {
 		t.Fatal("expected invalid source url error")
+	}
+}
+
+func TestServiceCreateSourceRejectsInvalidFields(t *testing.T) {
+	t.Parallel()
+
+	sqliteStore, err := storage.NewSQLite(filepath.Join(t.TempDir(), "phase1.db"))
+	if err != nil {
+		t.Fatalf("create sqlite store: %v", err)
+	}
+	defer sqliteStore.Close()
+
+	service := NewService(
+		NewSQLiteRepository(sqliteStore.DB),
+		credential.NewInMemoryStore(),
+	)
+
+	if _, err := service.CreateSource(context.Background(), CreateModelSourceInput{
+		Name:           "Invalid Source",
+		BaseURL:        "not-a-url",
+		APIKey:         "sk-test-openai",
+		ProviderType:   "openai-compatible",
+		DefaultModelID: "gpt-4.1",
+		Enabled:        true,
+	}); err == nil {
+		t.Fatal("expected invalid base url error")
+	}
+
+	if _, err := service.CreateSource(context.Background(), CreateModelSourceInput{
+		Name:           "Invalid Source",
+		BaseURL:        "https://api.openai.com/v1",
+		APIKey:         "sk-test-openai",
+		ProviderType:   "unsupported",
+		DefaultModelID: "gpt-4.1",
+		Enabled:        true,
+	}); err == nil {
+		t.Fatal("expected invalid provider type error")
+	}
+}
+
+func TestServiceDeleteSourceNormalizesPositionsAndRemovesInvalidSelectedModels(t *testing.T) {
+	t.Parallel()
+
+	sqliteStore, err := storage.NewSQLite(filepath.Join(t.TempDir(), "phase1.db"))
+	if err != nil {
+		t.Fatalf("create sqlite store: %v", err)
+	}
+	defer sqliteStore.Close()
+
+	service := NewService(
+		NewSQLiteRepository(sqliteStore.DB),
+		credential.NewInMemoryStore(),
+	)
+
+	ctx := context.Background()
+	first, err := service.CreateSource(ctx, CreateModelSourceInput{
+		Name:            "OpenAI Direct",
+		BaseURL:         "https://api.openai.com/v1",
+		APIKey:          "sk-test-openai",
+		ProviderType:    "openai-compatible",
+		DefaultModelID:  "gpt-4.1",
+		ExposedModelIDs: []string{"gpt-4.1-mini"},
+		Enabled:         true,
+	})
+	if err != nil {
+		t.Fatalf("create first source: %v", err)
+	}
+	second, err := service.CreateSource(ctx, CreateModelSourceInput{
+		Name:            "Anthropic Direct",
+		BaseURL:         "https://api.anthropic.com/v1",
+		APIKey:          "sk-test-anthropic",
+		ProviderType:    "anthropic-compatible",
+		DefaultModelID:  "claude-sonnet-4-0",
+		ExposedModelIDs: []string{"claude-haiku-4-0"},
+		Enabled:         true,
+	})
+	if err != nil {
+		t.Fatalf("create second source: %v", err)
+	}
+
+	if _, err := service.ReplaceSelectedModels(ctx, []SelectedModel{
+		{ModelID: "gpt-4.1", Position: 0},
+		{ModelID: "claude-sonnet-4-0", Position: 1},
+	}); err != nil {
+		t.Fatalf("replace selected models: %v", err)
+	}
+
+	if err := service.DeleteSource(ctx, first.ID); err != nil {
+		t.Fatalf("delete source: %v", err)
+	}
+
+	sources, err := service.ListSources(ctx)
+	if err != nil {
+		t.Fatalf("list sources: %v", err)
+	}
+	if len(sources) != 1 {
+		t.Fatalf("unexpected sources length: %d", len(sources))
+	}
+	if sources[0].ID != second.ID || sources[0].Position != 0 {
+		t.Fatalf("unexpected normalized source state: %+v", sources[0])
+	}
+
+	selected, err := service.ListSelectedModels(ctx)
+	if err != nil {
+		t.Fatalf("list selected models: %v", err)
+	}
+	if len(selected) != 1 || selected[0].ModelID != "claude-sonnet-4-0" || selected[0].Position != 0 {
+		t.Fatalf("unexpected selected models after delete: %+v", selected)
+	}
+}
+
+func TestServiceUpdateSourceRemovesInvalidSelectedModels(t *testing.T) {
+	t.Parallel()
+
+	sqliteStore, err := storage.NewSQLite(filepath.Join(t.TempDir(), "phase1.db"))
+	if err != nil {
+		t.Fatalf("create sqlite store: %v", err)
+	}
+	defer sqliteStore.Close()
+
+	service := NewService(
+		NewSQLiteRepository(sqliteStore.DB),
+		credential.NewInMemoryStore(),
+	)
+
+	ctx := context.Background()
+	source, err := service.CreateSource(ctx, CreateModelSourceInput{
+		Name:            "OpenAI Direct",
+		BaseURL:         "https://api.openai.com/v1",
+		APIKey:          "sk-test-openai",
+		ProviderType:    "openai-compatible",
+		DefaultModelID:  "gpt-4.1",
+		ExposedModelIDs: []string{"gpt-4.1-mini"},
+		Enabled:         true,
+	})
+	if err != nil {
+		t.Fatalf("create source: %v", err)
+	}
+
+	if _, err := service.ReplaceSelectedModels(ctx, []SelectedModel{
+		{ModelID: "gpt-4.1-mini", Position: 0},
+	}); err != nil {
+		t.Fatalf("replace selected models: %v", err)
+	}
+
+	if _, err := service.UpdateSource(ctx, source.ID, UpdateModelSourceInput{
+		Name:            source.Name,
+		BaseURL:         source.BaseURL,
+		ProviderType:    source.ProviderType,
+		DefaultModelID:  source.DefaultModelID,
+		ExposedModelIDs: []string{},
+		Enabled:         false,
+	}); err != nil {
+		t.Fatalf("update source: %v", err)
+	}
+
+	selected, err := service.ListSelectedModels(ctx)
+	if err != nil {
+		t.Fatalf("list selected models: %v", err)
+	}
+	if len(selected) != 0 {
+		t.Fatalf("expected selected models to be cleaned up, got %+v", selected)
 	}
 }

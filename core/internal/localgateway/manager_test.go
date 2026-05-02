@@ -178,16 +178,25 @@ func TestManagerSyncRejectsInvalidSelectedModelsBeforeRuntimeCall(t *testing.T) 
 	manager := newTestManager(t, adapter)
 	manager.runtime.Executable = "/tmp/ai-mini-gateway"
 
-	if _, err := manager.CreateSource(context.Background(), CreateModelSourceInput{
+	apiKeyRef, err := manager.service.credentials.Save(context.Background(), "local-gateway/test-invalid/api-key", "sk-test-openai")
+	if err != nil {
+		t.Fatalf("save credential: %v", err)
+	}
+	if _, err := manager.service.repository.CreateSource(context.Background(), ModelSource{
+		ID:             "local-source-invalid",
 		Name:           "OpenAI Direct",
 		BaseURL:        "not-a-valid-url",
-		APIKey:         "sk-test-openai",
+		APIKeyRef:      apiKeyRef,
 		ProviderType:   "openai-compatible",
 		DefaultModelID: "gpt-4.1",
 		Enabled:        true,
 		Position:       0,
+		APIKeyMasked:   "sk-test-****",
+		LastSyncStatus: SourceSyncStatusPending,
+		CreatedAt:      "2026-05-02T00:00:00Z",
+		UpdatedAt:      "2026-05-02T00:00:00Z",
 	}); err != nil {
-		t.Fatalf("create source: %v", err)
+		t.Fatalf("seed invalid source: %v", err)
 	}
 	if _, err := manager.ReplaceSelectedModels(context.Background(), []SelectedModel{
 		{ModelID: "gpt-4.1", Position: 0},
@@ -197,6 +206,8 @@ func TestManagerSyncRejectsInvalidSelectedModelsBeforeRuntimeCall(t *testing.T) 
 
 	if _, err := manager.Sync(context.Background()); err == nil {
 		t.Fatal("expected sync validation error")
+	} else if got := err.Error(); got != "source base_url must be a valid absolute URL" {
+		t.Fatalf("unexpected sync validation error: %v", err)
 	}
 	if len(adapter.syncInputs) != 0 {
 		t.Fatalf("expected no runtime sync call, got %d", len(adapter.syncInputs))
