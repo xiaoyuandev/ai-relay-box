@@ -161,6 +161,7 @@ func (s *Service) BuildSyncInput(ctx context.Context) (SyncInput, error) {
 
 		resolvedSources = append(resolvedSources, SyncModelSource{
 			ID:              source.ID,
+			ExternalID:      source.ID,
 			Name:            source.Name,
 			BaseURL:         source.BaseURL,
 			APIKey:          apiKey,

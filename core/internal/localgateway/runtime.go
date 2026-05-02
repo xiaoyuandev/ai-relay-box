@@ -48,6 +48,7 @@ type RuntimeCapabilities struct {
 
 type RuntimeModelSource struct {
 	ID              string   `json:"id"`
+	ExternalID      string   `json:"external_id,omitempty"`
 	Name            string   `json:"name"`
 	BaseURL         string   `json:"base_url"`
 	ProviderType    string   `json:"provider_type"`
@@ -59,6 +60,7 @@ type RuntimeModelSource struct {
 }
 
 type RuntimeModelSourceInput struct {
+	ExternalID      string   `json:"external_id,omitempty"`
 	Name            string   `json:"name"`
 	BaseURL         string   `json:"base_url"`
 	APIKey          string   `json:"api_key"`
@@ -71,6 +73,7 @@ type RuntimeModelSourceInput struct {
 
 type SyncModelSource struct {
 	ID              string   `json:"id"`
+	ExternalID      string   `json:"external_id,omitempty"`
 	Name            string   `json:"name"`
 	BaseURL         string   `json:"base_url"`
 	APIKey          string   `json:"api_key"`

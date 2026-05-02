@@ -160,6 +160,9 @@ func TestServiceBuildSyncInput(t *testing.T) {
 	if input.Sources[0].ID != source.ID {
 		t.Fatalf("unexpected sync source id: %s", input.Sources[0].ID)
 	}
+	if input.Sources[0].ExternalID != source.ID {
+		t.Fatalf("unexpected sync source external id: %s", input.Sources[0].ExternalID)
+	}
 	if input.Sources[0].APIKey != "sk-test-openai" {
 		t.Fatalf("unexpected sync api key: %s", input.Sources[0].APIKey)
 	}

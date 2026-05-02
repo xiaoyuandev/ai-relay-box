@@ -22,13 +22,17 @@ func TestAIMiniGatewayAdapterGetCapabilities(t *testing.T) {
 		}
 
 		return jsonResponse(http.StatusOK, map[string]any{
-			"supports_openai_compatible":    true,
-			"supports_anthropic_compatible": true,
-			"supports_models_api":           true,
-			"supports_stream":               true,
-			"supports_admin_api":            true,
-			"supports_model_source_admin":   true,
-			"supports_selected_model_admin": true,
+			"supports_openai_compatible":      true,
+			"supports_anthropic_compatible":   true,
+			"supports_models_api":             true,
+			"supports_stream":                 true,
+			"supports_admin_api":              true,
+			"supports_model_source_admin":     true,
+			"supports_selected_model_admin":   true,
+			"supports_source_capabilities":    true,
+			"supports_atomic_source_sync":     true,
+			"supports_runtime_version":        true,
+			"supports_explicit_source_health": true,
 		}), nil
 	})}
 
@@ -49,15 +53,50 @@ func TestAIMiniGatewayAdapterGetCapabilities(t *testing.T) {
 	if !caps.SupportsOpenAICompatible || !caps.SupportsSelectedModelAdmin {
 		t.Fatalf("unexpected capabilities: %+v", caps)
 	}
-	if caps.SupportsAtomicSourceSync {
-		t.Fatalf("unexpected atomic sync support: %+v", caps)
+	if !caps.SupportsAtomicSourceSync || !caps.SupportsRuntimeVersion || !caps.SupportsExplicitSourceHealth {
+		t.Fatalf("expected extended capabilities: %+v", caps)
 	}
 }
 
-func TestAIMiniGatewayAdapterSyncFromProductState(t *testing.T) {
+func TestAIMiniGatewayAdapterGetRuntimeStatusParsesMetadata(t *testing.T) {
 	t.Parallel()
 
-	state := newFakeAIMiniGatewayRuntime()
+	client := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Path != "/health" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+
+		return jsonResponse(http.StatusOK, map[string]any{
+			"status":       "ok",
+			"version":      "1.2.3",
+			"commit":       "abcdef1",
+			"runtime_kind": RuntimeKindAIMiniGateway,
+		}), nil
+	})}
+
+	adapter := NewAIMiniGatewayAdapter(client)
+	adapter.status = RuntimeStatus{
+		RuntimeKind: RuntimeKindAIMiniGateway,
+		State:       RuntimeStateRunning,
+		Running:     true,
+		Healthy:     true,
+		APIBase:     "http://runtime.test",
+	}
+
+	status, err := adapter.GetRuntimeStatus(context.Background())
+	if err != nil {
+		t.Fatalf("get runtime status: %v", err)
+	}
+
+	if status.Version != "1.2.3" || status.Commit != "abcdef1" {
+		t.Fatalf("unexpected runtime metadata: %+v", status)
+	}
+}
+
+func TestAIMiniGatewayAdapterSyncFromProductStateAtomic(t *testing.T) {
+	t.Parallel()
+
+	state := newFakeAIMiniGatewayRuntime(true)
 	client := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 		return state.roundTrip(t, r)
 	})}
@@ -120,11 +159,64 @@ func TestAIMiniGatewayAdapterSyncFromProductState(t *testing.T) {
 	if state.sources[0].Name != "OpenAI" || state.sources[1].Name != "Anthropic" {
 		t.Fatalf("unexpected runtime source order: %+v", state.sources)
 	}
+	if state.sources[0].ExternalID != "source-a" || state.sources[1].ExternalID != "source-b" {
+		t.Fatalf("unexpected runtime external ids: %+v", state.sources)
+	}
 	if len(state.selectedModels) != 2 {
 		t.Fatalf("unexpected runtime selected models: %+v", state.selectedModels)
 	}
 	if state.selectedModels[0].ModelID != "claude-sonnet-4-0" || state.selectedModels[0].Position != 0 {
 		t.Fatalf("unexpected first runtime selected model: %+v", state.selectedModels[0])
+	}
+}
+
+func TestAIMiniGatewayAdapterSyncFromProductStateFallsBackToLegacy(t *testing.T) {
+	t.Parallel()
+
+	state := newFakeAIMiniGatewayRuntime(false)
+	client := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		return state.roundTrip(t, r)
+	})}
+
+	adapter := NewAIMiniGatewayAdapter(client)
+	adapter.status = RuntimeStatus{
+		RuntimeKind: RuntimeKindAIMiniGateway,
+		State:       RuntimeStateRunning,
+		Running:     true,
+		Healthy:     true,
+		APIBase:     "http://runtime.test",
+	}
+
+	_, err := adapter.SyncFromProductState(context.Background(), SyncInput{
+		Sources: []SyncModelSource{
+			{
+				ID:             "source-a",
+				ExternalID:     "source-a",
+				Name:           "OpenAI",
+				BaseURL:        "https://api.openai.com/v1",
+				APIKey:         "sk-openai",
+				ProviderType:   "openai-compatible",
+				DefaultModelID: "gpt-4.1",
+				Enabled:        true,
+				Position:       0,
+			},
+		},
+		SelectedModels: []SelectedModel{
+			{ModelID: "gpt-4.1", Position: 0},
+		},
+	})
+	if err != nil {
+		t.Fatalf("sync from product state fallback: %v", err)
+	}
+
+	state.mu.Lock()
+	defer state.mu.Unlock()
+
+	if len(state.sources) != 1 || state.sources[0].Name != "OpenAI" {
+		t.Fatalf("unexpected legacy runtime sources: %+v", state.sources)
+	}
+	if len(state.selectedModels) != 1 || state.selectedModels[0].ModelID != "gpt-4.1" {
+		t.Fatalf("unexpected legacy runtime selected models: %+v", state.selectedModels)
 	}
 }
 
@@ -150,17 +242,20 @@ func TestNormalizeSelectedModels(t *testing.T) {
 
 type fakeAIMiniGatewayRuntime struct {
 	mu             sync.Mutex
+	atomicSync     bool
 	nextID         int
 	sources        []RuntimeModelSource
 	selectedModels []SelectedModel
 }
 
-func newFakeAIMiniGatewayRuntime() *fakeAIMiniGatewayRuntime {
+func newFakeAIMiniGatewayRuntime(atomicSync bool) *fakeAIMiniGatewayRuntime {
 	return &fakeAIMiniGatewayRuntime{
-		nextID: 1,
+		atomicSync: atomicSync,
+		nextID:     1,
 		sources: []RuntimeModelSource{
 			{
 				ID:             "src-existing",
+				ExternalID:     "source-existing",
 				Name:           "Legacy",
 				BaseURL:        "https://legacy.example/v1",
 				ProviderType:   "openai-compatible",
@@ -177,6 +272,58 @@ func (f *fakeAIMiniGatewayRuntime) roundTrip(t *testing.T, r *http.Request) (*ht
 	defer f.mu.Unlock()
 
 	switch {
+	case r.Method == http.MethodGet && r.URL.Path == "/capabilities":
+		return jsonResponse(http.StatusOK, map[string]any{
+			"supports_openai_compatible":      true,
+			"supports_anthropic_compatible":   true,
+			"supports_models_api":             true,
+			"supports_stream":                 true,
+			"supports_admin_api":              true,
+			"supports_model_source_admin":     true,
+			"supports_selected_model_admin":   true,
+			"supports_source_capabilities":    true,
+			"supports_atomic_source_sync":     f.atomicSync,
+			"supports_runtime_version":        true,
+			"supports_explicit_source_health": true,
+		}), nil
+	case r.Method == http.MethodPut && r.URL.Path == "/admin/runtime/sync":
+		var input struct {
+			Sources []struct {
+				ExternalID      string   `json:"external_id"`
+				Name            string   `json:"name"`
+				BaseURL         string   `json:"base_url"`
+				ProviderType    string   `json:"provider_type"`
+				DefaultModelID  string   `json:"default_model_id"`
+				ExposedModelIDs []string `json:"exposed_model_ids"`
+				Enabled         bool     `json:"enabled"`
+				Position        int      `json:"position"`
+			} `json:"sources"`
+			SelectedModels []SelectedModel `json:"selected_models"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+			t.Fatalf("decode runtime sync: %v", err)
+		}
+		f.sources = make([]RuntimeModelSource, 0, len(input.Sources))
+		for index, source := range input.Sources {
+			f.sources = append(f.sources, RuntimeModelSource{
+				ID:              "src-" + strconv.Itoa(index+1),
+				ExternalID:      source.ExternalID,
+				Name:            source.Name,
+				BaseURL:         source.BaseURL,
+				ProviderType:    source.ProviderType,
+				DefaultModelID:  source.DefaultModelID,
+				ExposedModelIDs: append([]string(nil), source.ExposedModelIDs...),
+				Enabled:         source.Enabled,
+				Position:        index,
+				APIKeyMasked:    "sk-****",
+			})
+		}
+		f.selectedModels = append([]SelectedModel(nil), input.SelectedModels...)
+		return jsonResponse(http.StatusOK, SyncResult{
+			AppliedSources:        len(f.sources),
+			AppliedSelectedModels: len(f.selectedModels),
+			LastSyncedAt:          "2026-05-02T00:00:00Z",
+		}), nil
 	case r.Method == http.MethodGet && r.URL.Path == "/admin/model-sources":
 		return jsonResponse(http.StatusOK, f.sources), nil
 	case r.Method == http.MethodPost && r.URL.Path == "/admin/model-sources":
@@ -186,6 +333,7 @@ func (f *fakeAIMiniGatewayRuntime) roundTrip(t *testing.T, r *http.Request) (*ht
 		}
 		item := RuntimeModelSource{
 			ID:              "src-" + strconv.Itoa(f.nextID),
+			ExternalID:      input.ExternalID,
 			Name:            input.Name,
 			BaseURL:         input.BaseURL,
 			ProviderType:    input.ProviderType,

@@ -16,6 +16,14 @@ import (
 	"time"
 )
 
+type runtimeHealthPayload struct {
+	Status      string `json:"status"`
+	Version     string `json:"version"`
+	Commit      string `json:"commit"`
+	RuntimeKind string `json:"runtime_kind"`
+	Message     string `json:"message"`
+}
+
 type AIMiniGatewayAdapter struct {
 	mu     sync.RWMutex
 	client *http.Client
@@ -188,13 +196,25 @@ func (a *AIMiniGatewayAdapter) GetRuntimeStatus(ctx context.Context) (RuntimeSta
 	}
 	defer resp.Body.Close()
 
+	var payload runtimeHealthPayload
+	_ = json.NewDecoder(resp.Body).Decode(&payload)
+
 	status.Healthy = resp.StatusCode == http.StatusOK
+	if payload.RuntimeKind != "" {
+		status.RuntimeKind = payload.RuntimeKind
+	}
+	if payload.Version != "" {
+		status.Version = payload.Version
+	}
+	if payload.Commit != "" {
+		status.Commit = payload.Commit
+	}
 	if status.Healthy {
 		status.State = RuntimeStateRunning
 		status.LastError = ""
 	} else {
 		status.State = RuntimeStateDegraded
-		status.LastError = "runtime healthcheck returned non-200"
+		status.LastError = firstNonEmpty(payload.Message, "runtime healthcheck returned non-200")
 	}
 
 	a.mu.Lock()
@@ -206,13 +226,17 @@ func (a *AIMiniGatewayAdapter) GetRuntimeStatus(ctx context.Context) (RuntimeSta
 
 func (a *AIMiniGatewayAdapter) GetCapabilities(ctx context.Context) (RuntimeCapabilities, error) {
 	var payload struct {
-		SupportsOpenAICompatible    bool `json:"supports_openai_compatible"`
-		SupportsAnthropicCompatible bool `json:"supports_anthropic_compatible"`
-		SupportsModelsAPI           bool `json:"supports_models_api"`
-		SupportsStream              bool `json:"supports_stream"`
-		SupportsAdminAPI            bool `json:"supports_admin_api"`
-		SupportsModelSourceAdmin    bool `json:"supports_model_source_admin"`
-		SupportsSelectedModelAdmin  bool `json:"supports_selected_model_admin"`
+		SupportsOpenAICompatible     bool `json:"supports_openai_compatible"`
+		SupportsAnthropicCompatible  bool `json:"supports_anthropic_compatible"`
+		SupportsModelsAPI            bool `json:"supports_models_api"`
+		SupportsStream               bool `json:"supports_stream"`
+		SupportsAdminAPI             bool `json:"supports_admin_api"`
+		SupportsModelSourceAdmin     bool `json:"supports_model_source_admin"`
+		SupportsSelectedModelAdmin   bool `json:"supports_selected_model_admin"`
+		SupportsSourceCapabilities   bool `json:"supports_source_capabilities"`
+		SupportsAtomicSourceSync     bool `json:"supports_atomic_source_sync"`
+		SupportsRuntimeVersion       bool `json:"supports_runtime_version"`
+		SupportsExplicitSourceHealth bool `json:"supports_explicit_source_health"`
 	}
 
 	if err := a.doJSON(ctx, http.MethodGet, "/capabilities", nil, &payload); err != nil {
@@ -220,22 +244,24 @@ func (a *AIMiniGatewayAdapter) GetCapabilities(ctx context.Context) (RuntimeCapa
 	}
 
 	return RuntimeCapabilities{
-		SupportsOpenAICompatible:    payload.SupportsOpenAICompatible,
-		SupportsAnthropicCompatible: payload.SupportsAnthropicCompatible,
-		SupportsModelsAPI:           payload.SupportsModelsAPI,
-		SupportsStream:              payload.SupportsStream,
-		SupportsAdminAPI:            payload.SupportsAdminAPI,
-		SupportsModelSourceAdmin:    payload.SupportsModelSourceAdmin,
-		SupportsSelectedModelAdmin:  payload.SupportsSelectedModelAdmin,
-		SupportsSourceCapabilities:  true,
-		SupportsAtomicSourceSync:    false,
-		SupportsRuntimeVersion:      false,
+		SupportsOpenAICompatible:     payload.SupportsOpenAICompatible,
+		SupportsAnthropicCompatible:  payload.SupportsAnthropicCompatible,
+		SupportsModelsAPI:            payload.SupportsModelsAPI,
+		SupportsStream:               payload.SupportsStream,
+		SupportsAdminAPI:             payload.SupportsAdminAPI,
+		SupportsModelSourceAdmin:     payload.SupportsModelSourceAdmin,
+		SupportsSelectedModelAdmin:   payload.SupportsSelectedModelAdmin,
+		SupportsSourceCapabilities:   payload.SupportsSourceCapabilities,
+		SupportsAtomicSourceSync:     payload.SupportsAtomicSourceSync,
+		SupportsRuntimeVersion:       payload.SupportsRuntimeVersion,
+		SupportsExplicitSourceHealth: payload.SupportsExplicitSourceHealth,
 	}, nil
 }
 
 func (a *AIMiniGatewayAdapter) ListModelSources(ctx context.Context) ([]RuntimeModelSource, error) {
 	var payload []struct {
 		ID              string   `json:"id"`
+		ExternalID      string   `json:"external_id"`
 		Name            string   `json:"name"`
 		BaseURL         string   `json:"base_url"`
 		ProviderType    string   `json:"provider_type"`
@@ -254,6 +280,7 @@ func (a *AIMiniGatewayAdapter) ListModelSources(ctx context.Context) ([]RuntimeM
 	for _, item := range payload {
 		items = append(items, RuntimeModelSource{
 			ID:              item.ID,
+			ExternalID:      item.ExternalID,
 			Name:            item.Name,
 			BaseURL:         item.BaseURL,
 			ProviderType:    item.ProviderType,
@@ -379,6 +406,76 @@ func (a *AIMiniGatewayAdapter) ReplaceSelectedModels(ctx context.Context, items 
 }
 
 func (a *AIMiniGatewayAdapter) SyncFromProductState(ctx context.Context, input SyncInput) (SyncResult, error) {
+	caps, err := a.GetCapabilities(ctx)
+	if err != nil && !IsAdapterErrorCode(err, AdapterErrorUnsupported) {
+		return SyncResult{}, err
+	}
+
+	if err == nil && caps.SupportsAtomicSourceSync {
+		return a.syncFromProductStateAtomically(ctx, input)
+	}
+
+	return a.syncFromProductStateLegacy(ctx, input)
+}
+
+func (a *AIMiniGatewayAdapter) syncFromProductStateAtomically(ctx context.Context, input SyncInput) (SyncResult, error) {
+	type runtimeModelSourceSyncInput struct {
+		ExternalID      string   `json:"external_id,omitempty"`
+		Name            string   `json:"name"`
+		BaseURL         string   `json:"base_url"`
+		APIKey          string   `json:"api_key"`
+		ProviderType    string   `json:"provider_type"`
+		DefaultModelID  string   `json:"default_model_id"`
+		ExposedModelIDs []string `json:"exposed_model_ids"`
+		Enabled         bool     `json:"enabled"`
+		Position        int      `json:"position"`
+	}
+
+	type runtimeSyncInput struct {
+		Sources        []runtimeModelSourceSyncInput `json:"sources"`
+		SelectedModels []SelectedModel               `json:"selected_models"`
+	}
+
+	sources := append([]SyncModelSource(nil), input.Sources...)
+	slices.SortFunc(sources, func(a, b SyncModelSource) int {
+		return a.Position - b.Position
+	})
+
+	payloadSources := make([]runtimeModelSourceSyncInput, 0, len(sources))
+	for _, source := range sources {
+		payloadSources = append(payloadSources, runtimeModelSourceSyncInput{
+			ExternalID:      firstNonEmpty(source.ExternalID, source.ID),
+			Name:            source.Name,
+			BaseURL:         source.BaseURL,
+			APIKey:          source.APIKey,
+			ProviderType:    source.ProviderType,
+			DefaultModelID:  source.DefaultModelID,
+			ExposedModelIDs: append([]string(nil), source.ExposedModelIDs...),
+			Enabled:         source.Enabled,
+			Position:        source.Position,
+		})
+	}
+
+	normalizedSelectedModels := normalizeSelectedModels(input.SelectedModels)
+	var payload SyncResult
+	if err := a.doJSON(ctx, http.MethodPut, "/admin/runtime/sync", runtimeSyncInput{
+		Sources:        payloadSources,
+		SelectedModels: normalizedSelectedModels,
+	}, &payload); err != nil {
+		return SyncResult{}, &AdapterError{
+			Code:        AdapterErrorSyncFailed,
+			Operation:   "sync_runtime",
+			RuntimeKind: a.RuntimeKind(),
+			Message:     "sync runtime config failed",
+			Err:         err,
+			Retryable:   true,
+		}
+	}
+
+	return payload, nil
+}
+
+func (a *AIMiniGatewayAdapter) syncFromProductStateLegacy(ctx context.Context, input SyncInput) (SyncResult, error) {
 	currentSources, err := a.ListModelSources(ctx)
 	if err != nil {
 		return SyncResult{}, err
@@ -397,6 +494,7 @@ func (a *AIMiniGatewayAdapter) SyncFromProductState(ctx context.Context, input S
 
 	for _, source := range sources {
 		_, err := a.CreateModelSource(ctx, RuntimeModelSourceInput{
+			ExternalID:      firstNonEmpty(source.ExternalID, source.ID),
 			Name:            source.Name,
 			BaseURL:         source.BaseURL,
 			APIKey:          source.APIKey,
