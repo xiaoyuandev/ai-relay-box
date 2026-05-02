@@ -318,7 +318,7 @@ func (r *Router) handleLocalGatewaySources(w http.ResponseWriter, req *http.Requ
 			writeLocalGatewayManagerError(w, err)
 			return
 		}
-		writeJSON(w, http.StatusOK, items)
+		writeJSON(w, http.StatusOK, toPublicLocalGatewaySources(items))
 	case http.MethodPost:
 		var input localgateway.CreateModelSourceInput
 		if err := json.NewDecoder(req.Body).Decode(&input); err != nil {
@@ -331,7 +331,7 @@ func (r *Router) handleLocalGatewaySources(w http.ResponseWriter, req *http.Requ
 			writeLocalGatewayManagerError(w, err)
 			return
 		}
-		writeJSON(w, http.StatusCreated, item)
+		writeJSON(w, http.StatusCreated, localgateway.ToPublicModelSource(item))
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
@@ -363,7 +363,7 @@ func (r *Router) handleLocalGatewaySourceActions(w http.ResponseWriter, req *htt
 			return
 		}
 
-		writeJSON(w, http.StatusOK, item)
+		writeJSON(w, http.StatusOK, localgateway.ToPublicModelSource(item))
 	case http.MethodDelete:
 		if err := r.local.DeleteSource(req.Context(), id); err != nil {
 			writeLocalGatewayManagerError(w, err)
@@ -451,6 +451,14 @@ func writeLocalGatewayManagerError(w http.ResponseWriter, err error) {
 	}
 
 	writeLocalGatewayError(w, http.StatusInternalServerError, err.Error())
+}
+
+func toPublicLocalGatewaySources(items []localgateway.ModelSource) []localgateway.PublicModelSource {
+	result := make([]localgateway.PublicModelSource, 0, len(items))
+	for _, item := range items {
+		result = append(result, localgateway.ToPublicModelSource(item))
+	}
+	return result
 }
 
 func withCORS(next http.Handler) http.Handler {

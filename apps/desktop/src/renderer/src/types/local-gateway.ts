@@ -4,7 +4,6 @@ export interface LocalGatewayModelSource {
   id: string;
   name: string;
   base_url: string;
-  api_key: string;
   provider_type: "openai-compatible" | "anthropic-compatible";
   default_model_id: string;
   exposed_model_ids: string[];

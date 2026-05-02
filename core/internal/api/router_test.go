@@ -89,6 +89,39 @@ func TestLocalGatewaySourceAndSyncEndpoints(t *testing.T) {
 	if createRec.Code != http.StatusCreated {
 		t.Fatalf("unexpected create status: %d body=%s", createRec.Code, createRec.Body.String())
 	}
+	assertLocalGatewaySourceResponseHidesAPIKey(t, createRec.Body.Bytes())
+
+	listReq := httptest.NewRequest(http.MethodGet, "/api/local-gateway/sources", nil)
+	listRec := httptest.NewRecorder()
+	handler.ServeHTTP(listRec, listReq)
+	if listRec.Code != http.StatusOK {
+		t.Fatalf("unexpected list status: %d body=%s", listRec.Code, listRec.Body.String())
+	}
+	assertLocalGatewaySourceResponseHidesAPIKey(t, listRec.Body.Bytes())
+
+	var created struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(createRec.Body.Bytes(), &created); err != nil {
+		t.Fatalf("decode created source: %v", err)
+	}
+
+	updateBody := bytes.NewBufferString(`{
+		"name":"OpenAI Direct Updated",
+		"base_url":"https://api.openai.com/v1",
+		"api_key":"",
+		"provider_type":"openai-compatible",
+		"default_model_id":"gpt-4.1",
+		"enabled":true,
+		"position":99
+	}`)
+	updateReq := httptest.NewRequest(http.MethodPut, "/api/local-gateway/sources/"+created.ID, updateBody)
+	updateRec := httptest.NewRecorder()
+	handler.ServeHTTP(updateRec, updateReq)
+	if updateRec.Code != http.StatusOK {
+		t.Fatalf("unexpected update status: %d body=%s", updateRec.Code, updateRec.Body.String())
+	}
+	assertLocalGatewaySourceResponseHidesAPIKey(t, updateRec.Body.Bytes())
 
 	selectedBody := bytes.NewBufferString(`[{"model_id":"gpt-4.1","position":0}]`)
 	selectedReq := httptest.NewRequest(http.MethodPut, "/api/local-gateway/selected-models", selectedBody)
@@ -113,6 +146,40 @@ func TestLocalGatewaySourceAndSyncEndpoints(t *testing.T) {
 	}
 	if adapter.syncInputs[0].Sources[0].APIKey != "sk-test-openai" {
 		t.Fatalf("unexpected synced api key: %s", adapter.syncInputs[0].Sources[0].APIKey)
+	}
+}
+
+func assertLocalGatewaySourceResponseHidesAPIKey(t *testing.T, body []byte) {
+	t.Helper()
+
+	var payload any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		t.Fatalf("decode local gateway source payload: %v body=%s", err, string(body))
+	}
+
+	switch typed := payload.(type) {
+	case map[string]any:
+		if _, ok := typed["api_key"]; ok {
+			t.Fatalf("expected source response to hide api_key, got %s", string(body))
+		}
+		if _, ok := typed["api_key_masked"]; !ok {
+			t.Fatalf("expected source response to include api_key_masked, got %s", string(body))
+		}
+	case []any:
+		for _, item := range typed {
+			object, ok := item.(map[string]any)
+			if !ok {
+				t.Fatalf("unexpected source list item: %T", item)
+			}
+			if _, ok := object["api_key"]; ok {
+				t.Fatalf("expected source list item to hide api_key, got %s", string(body))
+			}
+			if _, ok := object["api_key_masked"]; !ok {
+				t.Fatalf("expected source list item to include api_key_masked, got %s", string(body))
+			}
+		}
+	default:
+		t.Fatalf("unexpected source payload shape: %T", payload)
 	}
 }
 

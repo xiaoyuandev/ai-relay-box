@@ -114,14 +114,14 @@
 
 ### 阶段 4：收紧敏感信息返回
 
-- [ ] 4.1 修改 local gateway source 输入/输出模型
+- [x] 4.1 修改 local gateway source 输入/输出模型
   目标：输入模型保留 `api_key`，输出模型不再返回明文 `api_key`
-- [ ] 4.2 修改以下接口响应
+- [x] 4.2 修改以下接口响应
   目标：统一只返回 `api_key_masked`
   `GET /api/local-gateway/sources`
   `POST /api/local-gateway/sources`
   `PUT /api/local-gateway/sources/:id`
-- [ ] 4.3 前端编辑流程保持“更新 key 时才重新输入”
+- [x] 4.3 前端编辑流程保持“更新 key 时才重新输入”
   目标：不因后端去除明文返回而破坏当前编辑体验
 
 ### 阶段 5：补 Local Gateway provider 激活保护
@@ -154,7 +154,7 @@
 - [x] 7.4 service 测试覆盖 source 校验
 - [x] 7.5 service 测试覆盖 selected models 有效性校验
 - [x] 7.6 service/repository 测试覆盖 source 变更后的自动清理
-- [ ] 7.7 API 测试覆盖 local gateway source 响应不回传明文 key
+- [x] 7.7 API 测试覆盖 local gateway source 响应不回传明文 key
 - [ ] 7.8 API/provider 测试覆盖 Local Gateway 激活保护
 - [ ] 7.9 前端手工验收以下场景
   场景：
