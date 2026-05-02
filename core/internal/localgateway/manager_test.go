@@ -3,7 +3,9 @@ package localgateway
 import (
 	"context"
 	"path/filepath"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/xiaoyuandev/clash-for-ai/core/internal/credential"
 	"github.com/xiaoyuandev/clash-for-ai/core/internal/storage"
@@ -102,6 +104,105 @@ func TestManagerSyncMarksSourcesSynced(t *testing.T) {
 	}
 }
 
+func TestManagerSyncRejectsConcurrentRequests(t *testing.T) {
+	t.Parallel()
+
+	adapter := &blockingGatewayAdapter{
+		spyGatewayAdapter: spyGatewayAdapter{
+			runtimeStatus: RuntimeStatus{
+				RuntimeKind: RuntimeKindAIMiniGateway,
+				State:       RuntimeStateRunning,
+				Running:     true,
+				Healthy:     true,
+				APIBase:     "http://127.0.0.1:3457",
+			},
+			syncResult: SyncResult{AppliedSources: 1, AppliedSelectedModels: 1},
+		},
+		blockCh: make(chan struct{}),
+		started: make(chan struct{}),
+	}
+	manager := newTestManager(t, adapter)
+	manager.runtime.Executable = "/tmp/ai-mini-gateway"
+
+	if _, err := manager.CreateSource(context.Background(), CreateModelSourceInput{
+		Name:           "OpenAI Direct",
+		BaseURL:        "https://api.openai.com/v1",
+		APIKey:         "sk-test-openai",
+		ProviderType:   "openai-compatible",
+		DefaultModelID: "gpt-4.1",
+		Enabled:        true,
+		Position:       0,
+	}); err != nil {
+		t.Fatalf("create source: %v", err)
+	}
+	if _, err := manager.ReplaceSelectedModels(context.Background(), []SelectedModel{
+		{ModelID: "gpt-4.1", Position: 0},
+	}); err != nil {
+		t.Fatalf("replace selected models: %v", err)
+	}
+
+	firstDone := make(chan error, 1)
+	go func() {
+		_, err := manager.Sync(context.Background())
+		firstDone <- err
+	}()
+
+	adapter.waitStarted()
+
+	secondResult, secondErr := manager.Sync(context.Background())
+	if secondErr == nil {
+		t.Fatalf("expected concurrent sync error, got result %+v", secondResult)
+	}
+	if !IsAdapterErrorCode(secondErr, AdapterErrorConflict) {
+		t.Fatalf("expected conflict error, got %v", secondErr)
+	}
+
+	close(adapter.blockCh)
+	if err := <-firstDone; err != nil {
+		t.Fatalf("first sync failed: %v", err)
+	}
+}
+
+func TestManagerSyncRejectsInvalidSelectedModelsBeforeRuntimeCall(t *testing.T) {
+	t.Parallel()
+
+	adapter := &spyGatewayAdapter{
+		runtimeStatus: RuntimeStatus{
+			RuntimeKind: RuntimeKindAIMiniGateway,
+			State:       RuntimeStateRunning,
+			Running:     true,
+			Healthy:     true,
+			APIBase:     "http://127.0.0.1:3457",
+		},
+	}
+	manager := newTestManager(t, adapter)
+	manager.runtime.Executable = "/tmp/ai-mini-gateway"
+
+	if _, err := manager.CreateSource(context.Background(), CreateModelSourceInput{
+		Name:           "OpenAI Direct",
+		BaseURL:        "not-a-valid-url",
+		APIKey:         "sk-test-openai",
+		ProviderType:   "openai-compatible",
+		DefaultModelID: "gpt-4.1",
+		Enabled:        true,
+		Position:       0,
+	}); err != nil {
+		t.Fatalf("create source: %v", err)
+	}
+	if _, err := manager.ReplaceSelectedModels(context.Background(), []SelectedModel{
+		{ModelID: "gpt-4.1", Position: 0},
+	}); err != nil {
+		t.Fatalf("replace selected models: %v", err)
+	}
+
+	if _, err := manager.Sync(context.Background()); err == nil {
+		t.Fatal("expected sync validation error")
+	}
+	if len(adapter.syncInputs) != 0 {
+		t.Fatalf("expected no runtime sync call, got %d", len(adapter.syncInputs))
+	}
+}
+
 func TestManagerStatusUsesAdapterRuntimeKindWhenUnconfigured(t *testing.T) {
 	t.Parallel()
 
@@ -153,4 +254,31 @@ func (s *spyGatewayAdapter) StartRuntime(context.Context, StartRuntimeInput) (Ru
 func (s *spyGatewayAdapter) SyncFromProductState(_ context.Context, input SyncInput) (SyncResult, error) {
 	s.syncInputs = append(s.syncInputs, input)
 	return s.syncResult, nil
+}
+
+type blockingGatewayAdapter struct {
+	spyGatewayAdapter
+	blockCh chan struct{}
+	once    sync.Once
+	started chan struct{}
+}
+
+func (b *blockingGatewayAdapter) waitStarted() {
+	select {
+	case <-b.started:
+	case <-time.After(2 * time.Second):
+	}
+}
+
+func (b *blockingGatewayAdapter) SyncFromProductState(ctx context.Context, input SyncInput) (SyncResult, error) {
+	b.once.Do(func() {
+		close(b.started)
+	})
+	select {
+	case <-b.blockCh:
+	case <-ctx.Done():
+		return SyncResult{}, ctx.Err()
+	}
+	b.syncInputs = append(b.syncInputs, input)
+	return b.syncResult, nil
 }

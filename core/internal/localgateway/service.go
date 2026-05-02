@@ -3,6 +3,7 @@ package localgateway
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -184,6 +185,37 @@ func (s *Service) BuildSyncInput(ctx context.Context) (SyncInput, error) {
 	}, nil
 }
 
+func (s *Service) ValidateSyncInput(input SyncInput) error {
+	availableModels := make(map[string]struct{})
+	for _, source := range input.Sources {
+		if err := validateSyncSource(source); err != nil {
+			return err
+		}
+		if !source.Enabled {
+			continue
+		}
+
+		if modelID := strings.TrimSpace(source.DefaultModelID); modelID != "" {
+			availableModels[modelID] = struct{}{}
+		}
+		for _, modelID := range normalizeModelIDs(source.ExposedModelIDs) {
+			availableModels[modelID] = struct{}{}
+		}
+	}
+
+	for _, item := range input.SelectedModels {
+		modelID := strings.TrimSpace(item.ModelID)
+		if modelID == "" {
+			return fmt.Errorf("selected model id is required")
+		}
+		if _, ok := availableModels[modelID]; !ok {
+			return fmt.Errorf("selected model %q is not available from enabled sources", modelID)
+		}
+	}
+
+	return nil
+}
+
 func (s *Service) ReplaceSelectedModels(ctx context.Context, items []SelectedModel) ([]SelectedModel, error) {
 	normalized := make([]SelectedModel, 0, len(items))
 	for index, item := range items {
@@ -271,4 +303,28 @@ func maskAPIKey(value string) string {
 	}
 
 	return trimmed[:8] + "****" + trimmed[len(trimmed)-4:]
+}
+
+func validateSyncSource(source SyncModelSource) error {
+	if strings.TrimSpace(source.Name) == "" {
+		return fmt.Errorf("source name is required")
+	}
+	if strings.TrimSpace(source.ProviderType) == "" {
+		return fmt.Errorf("source provider_type is required")
+	}
+	if strings.TrimSpace(source.DefaultModelID) == "" {
+		return fmt.Errorf("source default_model_id is required")
+	}
+
+	parsed, err := url.Parse(strings.TrimSpace(source.BaseURL))
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return fmt.Errorf("source base_url must be a valid absolute URL")
+	}
+
+	switch strings.TrimSpace(source.ProviderType) {
+	case "openai-compatible", "anthropic-compatible":
+		return nil
+	default:
+		return fmt.Errorf("source provider_type %q is not supported", source.ProviderType)
+	}
 }

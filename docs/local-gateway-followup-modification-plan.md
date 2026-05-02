@@ -76,11 +76,11 @@
 
 ### 阶段 2：补产品层 sync 安全性
 
-- [ ] 2.1 修改 `core/internal/localgateway/manager.go`
+- [x] 2.1 修改 `core/internal/localgateway/manager.go`
   目标：为 `Manager.Sync` 增加串行化控制
-- [ ] 2.2 并发 sync 时返回明确冲突错误
+- [x] 2.2 并发 sync 时返回明确冲突错误
   目标：统一返回 `409 conflict`
-- [ ] 2.3 sync 前增加 preflight 校验入口
+- [x] 2.3 sync 前增加 preflight 校验入口
   目标：在进入 runtime sync 前先校验产品主数据合法性
 
 ### 阶段 3：补主数据一致性约束
@@ -150,8 +150,8 @@
 
 - [x] 7.1 adapter 测试覆盖原子 sync 主路径
 - [x] 7.2 adapter 测试覆盖 fallback 旧路径
-- [ ] 7.3 manager 测试覆盖并发 sync 冲突
-- [ ] 7.4 service 测试覆盖 source 校验
+- [x] 7.3 manager 测试覆盖并发 sync 冲突
+- [x] 7.4 service 测试覆盖 source 校验
 - [ ] 7.5 service 测试覆盖 selected models 有效性校验
 - [ ] 7.6 service/repository 测试覆盖 source 变更后的自动清理
 - [ ] 7.7 API 测试覆盖 local gateway source 响应不回传明文 key

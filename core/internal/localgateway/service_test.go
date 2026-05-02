@@ -170,3 +170,43 @@ func TestServiceBuildSyncInput(t *testing.T) {
 		t.Fatalf("unexpected sync selected models: %+v", input.SelectedModels)
 	}
 }
+
+func TestServiceValidateSyncInput(t *testing.T) {
+	t.Parallel()
+
+	service := NewService(nil, nil)
+
+	if err := service.ValidateSyncInput(SyncInput{
+		Sources: []SyncModelSource{
+			{
+				ID:             "source-a",
+				ExternalID:     "source-a",
+				Name:           "OpenAI",
+				BaseURL:        "https://api.openai.com/v1",
+				ProviderType:   "openai-compatible",
+				DefaultModelID: "gpt-4.1",
+				Enabled:        true,
+			},
+		},
+		SelectedModels: []SelectedModel{{ModelID: "gpt-4.1"}},
+	}); err != nil {
+		t.Fatalf("validate sync input: %v", err)
+	}
+
+	if err := service.ValidateSyncInput(SyncInput{
+		Sources: []SyncModelSource{
+			{
+				ID:             "source-a",
+				ExternalID:     "source-a",
+				Name:           "OpenAI",
+				BaseURL:        "not-a-url",
+				ProviderType:   "openai-compatible",
+				DefaultModelID: "gpt-4.1",
+				Enabled:        true,
+			},
+		},
+		SelectedModels: []SelectedModel{{ModelID: "gpt-4.1"}},
+	}); err == nil {
+		t.Fatal("expected invalid source url error")
+	}
+}

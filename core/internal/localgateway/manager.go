@@ -17,6 +17,7 @@ type RuntimeConfig struct {
 
 type Manager struct {
 	mu           sync.RWMutex
+	syncing      bool
 	service      *Service
 	adapter      GatewayAdapter
 	runtime      RuntimeConfig
@@ -170,9 +171,28 @@ func (m *Manager) ReplaceSelectedModels(ctx context.Context, items []SelectedMod
 }
 
 func (m *Manager) Sync(ctx context.Context) (SyncResult, error) {
+	if !m.tryBeginSync() {
+		return SyncResult{}, &AdapterError{
+			Code:        AdapterErrorConflict,
+			Operation:   "sync_runtime",
+			RuntimeKind: m.runtimeKind(),
+			Message:     "local gateway sync already in progress",
+		}
+	}
+	defer m.endSync()
+
 	input, err := m.service.BuildSyncInput(ctx)
 	if err != nil {
 		return SyncResult{}, err
+	}
+	if err := m.service.ValidateSyncInput(input); err != nil {
+		_ = m.service.UpdateAllSourcesSyncState(ctx, SourceSyncStatusError, err.Error())
+		return SyncResult{}, &AdapterError{
+			Code:        AdapterErrorInvalidConfig,
+			Operation:   "sync_runtime",
+			RuntimeKind: m.runtimeKind(),
+			Message:     err.Error(),
+		}
 	}
 
 	if !m.runtimeConfigured() {
@@ -249,4 +269,22 @@ func (m *Manager) runtimeKind() string {
 
 func (m *Manager) String() string {
 	return fmt.Sprintf("localgateway.Manager(runtime=%s:%d)", m.runtime.Host, m.runtime.Port)
+}
+
+func (m *Manager) tryBeginSync() bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.syncing {
+		return false
+	}
+	m.syncing = true
+	return true
+}
+
+func (m *Manager) endSync() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.syncing = false
 }
