@@ -181,6 +181,44 @@ function resolveCoreRuntimePaths() {
   };
 }
 
+function resolveLocalGatewayRuntimeExecutable(): string | null {
+  if (process.env.LOCAL_GATEWAY_RUNTIME_EXECUTABLE) {
+    return process.env.LOCAL_GATEWAY_RUNTIME_EXECUTABLE;
+  }
+
+  const binaryName =
+    process.platform === "win32" ? "ai-mini-gateway.exe" : "ai-mini-gateway";
+
+  if (app.isPackaged) {
+    const bundledPath = join(process.resourcesPath, "ai-mini-gateway", "bin", binaryName);
+    return existsSync(bundledPath) ? bundledPath : null;
+  }
+
+  const workspaceRoot =
+    process.env.ELECTRON_WORKSPACE_ROOT ?? resolveWorkspaceRoot(process.cwd());
+  const localPath = join(
+    workspaceRoot,
+    "apps",
+    "desktop",
+    "resources",
+    "ai-mini-gateway",
+    "bin",
+    binaryName
+  );
+  return existsSync(localPath) ? localPath : null;
+}
+
+function localGatewayRuntimeEnv() {
+  const executable = resolveLocalGatewayRuntimeExecutable();
+  if (!executable) {
+    return {};
+  }
+
+  return {
+    LOCAL_GATEWAY_RUNTIME_EXECUTABLE: executable
+  };
+}
+
 function spawnCoreBinary(
   executable: string,
   coreDir: string,
@@ -195,6 +233,7 @@ function spawnCoreBinary(
     stdio: "inherit",
     env: {
       ...process.env,
+      ...localGatewayRuntimeEnv(),
       HTTP_PORT: String(port),
       CORE_DATA_DIR: dataDir
     }
@@ -269,6 +308,7 @@ async function spawnGoCore(
     stdio: "inherit",
     env: {
       ...process.env,
+      ...localGatewayRuntimeEnv(),
       HTTP_PORT: String(port),
       CORE_DATA_DIR: dataDir,
       GOCACHE: cacheDir,
