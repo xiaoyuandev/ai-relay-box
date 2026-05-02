@@ -126,13 +126,13 @@
 
 ### 阶段 5：补 Local Gateway provider 激活保护
 
-- [ ] 5.1 修改 provider 激活链路
+- [x] 5.1 修改 provider 激活链路
   目标：系统托管 `Local Gateway` 在 runtime 不健康时拒绝激活
-- [ ] 5.2 API 层返回明确错误信息
+- [x] 5.2 API 层返回明确错误信息
   目标：让前端可直接展示“runtime 未就绪 / 未启动 / 不健康”
-- [ ] 5.3 修改 Providers 页面激活按钮状态
+- [x] 5.3 修改 Providers 页面激活按钮状态
   目标：runtime 不可用时按钮置灰
-- [ ] 5.4 Providers 页面展示本地 runtime 状态摘要
+- [x] 5.4 Providers 页面展示本地 runtime 状态摘要
   目标：避免用户切换前无法判断 Local Gateway 是否可用
 
 ### 阶段 6：补 Models 页 runtime 能力展示
@@ -155,7 +155,7 @@
 - [x] 7.5 service 测试覆盖 selected models 有效性校验
 - [x] 7.6 service/repository 测试覆盖 source 变更后的自动清理
 - [x] 7.7 API 测试覆盖 local gateway source 响应不回传明文 key
-- [ ] 7.8 API/provider 测试覆盖 Local Gateway 激活保护
+- [x] 7.8 API/provider 测试覆盖 Local Gateway 激活保护
 - [ ] 7.9 前端手工验收以下场景
   场景：
   错误 source 不会破坏 runtime 旧配置

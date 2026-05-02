@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -125,6 +126,15 @@ func (r *Router) handleProviderActions(w http.ResponseWriter, req *http.Request)
 	parts := strings.Split(path, "/")
 	switch {
 	case len(parts) == 2 && parts[1] == "activate" && req.Method == http.MethodPost:
+		if err := r.guardManagedLocalGatewayActivation(req.Context(), parts[0]); err != nil {
+			if errors.Is(err, provider.ErrProviderNotFound) {
+				http.Error(w, "provider not found", http.StatusNotFound)
+				return
+			}
+			writeLocalGatewayManagerError(w, err)
+			return
+		}
+
 		item, err := r.providers.Activate(req.Context(), parts[0])
 		if err != nil {
 			if errors.Is(err, provider.ErrProviderNotFound) {
@@ -451,6 +461,48 @@ func writeLocalGatewayManagerError(w http.ResponseWriter, err error) {
 	}
 
 	writeLocalGatewayError(w, http.StatusInternalServerError, err.Error())
+}
+
+func (r *Router) guardManagedLocalGatewayActivation(ctx context.Context, providerID string) error {
+	if r.providers == nil {
+		return nil
+	}
+
+	item, err := r.providers.GetByID(ctx, providerID)
+	if err != nil || item == nil {
+		return err
+	}
+	if !item.IsSystemManaged || item.RuntimeKind != provider.RuntimeKindManagedLocalGate {
+		return nil
+	}
+	if r.local == nil {
+		return &localgateway.AdapterError{
+			Code:        localgateway.AdapterErrorUnavailable,
+			Operation:   "activate_local_gateway_provider",
+			RuntimeKind: localgateway.RuntimeKindAIMiniGateway,
+			Message:     "local gateway runtime manager is unavailable",
+		}
+	}
+
+	status, err := r.local.GetRuntimeStatus(ctx)
+	if err != nil {
+		return err
+	}
+	if status.Running && status.Healthy {
+		return nil
+	}
+
+	message := "local gateway runtime is not ready"
+	if status.LastError != "" {
+		message = "local gateway runtime is not ready: " + status.LastError
+	}
+
+	return &localgateway.AdapterError{
+		Code:        localgateway.AdapterErrorConflict,
+		Operation:   "activate_local_gateway_provider",
+		RuntimeKind: status.RuntimeKind,
+		Message:     message,
+	}
 }
 
 func toPublicLocalGatewaySources(items []localgateway.ModelSource) []localgateway.PublicModelSource {

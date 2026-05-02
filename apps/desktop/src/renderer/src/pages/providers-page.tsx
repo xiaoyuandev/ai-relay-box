@@ -6,11 +6,13 @@ import {
   createProvider,
   deleteProvider,
   getHealth,
+  getLocalGatewayRuntime,
   getProviderModels,
   getProviders,
   runProviderHealthcheck,
   updateProvider
 } from "../services/api";
+import type { LocalGatewayRuntimeStatus } from "../types/local-gateway";
 import type { ClaudeCodeModelMap, Provider } from "../types/provider";
 import type { ProviderModel } from "../types/provider-model";
 import {
@@ -79,6 +81,7 @@ export function ProvidersPage({
     sonnet: "",
     haiku: ""
   });
+  const [localGatewayRuntime, setLocalGatewayRuntime] = useState<LocalGatewayRuntimeStatus | null>(null);
   const [savingClaudeMap, setSavingClaudeMap] = useState(false);
   const [draggedProviderModelId, setDraggedProviderModelId] = useState<string | null>(null);
   const [draggedClaudeSlot, setDraggedClaudeSlot] = useState<keyof ClaudeCodeModelMap | null>(null);
@@ -103,6 +106,9 @@ export function ProvidersPage({
       return model.id.toLowerCase().includes(keyword) || owner.includes(keyword);
     });
   }, [modelSearch, providerModels]);
+
+  const localGatewayReady =
+    localGatewayRuntime?.running === true && localGatewayRuntime.healthy === true;
 
   const maskApiKey = useCallback((value: string) => {
     const trimmed = value.trim();
@@ -152,6 +158,7 @@ export function ProvidersPage({
           getHealth(apiBase),
           getProviders(apiBase)
         ]);
+        const localGatewayRuntimeData = await getLocalGatewayRuntime(apiBase).catch(() => null);
 
         if (cancelled) {
           return;
@@ -159,6 +166,7 @@ export function ProvidersPage({
 
         setHealth(healthData.status);
         setProviders(providersData);
+        setLocalGatewayRuntime(localGatewayRuntimeData?.runtime ?? null);
         const nextSelected =
           providersData.find((provider) => provider.id === selectedProviderId) ??
           providersData.find((provider) => provider.status.is_active) ??
@@ -232,8 +240,12 @@ export function ProvidersPage({
   }, [selectedProvider?.claude_code_model_map, selectedProvider?.id]);
 
   async function refreshProviders(preferredProviderId?: string) {
-    const providersData = await getProviders(apiBase);
+    const [providersData, localGatewayRuntimeData] = await Promise.all([
+      getProviders(apiBase),
+      getLocalGatewayRuntime(apiBase).catch(() => null)
+    ]);
     setProviders(providersData);
+    setLocalGatewayRuntime(localGatewayRuntimeData?.runtime ?? null);
     const nextSelected =
       providersData.find((provider) => provider.id === preferredProviderId) ??
       providersData.find((provider) => provider.id === selectedProviderId) ??
@@ -439,6 +451,22 @@ export function ProvidersPage({
     setDetailProviderID(provider.id);
   }
 
+  function isManagedLocalGatewayProvider(provider: Provider) {
+    return provider.is_system_managed && provider.runtime_kind === "local-gateway";
+  }
+
+  function localGatewayActivationHint() {
+    if (localGatewayReady) {
+      return t("providers.localGateway.runtimeReady");
+    }
+    if (localGatewayRuntime?.last_error) {
+      return t("providers.localGateway.runtimeUnavailableWithReason", {
+        reason: localGatewayRuntime.last_error
+      });
+    }
+    return t("providers.localGateway.runtimeUnavailable");
+  }
+
   return (
     <main className={`${pageShellClass} h-full overflow-hidden`}>
       <ToastRegion items={toasts} onDismiss={dismissToast} />
@@ -465,6 +493,11 @@ export function ProvidersPage({
               <span className={monoClass}>
                 {desktopState?.apiBase ?? apiBase ?? "http://127.0.0.1:3456"}
               </span>
+            </span>
+            <span className={statusPillClass(localGatewayReady ? "success" : "default")}>
+              {t("providers.localGateway.runtimeSummary", {
+                status: localGatewayReady ? t("providers.localGateway.runtimeReady") : localGatewayActivationHint()
+              })}
             </span>
           </div>
         </div>
@@ -534,10 +567,23 @@ export function ProvidersPage({
                           type="button"
                           className={buttonClass("primary")}
                           onClick={() => void handleActivateProvider(provider)}
+                          disabled={isManagedLocalGatewayProvider(provider) && !localGatewayReady}
+                          title={
+                            isManagedLocalGatewayProvider(provider) && !localGatewayReady
+                              ? localGatewayActivationHint()
+                              : undefined
+                          }
                         >
                           {t("providers.action.activate")}
                         </button>
                       )}
+                      {isManagedLocalGatewayProvider(provider) ? (
+                        <span className={statusPillClass(localGatewayReady ? "success" : "default")}>
+                          {localGatewayReady
+                            ? t("providers.localGateway.runtimeReady")
+                            : t("providers.localGateway.runtimeUnavailable")}
+                        </span>
+                      ) : null}
                       <div className="relative">
                         <button
                           type="button"

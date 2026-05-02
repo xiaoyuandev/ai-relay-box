@@ -149,6 +149,66 @@ func TestLocalGatewaySourceAndSyncEndpoints(t *testing.T) {
 	}
 }
 
+func TestManagedLocalGatewayProviderActivationRequiresHealthyRuntime(t *testing.T) {
+	t.Parallel()
+
+	sqliteStore, err := storage.NewSQLite(filepath.Join(t.TempDir(), "router.db"))
+	if err != nil {
+		t.Fatalf("create sqlite store: %v", err)
+	}
+	defer sqliteStore.Close()
+
+	credentialStore := credential.NewInMemoryStore()
+	providerService := provider.NewService(provider.NewInMemoryRepository(), credentialStore)
+	healthService := health.NewService(providerService, credentialStore)
+	gatewayHandler := gateway.NewHandler(providerService, credentialStore, nil)
+	localService := localgateway.NewService(localgateway.NewSQLiteRepository(sqliteStore.DB), credentialStore)
+	adapter := &localgatewaySpyAdapter{
+		mockGatewayAdapter: mockGatewayAdapter{},
+		runtimeStatus: localgateway.RuntimeStatus{
+			RuntimeKind: localgateway.RuntimeKindAIMiniGateway,
+			State:       localgateway.RuntimeStateDegraded,
+			Running:     true,
+			Healthy:     false,
+			APIBase:     "http://127.0.0.1:3457",
+			LastError:   "runtime healthcheck returned non-200",
+		},
+	}
+	manager := localgateway.NewManager(localService, adapter, localgateway.RuntimeConfig{
+		Executable: "/tmp/ai-mini-gateway",
+		Host:       "127.0.0.1",
+		Port:       3457,
+		DataDir:    filepath.Join(t.TempDir(), "runtime"),
+	})
+
+	if _, err := providerService.EnsureManagedLocalGateway(
+		context.Background(),
+		"Local Gateway",
+		"http://127.0.0.1:3457/v1",
+		"dummy",
+	); err != nil {
+		t.Fatalf("ensure managed local gateway: %v", err)
+	}
+
+	handler := NewRouter(providerService, healthService, nil, manager, gatewayHandler)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/providers/provider-local-gateway/activate", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("unexpected activate status: %d body=%s", rec.Code, rec.Body.String())
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode activation error payload: %v", err)
+	}
+	if payload["error"] != string(localgateway.AdapterErrorConflict) {
+		t.Fatalf("unexpected activation error payload: %+v", payload)
+	}
+}
+
 func assertLocalGatewaySourceResponseHidesAPIKey(t *testing.T, body []byte) {
 	t.Helper()
 
