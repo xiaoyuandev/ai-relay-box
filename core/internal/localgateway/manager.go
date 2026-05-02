@@ -111,6 +111,25 @@ func (m *Manager) ListSources(ctx context.Context) ([]ModelSource, error) {
 	return m.service.ListSources(ctx)
 }
 
+func (m *Manager) ListSourceCapabilities(ctx context.Context) ([]ModelSourceCapability, error) {
+	if !m.runtimeConfigured() {
+		return nil, nil
+	}
+	return m.adapter.ListModelSourceCapabilities(ctx)
+}
+
+func (m *Manager) CheckSourceHealth(ctx context.Context, id string) (ModelSourceHealthcheck, error) {
+	if !m.runtimeConfigured() {
+		return ModelSourceHealthcheck{}, &AdapterError{
+			Code:        AdapterErrorInvalidConfig,
+			Operation:   "check_model_source_health",
+			RuntimeKind: m.runtimeKind(),
+			Message:     "local gateway runtime executable is not configured",
+		}
+	}
+	return m.adapter.CheckModelSourceHealth(ctx, id)
+}
+
 func (m *Manager) CreateSource(ctx context.Context, input CreateModelSourceInput) (ModelSource, error) {
 	item, err := m.service.CreateSource(ctx, input)
 	if err != nil {

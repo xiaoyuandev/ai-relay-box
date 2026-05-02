@@ -43,6 +43,7 @@ func NewRouter(
 	mux.HandleFunc("/api/logs", router.handleLogs)
 	mux.HandleFunc("/api/local-gateway/runtime", router.handleLocalGatewayRuntime)
 	mux.HandleFunc("/api/local-gateway/capabilities", router.handleLocalGatewayCapabilities)
+	mux.HandleFunc("/api/local-gateway/source-capabilities", router.handleLocalGatewaySourceCapabilities)
 	mux.HandleFunc("/api/local-gateway/sync", router.handleLocalGatewaySync)
 	mux.HandleFunc("/api/local-gateway/sources", router.handleLocalGatewaySources)
 	mux.HandleFunc("/api/local-gateway/sources/", router.handleLocalGatewaySourceActions)
@@ -296,6 +297,25 @@ func (r *Router) handleLocalGatewayCapabilities(w http.ResponseWriter, req *http
 	writeJSON(w, http.StatusOK, caps)
 }
 
+func (r *Router) handleLocalGatewaySourceCapabilities(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if r.local == nil {
+		writeLocalGatewayError(w, http.StatusServiceUnavailable, "local gateway manager unavailable")
+		return
+	}
+
+	items, err := r.local.ListSourceCapabilities(req.Context())
+	if err != nil {
+		writeLocalGatewayManagerError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, items)
+}
+
 func (r *Router) handleLocalGatewaySync(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -356,6 +376,22 @@ func (r *Router) handleLocalGatewaySourceActions(w http.ResponseWriter, req *htt
 	id := strings.TrimPrefix(req.URL.Path, "/api/local-gateway/sources/")
 	if strings.TrimSpace(id) == "" {
 		writeLocalGatewayError(w, http.StatusNotFound, "local gateway source id is required")
+		return
+	}
+	if req.Method == http.MethodPost && strings.HasSuffix(id, "/healthcheck") {
+		sourceID := strings.TrimSuffix(id, "/healthcheck")
+		sourceID = strings.TrimSuffix(sourceID, "/")
+		if strings.TrimSpace(sourceID) == "" {
+			writeLocalGatewayError(w, http.StatusNotFound, "local gateway source id is required")
+			return
+		}
+
+		result, err := r.local.CheckSourceHealth(req.Context(), sourceID)
+		if err != nil {
+			writeLocalGatewayManagerError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, result)
 		return
 	}
 

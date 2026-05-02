@@ -102,6 +102,14 @@ type ModelSourceCapability struct {
 	StreamStatus                  string `json:"stream_status"`
 }
 
+type ModelSourceHealthcheck struct {
+	Status     string `json:"status"`
+	StatusCode int    `json:"status_code"`
+	LatencyMS  int64  `json:"latency_ms"`
+	Summary    string `json:"summary"`
+	CheckedAt  string `json:"checked_at"`
+}
+
 type SyncInput struct {
 	Sources        []SyncModelSource `json:"sources"`
 	SelectedModels []SelectedModel   `json:"selected_models"`

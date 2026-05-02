@@ -6,6 +6,8 @@ import type {
   CreateLocalGatewayModelSourceInput,
   LocalGatewayCapabilities,
   LocalGatewayModelSource,
+  LocalGatewaySourceCapability,
+  LocalGatewaySourceHealthcheck,
   LocalGatewayRuntimeResponse,
   SyncLocalGatewayResponse
 } from "../types/local-gateway";
@@ -253,6 +255,16 @@ export async function getLocalGatewaySources(apiBase?: string): Promise<LocalGat
   );
 }
 
+export async function getLocalGatewaySourceCapabilities(
+  apiBase?: string
+): Promise<LocalGatewaySourceCapability[]> {
+  return fetchJson<LocalGatewaySourceCapability[]>(
+    `${getApiBase(apiBase)}/api/local-gateway/source-capabilities`,
+    {},
+    "Local gateway source capabilities request failed"
+  );
+}
+
 export async function createLocalGatewaySource(
   input: CreateLocalGatewayModelSourceInput,
   apiBase?: string
@@ -295,6 +307,19 @@ export async function deleteLocalGatewaySource(id: string, apiBase?: string): Pr
       method: "DELETE"
     },
     "Delete local gateway source failed"
+  );
+}
+
+export async function checkLocalGatewaySourceHealth(
+  id: string,
+  apiBase?: string
+): Promise<LocalGatewaySourceHealthcheck> {
+  return fetchJson<LocalGatewaySourceHealthcheck>(
+    `${getApiBase(apiBase)}/api/local-gateway/sources/${id}/healthcheck`,
+    {
+      method: "POST"
+    },
+    "Local gateway source healthcheck failed"
   );
 }
 

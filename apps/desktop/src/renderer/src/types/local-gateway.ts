@@ -55,6 +55,32 @@ export interface LocalGatewayCapabilities {
   supports_explicit_source_health: boolean;
 }
 
+export interface LocalGatewaySourceCapability {
+  source_id: string;
+  name: string;
+  provider_type: "openai-compatible" | "anthropic-compatible";
+  supports_models_api: boolean;
+  models_api_status: string;
+  supports_openai_chat_completions: boolean;
+  openai_chat_completions_status: string;
+  supports_openai_responses: boolean;
+  openai_responses_status: string;
+  supports_anthropic_messages: boolean;
+  anthropic_messages_status: string;
+  supports_anthropic_count_tokens: boolean;
+  anthropic_count_tokens_status: string;
+  supports_stream: boolean;
+  stream_status: string;
+}
+
+export interface LocalGatewaySourceHealthcheck {
+  status: string;
+  status_code: number;
+  latency_ms: number;
+  summary: string;
+  checked_at: string;
+}
+
 export interface CreateLocalGatewayModelSourceInput {
   name: string;
   base_url: string;

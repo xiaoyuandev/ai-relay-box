@@ -16,6 +16,7 @@ type GatewayAdapter interface {
 	GetCapabilities(ctx context.Context) (RuntimeCapabilities, error)
 	ListModelSources(ctx context.Context) ([]RuntimeModelSource, error)
 	ListModelSourceCapabilities(ctx context.Context) ([]ModelSourceCapability, error)
+	CheckModelSourceHealth(ctx context.Context, id string) (ModelSourceHealthcheck, error)
 	CreateModelSource(ctx context.Context, input RuntimeModelSourceInput) (RuntimeModelSource, error)
 	UpdateModelSource(ctx context.Context, id string, input RuntimeModelSourceInput) (RuntimeModelSource, error)
 	DeleteModelSource(ctx context.Context, id string) error

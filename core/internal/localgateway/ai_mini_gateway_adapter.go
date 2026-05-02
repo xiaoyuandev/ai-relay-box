@@ -342,6 +342,14 @@ func (a *AIMiniGatewayAdapter) ListModelSourceCapabilities(ctx context.Context) 
 	return items, nil
 }
 
+func (a *AIMiniGatewayAdapter) CheckModelSourceHealth(ctx context.Context, id string) (ModelSourceHealthcheck, error) {
+	var payload ModelSourceHealthcheck
+	if err := a.doJSON(ctx, http.MethodPost, "/admin/model-sources/"+id+"/healthcheck", nil, &payload); err != nil {
+		return ModelSourceHealthcheck{}, err
+	}
+	return payload, nil
+}
+
 func (a *AIMiniGatewayAdapter) CreateModelSource(ctx context.Context, input RuntimeModelSourceInput) (RuntimeModelSource, error) {
 	var payload RuntimeModelSource
 	if err := a.doJSON(ctx, http.MethodPost, "/admin/model-sources", input, &payload); err != nil {

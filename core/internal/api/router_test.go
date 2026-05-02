@@ -66,6 +66,32 @@ func TestLocalGatewaySourceAndSyncEndpoints(t *testing.T) {
 			AppliedSelectedModels: 1,
 			LastSyncedAt:          "2026-05-01T00:00:00Z",
 		},
+		sourceCapabilities: []localgateway.ModelSourceCapability{
+			{
+				SourceID:                      "source-1",
+				Name:                          "OpenAI Direct",
+				ProviderType:                  "openai-compatible",
+				SupportsModelsAPI:             true,
+				ModelsAPIStatus:               "supported",
+				SupportsOpenAIChatCompletions: true,
+				OpenAIChatCompletionsStatus:   "supported",
+				SupportsOpenAIResponses:       true,
+				OpenAIResponsesStatus:         "supported",
+				SupportsAnthropicMessages:     false,
+				AnthropicMessagesStatus:       "unsupported",
+				SupportsAnthropicCountTokens:  false,
+				AnthropicCountTokensStatus:    "unsupported",
+				SupportsStream:                true,
+				StreamStatus:                  "supported",
+			},
+		},
+		sourceHealthcheck: localgateway.ModelSourceHealthcheck{
+			Status:     "ok",
+			StatusCode: http.StatusOK,
+			LatencyMS:  123,
+			Summary:    "healthcheck ok",
+			CheckedAt:  "2026-05-01T00:00:00Z",
+		},
 	}
 	handler := newTestRouter(t, adapter, localgateway.RuntimeConfig{
 		Executable: "/tmp/ai-mini-gateway",
@@ -146,6 +172,20 @@ func TestLocalGatewaySourceAndSyncEndpoints(t *testing.T) {
 	}
 	if adapter.syncInputs[0].Sources[0].APIKey != "sk-test-openai" {
 		t.Fatalf("unexpected synced api key: %s", adapter.syncInputs[0].Sources[0].APIKey)
+	}
+
+	capabilityReq := httptest.NewRequest(http.MethodGet, "/api/local-gateway/source-capabilities", nil)
+	capabilityRec := httptest.NewRecorder()
+	handler.ServeHTTP(capabilityRec, capabilityReq)
+	if capabilityRec.Code != http.StatusOK {
+		t.Fatalf("unexpected source capabilities status: %d body=%s", capabilityRec.Code, capabilityRec.Body.String())
+	}
+
+	healthReq := httptest.NewRequest(http.MethodPost, "/api/local-gateway/sources/"+created.ID+"/healthcheck", nil)
+	healthRec := httptest.NewRecorder()
+	handler.ServeHTTP(healthRec, healthReq)
+	if healthRec.Code != http.StatusOK {
+		t.Fatalf("unexpected source healthcheck status: %d body=%s", healthRec.Code, healthRec.Body.String())
 	}
 }
 
@@ -269,9 +309,11 @@ func newTestRouter(t *testing.T, adapter localgateway.GatewayAdapter, runtime lo
 
 type localgatewaySpyAdapter struct {
 	mockGatewayAdapter
-	runtimeStatus localgateway.RuntimeStatus
-	syncResult    localgateway.SyncResult
-	syncInputs    []localgateway.SyncInput
+	runtimeStatus      localgateway.RuntimeStatus
+	syncResult         localgateway.SyncResult
+	syncInputs         []localgateway.SyncInput
+	sourceCapabilities []localgateway.ModelSourceCapability
+	sourceHealthcheck  localgateway.ModelSourceHealthcheck
 }
 
 func (s *localgatewaySpyAdapter) GetRuntimeStatus(context.Context) (localgateway.RuntimeStatus, error) {
@@ -285,6 +327,14 @@ func (s *localgatewaySpyAdapter) StartRuntime(context.Context, localgateway.Star
 func (s *localgatewaySpyAdapter) SyncFromProductState(_ context.Context, input localgateway.SyncInput) (localgateway.SyncResult, error) {
 	s.syncInputs = append(s.syncInputs, input)
 	return s.syncResult, nil
+}
+
+func (s *localgatewaySpyAdapter) ListModelSourceCapabilities(context.Context) ([]localgateway.ModelSourceCapability, error) {
+	return append([]localgateway.ModelSourceCapability(nil), s.sourceCapabilities...), nil
+}
+
+func (s *localgatewaySpyAdapter) CheckModelSourceHealth(context.Context, string) (localgateway.ModelSourceHealthcheck, error) {
+	return s.sourceHealthcheck, nil
 }
 
 type mockGatewayAdapter struct{}
@@ -315,6 +365,10 @@ func (m mockGatewayAdapter) ListModelSources(context.Context) ([]localgateway.Ru
 
 func (m mockGatewayAdapter) ListModelSourceCapabilities(context.Context) ([]localgateway.ModelSourceCapability, error) {
 	return nil, nil
+}
+
+func (m mockGatewayAdapter) CheckModelSourceHealth(context.Context, string) (localgateway.ModelSourceHealthcheck, error) {
+	return localgateway.ModelSourceHealthcheck{}, nil
 }
 
 func (m mockGatewayAdapter) CreateModelSource(context.Context, localgateway.RuntimeModelSourceInput) (localgateway.RuntimeModelSource, error) {

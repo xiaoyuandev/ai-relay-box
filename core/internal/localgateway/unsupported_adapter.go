@@ -47,6 +47,10 @@ func (a *UnsupportedAdapter) ListModelSourceCapabilities(context.Context) ([]Mod
 	return nil, a.unsupported("list_model_source_capabilities")
 }
 
+func (a *UnsupportedAdapter) CheckModelSourceHealth(context.Context, string) (ModelSourceHealthcheck, error) {
+	return ModelSourceHealthcheck{}, a.unsupported("check_model_source_health")
+}
+
 func (a *UnsupportedAdapter) CreateModelSource(context.Context, RuntimeModelSourceInput) (RuntimeModelSource, error) {
 	return RuntimeModelSource{}, a.unsupported("create_model_source")
 }

@@ -38,6 +38,10 @@ func (m *mockGatewayAdapter) ListModelSourceCapabilities(context.Context) ([]Mod
 	return nil, nil
 }
 
+func (m *mockGatewayAdapter) CheckModelSourceHealth(context.Context, string) (ModelSourceHealthcheck, error) {
+	return ModelSourceHealthcheck{}, nil
+}
+
 func (m *mockGatewayAdapter) CreateModelSource(context.Context, RuntimeModelSourceInput) (RuntimeModelSource, error) {
 	return RuntimeModelSource{}, nil
 }

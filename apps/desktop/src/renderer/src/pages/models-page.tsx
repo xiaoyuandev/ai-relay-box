@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ToastRegion, type ToastItem } from "../components/toast-region";
 import { useI18n } from "../i18n/i18n-provider";
 import {
+  checkLocalGatewaySourceHealth,
   createLocalGatewaySource,
   deleteLocalGatewaySource,
   getLocalGatewayCapabilities,
   getLocalGatewayRuntime,
+  getLocalGatewaySourceCapabilities,
   getLocalGatewaySelectedModels,
   getLocalGatewaySources,
   syncLocalGateway,
@@ -16,6 +18,8 @@ import type {
   CreateLocalGatewayModelSourceInput,
   LocalGatewayCapabilities,
   LocalGatewayModelSource,
+  LocalGatewaySourceCapability,
+  LocalGatewaySourceHealthcheck,
   LocalGatewayRuntimeResponse
 } from "../types/local-gateway";
 import type { SelectedModel } from "../types/selected-model";
@@ -98,6 +102,8 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
   const [runtime, setRuntime] = useState<LocalGatewayRuntimeResponse>(emptyRuntime);
   const [capabilities, setCapabilities] = useState<LocalGatewayCapabilities>(emptyCapabilities);
   const [sources, setSources] = useState<LocalGatewayModelSource[]>([]);
+  const [sourceCapabilities, setSourceCapabilities] = useState<LocalGatewaySourceCapability[]>([]);
+  const [sourceHealthchecks, setSourceHealthchecks] = useState<Record<string, LocalGatewaySourceHealthcheck>>({});
   const [selectedModels, setSelectedModels] = useState<SelectedModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -119,6 +125,7 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
   const [sourceDefaultModelID, setSourceDefaultModelID] = useState("");
   const [sourceExposedModelIDs, setSourceExposedModelIDs] = useState("");
   const [sourceEnabled, setSourceEnabled] = useState(true);
+  const [checkingSourceHealthID, setCheckingSourceHealthID] = useState<string | null>(null);
 
   const dismissToast = useCallback((id: string) => {
     setToasts((current) => current.filter((item) => item.id !== id));
@@ -153,10 +160,14 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
       getLocalGatewaySources(apiBase),
       getLocalGatewaySelectedModels(apiBase)
     ]);
+    const sourceCapabilityData = capabilityData.supports_source_capabilities
+      ? await getLocalGatewaySourceCapabilities(apiBase).catch(() => [])
+      : [];
 
     setRuntime(runtimeData);
     setCapabilities(capabilityData);
     setSources(sourceData);
+    setSourceCapabilities(sourceCapabilityData);
     setSelectedModels(selectedData);
   }, [apiBase]);
 
@@ -172,6 +183,9 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
           getLocalGatewaySources(apiBase),
           getLocalGatewaySelectedModels(apiBase)
         ]);
+        const sourceCapabilityData = capabilityData.supports_source_capabilities
+          ? await getLocalGatewaySourceCapabilities(apiBase).catch(() => [])
+          : [];
 
         if (cancelled) {
           return;
@@ -180,6 +194,7 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
         setRuntime(runtimeData);
         setCapabilities(capabilityData);
         setSources(sourceData);
+        setSourceCapabilities(sourceCapabilityData);
         setSelectedModels(selectedData);
       } catch (loadError) {
         if (!cancelled) {
@@ -258,6 +273,10 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
       : runtime.runtime.last_error
         ? "danger"
         : "default";
+
+  const sourceCapabilityByID = useMemo(() => {
+    return new Map(sourceCapabilities.map((item) => [item.source_id, item]));
+  }, [sourceCapabilities]);
 
   function resetForm() {
     setEditingSourceId(null);
@@ -419,6 +438,24 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
     }
   }
 
+  async function handleCheckSourceHealth(sourceID: string) {
+    setError(null);
+    setFeedback(null);
+
+    try {
+      setCheckingSourceHealthID(sourceID);
+      const result = await checkLocalGatewaySourceHealth(sourceID, apiBase);
+      setSourceHealthchecks((current) => ({
+        ...current,
+        [sourceID]: result
+      }));
+    } catch (healthError) {
+      setError(healthError instanceof Error ? healthError.message : t("common.unknownError"));
+    } finally {
+      setCheckingSourceHealthID(null);
+    }
+  }
+
   function addModel(modelID: string) {
     void persistSelectedModels(
       [...selectedModels, { model_id: modelID, position: selectedModels.length }],
@@ -536,7 +573,7 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
             <p className={metaClass}>{t("models.runtime.apiBase")}</p>
             <p className={monoClass}>{runtime.runtime.api_base || "-"}</p>
             <p className="text-xs text-[color:var(--color-muted)]">
-              pid {runtime.runtime.pid ?? "-"}
+              pid {runtime.runtime.pid ?? "-"} · {runtime.runtime.runtime_kind || "-"}
             </p>
           </div>
           <div className={infoCardClass}>
@@ -544,6 +581,13 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
             <p className={monoClass}>{runtime.last_sync.last_synced_at || "-"}</p>
             <p className="text-xs text-[color:var(--color-muted)]">
               {runtime.last_sync_error || `${runtime.last_sync.applied_sources} / ${runtime.last_sync.applied_selected_models}`}
+            </p>
+          </div>
+          <div className={infoCardClass}>
+            <p className={metaClass}>Runtime version</p>
+            <p className={monoClass}>{runtime.runtime.version || "-"}</p>
+            <p className="text-xs text-[color:var(--color-muted)]">
+              commit {runtime.runtime.commit || "-"}
             </p>
           </div>
         </div>
@@ -691,68 +735,120 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
               <p>{loading ? t("common.loading") : t("models.sources.empty")}</p>
             </div>
           ) : (
-            sources.map((source) => (
-              <article key={source.id} className={queueItemClass}>
-                <div className="min-w-0 flex-1 space-y-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <strong className="text-[15px] font-semibold text-[color:var(--color-heading)]">
-                      {source.name}
-                    </strong>
-                    <span className={statusPillClass(source.enabled ? "success" : "default")}>
-                      {source.enabled ? t("models.sources.enabled") : t("models.sources.disabled")}
-                    </span>
-                    <span
-                      className={statusPillClass(
-                        source.last_sync_status === "synced"
-                          ? "success"
-                          : source.last_sync_status === "error"
-                            ? "danger"
-                            : "warning"
-                      )}
-                    >
-                      {source.last_sync_status}
-                    </span>
-                  </div>
-                  <p className={monoClass}>{source.base_url}</p>
-                  <p className={metaClass}>
-                    {source.provider_type} · default {source.default_model_id}
-                  </p>
-                  <p className={metaClass}>
-                    {source.exposed_model_ids.length > 0
-                      ? source.exposed_model_ids.join(", ")
-                      : t("models.available.ownerUnknown")}
-                  </p>
-                  {source.last_sync_error ? (
-                    <p className="text-sm text-[color:var(--danger-text)]">
-                      {source.last_sync_error}
+            sources.map((source) => {
+              const capability = sourceCapabilityByID.get(source.id);
+              const healthcheck = sourceHealthchecks[source.id];
+
+              return (
+                <article key={source.id} className={queueItemClass}>
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <strong className="text-[15px] font-semibold text-[color:var(--color-heading)]">
+                        {source.name}
+                      </strong>
+                      <span className={statusPillClass(source.enabled ? "success" : "default")}>
+                        {source.enabled ? t("models.sources.enabled") : t("models.sources.disabled")}
+                      </span>
+                      <span
+                        className={statusPillClass(
+                          source.last_sync_status === "synced"
+                            ? "success"
+                            : source.last_sync_status === "error"
+                              ? "danger"
+                              : "warning"
+                        )}
+                      >
+                        {source.last_sync_status}
+                      </span>
+                    </div>
+                    <p className={monoClass}>{source.base_url}</p>
+                    <p className={metaClass}>
+                      {source.provider_type} · default {source.default_model_id}
                     </p>
-                  ) : null}
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                  <button
-                    type="button"
-                    className={buttonClass("secondary")}
-                    onClick={() => void handleToggleSourceEnabled(source)}
-                  >
-                    {source.enabled ? t("models.sources.disable") : t("models.sources.enable")}
-                  </button>
-                  <button
-                    type="button"
-                    className={buttonClass("secondary")}
-                    onClick={() => startEditingSource(source)}
-                  >
-                    {t("common.edit")}
-                  </button>
-                  <button
-                    type="button"
-                    className={buttonClass("danger")}
-                    onClick={() => void handleDeleteSource(source.id)}
-                  >
-                    {t("common.delete")}
-                  </button>
-                </div>
-              </article>
-            ))
+                    <p className={metaClass}>
+                      {source.exposed_model_ids.length > 0
+                        ? source.exposed_model_ids.join(", ")
+                        : t("models.available.ownerUnknown")}
+                    </p>
+                    {capability ? (
+                      <div className="flex flex-wrap gap-2">
+                        <span className={statusPillClass(
+                          capability.models_api_status === "supported"
+                            ? "success"
+                            : capability.models_api_status === "unsupported"
+                              ? "default"
+                              : "warning"
+                        )}>
+                          models {capability.models_api_status}
+                        </span>
+                        <span className={statusPillClass(
+                          capability.openai_chat_completions_status === "supported"
+                            ? "success"
+                            : capability.openai_chat_completions_status === "unsupported"
+                              ? "default"
+                              : "warning"
+                        )}>
+                          chat {capability.openai_chat_completions_status}
+                        </span>
+                        <span className={statusPillClass(
+                          capability.stream_status === "supported"
+                            ? "success"
+                            : capability.stream_status === "unsupported"
+                              ? "default"
+                              : "warning"
+                        )}>
+                          stream {capability.stream_status}
+                        </span>
+                      </div>
+                    ) : null}
+                    {healthcheck ? (
+                      <p className={metaClass}>
+                        health {healthcheck.status} · {healthcheck.status_code} · {healthcheck.latency_ms}ms
+                        {healthcheck.summary ? ` · ${healthcheck.summary}` : ""}
+                      </p>
+                    ) : null}
+                    {source.last_sync_error ? (
+                      <p className="text-sm text-[color:var(--danger-text)]">
+                        {source.last_sync_error}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    {capabilities.supports_explicit_source_health ? (
+                      <button
+                        type="button"
+                        className={buttonClass("secondary")}
+                        onClick={() => void handleCheckSourceHealth(source.id)}
+                        disabled={checkingSourceHealthID === source.id}
+                      >
+                        {checkingSourceHealthID === source.id ? t("common.loading") : t("common.check")}
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      className={buttonClass("secondary")}
+                      onClick={() => void handleToggleSourceEnabled(source)}
+                    >
+                      {source.enabled ? t("models.sources.disable") : t("models.sources.enable")}
+                    </button>
+                    <button
+                      type="button"
+                      className={buttonClass("secondary")}
+                      onClick={() => startEditingSource(source)}
+                    >
+                      {t("common.edit")}
+                    </button>
+                    <button
+                      type="button"
+                      className={buttonClass("danger")}
+                      onClick={() => void handleDeleteSource(source.id)}
+                    >
+                      {t("common.delete")}
+                    </button>
+                  </div>
+                </article>
+              );
+            })
           )}
         </div>
       </section>

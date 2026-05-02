@@ -137,13 +137,13 @@
 
 ### 阶段 6：补 Models 页 runtime 能力展示
 
-- [ ] 6.1 使用 `supports_runtime_version`
+- [x] 6.1 使用 `supports_runtime_version`
   目标：在 Models 页展示 runtime `version/commit/runtime_kind`
-- [ ] 6.2 使用 `supports_explicit_source_health`
+- [x] 6.2 使用 `supports_explicit_source_health`
   目标：展示 source healthcheck 状态
-- [ ] 6.3 使用 source capabilities
+- [x] 6.3 使用 source capabilities
   目标：展示每个 source 的协议能力和状态
-- [ ] 6.4 优化 sync 反馈文案
+- [x] 6.4 优化 sync 反馈文案
   目标：让用户清楚区分“主数据已保存”和“已同步到 runtime”
 
 ### 阶段 7：补测试与验收
