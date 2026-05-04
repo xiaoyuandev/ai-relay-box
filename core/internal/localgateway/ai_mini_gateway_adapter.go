@@ -412,11 +412,36 @@ func (a *AIMiniGatewayAdapter) ListModelSourceCapabilities(ctx context.Context) 
 }
 
 func (a *AIMiniGatewayAdapter) CheckModelSourceHealth(ctx context.Context, id string) (ModelSourceHealthcheck, error) {
+	runtimeSourceID, err := a.resolveRuntimeModelSourceID(ctx, id)
+	if err != nil {
+		return ModelSourceHealthcheck{}, err
+	}
+
 	var payload ModelSourceHealthcheck
-	if err := a.doJSON(ctx, http.MethodPost, "/admin/model-sources/"+id+"/healthcheck", nil, &payload); err != nil {
+	if err := a.doJSON(ctx, http.MethodPost, "/admin/model-sources/"+runtimeSourceID+"/healthcheck", nil, &payload); err != nil {
 		return ModelSourceHealthcheck{}, err
 	}
 	return payload, nil
+}
+
+func (a *AIMiniGatewayAdapter) resolveRuntimeModelSourceID(ctx context.Context, id string) (string, error) {
+	sources, err := a.ListModelSources(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	for _, source := range sources {
+		if source.ID == id || source.ExternalID == id {
+			return source.ID, nil
+		}
+	}
+
+	return "", &AdapterError{
+		Code:        AdapterErrorConflict,
+		Operation:   "resolve_model_source_health",
+		RuntimeKind: a.RuntimeKind(),
+		Message:     "runtime model source not found; sync local gateway first",
+	}
 }
 
 func (a *AIMiniGatewayAdapter) CreateModelSource(ctx context.Context, input RuntimeModelSourceInput) (RuntimeModelSource, error) {

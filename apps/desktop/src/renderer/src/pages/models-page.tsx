@@ -64,6 +64,13 @@ interface AvailableModel {
   sourceName: string;
 }
 
+function normalizeModelSource(source: LocalGatewayModelSource): LocalGatewayModelSource {
+  return {
+    ...source,
+    exposed_model_ids: Array.isArray(source.exposed_model_ids) ? source.exposed_model_ids : []
+  };
+}
+
 const emptyRuntime: LocalGatewayRuntimeResponse = {
   runtime: {
     runtime_kind: "",
@@ -166,7 +173,7 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
 
     setRuntime(runtimeData);
     setCapabilities(capabilityData);
-    setSources(sourceData);
+    setSources(sourceData.map(normalizeModelSource));
     setSourceCapabilities(sourceCapabilityData);
     setSelectedModels(selectedData);
   }, [apiBase]);
@@ -193,7 +200,7 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
 
         setRuntime(runtimeData);
         setCapabilities(capabilityData);
-        setSources(sourceData);
+        setSources(sourceData.map(normalizeModelSource));
         setSourceCapabilities(sourceCapabilityData);
         setSelectedModels(selectedData);
       } catch (loadError) {
@@ -442,16 +449,38 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
     setError(null);
     setFeedback(null);
 
+    const source = sources.find((item) => item.id === sourceID);
+    const requiresSync = source?.last_sync_status !== "synced";
+
     try {
       setCheckingSourceHealthID(sourceID);
+      if (requiresSync) {
+        setSyncing(true);
+        await syncLocalGateway(apiBase);
+        await loadAll();
+      }
       const result = await checkLocalGatewaySourceHealth(sourceID, apiBase);
       setSourceHealthchecks((current) => ({
         ...current,
         [sourceID]: result
       }));
+      const message = t("models.feedback.healthcheck", {
+        source: source?.name ?? sourceID,
+        status: result.status.toUpperCase(),
+        code: result.status_code,
+        latency: result.latency_ms
+      });
+      if (result.status === "ok") {
+        setFeedback(message);
+      } else {
+        setError(message);
+      }
     } catch (healthError) {
       setError(healthError instanceof Error ? healthError.message : t("common.unknownError"));
     } finally {
+      if (requiresSync) {
+        setSyncing(false);
+      }
       setCheckingSourceHealthID(null);
     }
   }

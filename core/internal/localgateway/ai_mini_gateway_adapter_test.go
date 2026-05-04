@@ -220,6 +220,45 @@ func TestAIMiniGatewayAdapterSyncFromProductStateFallsBackToLegacy(t *testing.T)
 	}
 }
 
+func TestAIMiniGatewayAdapterCheckModelSourceHealthResolvesExternalID(t *testing.T) {
+	t.Parallel()
+
+	state := newFakeAIMiniGatewayRuntime(true)
+	state.sources = []RuntimeModelSource{
+		{
+			ID:             "src-1",
+			ExternalID:     "local-source-1777774771452514000",
+			Name:           "DeepSeek",
+			BaseURL:        "https://api.deepseek.com",
+			ProviderType:   "openai-compatible",
+			DefaultModelID: "deepseek-chat",
+			Enabled:        true,
+			Position:       0,
+		},
+	}
+	client := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		return state.roundTrip(t, r)
+	})}
+
+	adapter := NewAIMiniGatewayAdapter(client)
+	adapter.status = RuntimeStatus{
+		RuntimeKind: RuntimeKindAIMiniGateway,
+		State:       RuntimeStateRunning,
+		Running:     true,
+		Healthy:     true,
+		APIBase:     "http://runtime.test",
+	}
+
+	result, err := adapter.CheckModelSourceHealth(context.Background(), "local-source-1777774771452514000")
+	if err != nil {
+		t.Fatalf("check model source health: %v", err)
+	}
+
+	if result.Status != "ok" || result.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected healthcheck result: %+v", result)
+	}
+}
+
 func TestNormalizeSelectedModels(t *testing.T) {
 	t.Parallel()
 
@@ -326,6 +365,25 @@ func (f *fakeAIMiniGatewayRuntime) roundTrip(t *testing.T, r *http.Request) (*ht
 		}), nil
 	case r.Method == http.MethodGet && r.URL.Path == "/admin/model-sources":
 		return jsonResponse(http.StatusOK, f.sources), nil
+	case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/healthcheck") && strings.HasPrefix(r.URL.Path, "/admin/model-sources/"):
+		id := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/admin/model-sources/"), "/healthcheck")
+		id = strings.TrimSuffix(id, "/")
+		for _, item := range f.sources {
+			if item.ID != id {
+				continue
+			}
+			return jsonResponse(http.StatusOK, ModelSourceHealthcheck{
+				Status:     "ok",
+				StatusCode: http.StatusOK,
+				LatencyMS:  12,
+				Summary:    "HTTP 200",
+				CheckedAt:  "2026-05-04T00:00:00Z",
+			}), nil
+		}
+		return jsonResponse(http.StatusNotFound, map[string]any{
+			"error":   "not_found",
+			"message": "resource not found",
+		}), nil
 	case r.Method == http.MethodPost && r.URL.Path == "/admin/model-sources":
 		var input RuntimeModelSourceInput
 		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
