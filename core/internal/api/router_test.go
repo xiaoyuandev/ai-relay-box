@@ -63,7 +63,7 @@ func TestLocalGatewaySourceAndSyncEndpoints(t *testing.T) {
 		},
 		syncResult: localgateway.SyncResult{
 			AppliedSources:        1,
-			AppliedSelectedModels: 1,
+			AppliedSelectedModels: 0,
 			LastSyncedAt:          "2026-05-01T00:00:00Z",
 		},
 		sourceCapabilities: []localgateway.ModelSourceCapability{
@@ -172,6 +172,9 @@ func TestLocalGatewaySourceAndSyncEndpoints(t *testing.T) {
 	}
 	if adapter.syncInputs[0].Sources[0].APIKey != "sk-test-openai" {
 		t.Fatalf("unexpected synced api key: %s", adapter.syncInputs[0].Sources[0].APIKey)
+	}
+	if len(adapter.syncInputs[0].SelectedModels) != 0 {
+		t.Fatalf("expected selected models to be omitted from runtime sync, got %+v", adapter.syncInputs[0].SelectedModels)
 	}
 
 	capabilityReq := httptest.NewRequest(http.MethodGet, "/api/local-gateway/source-capabilities", nil)

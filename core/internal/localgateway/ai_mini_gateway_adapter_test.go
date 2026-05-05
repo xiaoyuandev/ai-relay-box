@@ -259,6 +259,48 @@ func TestAIMiniGatewayAdapterCheckModelSourceHealthResolvesExternalID(t *testing
 	}
 }
 
+func TestAIMiniGatewayAdapterListModelSourceCapabilitiesResolvesExternalID(t *testing.T) {
+	t.Parallel()
+
+	state := newFakeAIMiniGatewayRuntime(true)
+	state.sources = []RuntimeModelSource{
+		{
+			ID:             "src-1",
+			ExternalID:     "local-source-1777774771452514000",
+			Name:           "DeepSeek",
+			BaseURL:        "https://api.deepseek.com",
+			ProviderType:   "openai-compatible",
+			DefaultModelID: "deepseek-chat",
+			Enabled:        true,
+			Position:       0,
+		},
+	}
+	client := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		return state.roundTrip(t, r)
+	})}
+
+	adapter := NewAIMiniGatewayAdapter(client)
+	adapter.status = RuntimeStatus{
+		RuntimeKind: RuntimeKindAIMiniGateway,
+		State:       RuntimeStateRunning,
+		Running:     true,
+		Healthy:     true,
+		APIBase:     "http://runtime.test",
+	}
+
+	items, err := adapter.ListModelSourceCapabilities(context.Background())
+	if err != nil {
+		t.Fatalf("list model source capabilities: %v", err)
+	}
+
+	if len(items) != 1 {
+		t.Fatalf("unexpected source capability count: %d", len(items))
+	}
+	if items[0].SourceID != "local-source-1777774771452514000" {
+		t.Fatalf("unexpected source capability id: %+v", items[0])
+	}
+}
+
 func TestNormalizeSelectedModels(t *testing.T) {
 	t.Parallel()
 
@@ -365,6 +407,28 @@ func (f *fakeAIMiniGatewayRuntime) roundTrip(t *testing.T, r *http.Request) (*ht
 		}), nil
 	case r.Method == http.MethodGet && r.URL.Path == "/admin/model-sources":
 		return jsonResponse(http.StatusOK, f.sources), nil
+	case r.Method == http.MethodGet && r.URL.Path == "/admin/model-sources/capabilities":
+		payload := make([]map[string]any, 0, len(f.sources))
+		for _, item := range f.sources {
+			payload = append(payload, map[string]any{
+				"id":                               item.ID,
+				"name":                             item.Name,
+				"provider_type":                    item.ProviderType,
+				"supports_models_api":              true,
+				"models_api_status":                "supported",
+				"supports_openai_chat_completions": item.ProviderType == "openai-compatible",
+				"openai_chat_completions_status":   "supported",
+				"supports_openai_responses":        item.ProviderType == "openai-compatible",
+				"openai_responses_status":          "supported",
+				"supports_anthropic_messages":      item.ProviderType == "anthropic-compatible",
+				"anthropic_messages_status":        "supported",
+				"supports_anthropic_count_tokens":  item.ProviderType == "anthropic-compatible",
+				"anthropic_count_tokens_status":    "supported",
+				"supports_stream":                  true,
+				"stream_status":                    "supported",
+			})
+		}
+		return jsonResponse(http.StatusOK, payload), nil
 	case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/healthcheck") && strings.HasPrefix(r.URL.Path, "/admin/model-sources/"):
 		id := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/admin/model-sources/"), "/healthcheck")
 		id = strings.TrimSuffix(id, "/")

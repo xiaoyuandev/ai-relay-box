@@ -8,10 +8,8 @@ import {
   getLocalGatewayCapabilities,
   getLocalGatewayRuntime,
   getLocalGatewaySourceCapabilities,
-  getLocalGatewaySelectedModels,
   getLocalGatewaySources,
   syncLocalGateway,
-  updateLocalGatewaySelectedModels,
   updateLocalGatewaySource
 } from "../services/api";
 import type {
@@ -22,11 +20,9 @@ import type {
   LocalGatewaySourceHealthcheck,
   LocalGatewayRuntimeResponse
 } from "../types/local-gateway";
-import type { SelectedModel } from "../types/selected-model";
 import {
   actionRowClass,
   buttonClass,
-  columnCardClass,
   compactStatGridClass,
   emptyStateClass,
   eyebrowClass,
@@ -36,7 +32,6 @@ import {
   heroCopyClass,
   heroLabelStackClass,
   heroTitleClass,
-  iconBadgeClass,
   infoCardClass,
   inputClass,
   labelClass,
@@ -50,18 +45,11 @@ import {
   sectionHeadClass,
   sectionMetaClass,
   sectionTitleClass,
-  statusPillClass,
-  stickySearchClass
+  statusPillClass
 } from "../ui";
 
 interface ModelsPageProps {
   apiBase?: string;
-}
-
-interface AvailableModel {
-  id: string;
-  ownedBy: string;
-  sourceName: string;
 }
 
 function normalizeModelSource(source: LocalGatewayModelSource): LocalGatewayModelSource {
@@ -111,16 +99,12 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
   const [sources, setSources] = useState<LocalGatewayModelSource[]>([]);
   const [sourceCapabilities, setSourceCapabilities] = useState<LocalGatewaySourceCapability[]>([]);
   const [sourceHealthchecks, setSourceHealthchecks] = useState<Record<string, LocalGatewaySourceHealthcheck>>({});
-  const [selectedModels, setSelectedModels] = useState<SelectedModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
-  const [search, setSearch] = useState("");
-  const [draggedModelId, setDraggedModelId] = useState<string | null>(null);
-  const [leftPaneWidth, setLeftPaneWidth] = useState(48);
   const [formOpen, setFormOpen] = useState(false);
   const [editingSourceId, setEditingSourceId] = useState<string | null>(null);
   const [sourceName, setSourceName] = useState("");
@@ -131,7 +115,6 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
   >("openai-compatible");
   const [sourceDefaultModelID, setSourceDefaultModelID] = useState("");
   const [sourceExposedModelIDs, setSourceExposedModelIDs] = useState("");
-  const [sourceEnabled, setSourceEnabled] = useState(true);
   const [checkingSourceHealthID, setCheckingSourceHealthID] = useState<string | null>(null);
 
   const dismissToast = useCallback((id: string) => {
@@ -161,11 +144,10 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
   }, [feedback]);
 
   const loadAll = useCallback(async () => {
-    const [runtimeData, capabilityData, sourceData, selectedData] = await Promise.all([
+    const [runtimeData, capabilityData, sourceData] = await Promise.all([
       getLocalGatewayRuntime(apiBase),
       getLocalGatewayCapabilities(apiBase),
-      getLocalGatewaySources(apiBase),
-      getLocalGatewaySelectedModels(apiBase)
+      getLocalGatewaySources(apiBase)
     ]);
     const sourceCapabilityData = capabilityData.supports_source_capabilities
       ? await getLocalGatewaySourceCapabilities(apiBase).catch(() => [])
@@ -175,7 +157,6 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
     setCapabilities(capabilityData);
     setSources(sourceData.map(normalizeModelSource));
     setSourceCapabilities(sourceCapabilityData);
-    setSelectedModels(selectedData);
   }, [apiBase]);
 
   useEffect(() => {
@@ -184,11 +165,10 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
     async function load() {
       setLoading(true);
       try {
-        const [runtimeData, capabilityData, sourceData, selectedData] = await Promise.all([
+        const [runtimeData, capabilityData, sourceData] = await Promise.all([
           getLocalGatewayRuntime(apiBase),
           getLocalGatewayCapabilities(apiBase),
-          getLocalGatewaySources(apiBase),
-          getLocalGatewaySelectedModels(apiBase)
+          getLocalGatewaySources(apiBase)
         ]);
         const sourceCapabilityData = capabilityData.supports_source_capabilities
           ? await getLocalGatewaySourceCapabilities(apiBase).catch(() => [])
@@ -202,7 +182,6 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
         setCapabilities(capabilityData);
         setSources(sourceData.map(normalizeModelSource));
         setSourceCapabilities(sourceCapabilityData);
-        setSelectedModels(selectedData);
       } catch (loadError) {
         if (!cancelled) {
           setError(loadError instanceof Error ? loadError.message : t("common.unknownError"));
@@ -220,59 +199,6 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
       cancelled = true;
     };
   }, [apiBase, t]);
-
-  const availableModels = useMemo<AvailableModel[]>(() => {
-    const seen = new Set<string>();
-    const items: AvailableModel[] = [];
-
-    for (const source of sources) {
-      if (!source.enabled) {
-        continue;
-      }
-
-      const modelIDs = [source.default_model_id, ...source.exposed_model_ids];
-      for (const modelID of modelIDs) {
-        const trimmed = modelID.trim();
-        if (!trimmed || seen.has(trimmed)) {
-          continue;
-        }
-        seen.add(trimmed);
-        items.push({
-          id: trimmed,
-          ownedBy: source.provider_type,
-          sourceName: source.name
-        });
-      }
-    }
-
-    return items;
-  }, [sources]);
-
-  const selectedModelIDs = new Set(selectedModels.map((item) => item.model_id));
-
-  const filteredAvailableModels = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
-    return availableModels.filter((model) => {
-      if (selectedModelIDs.has(model.id)) {
-        return false;
-      }
-
-      if (!keyword) {
-        return true;
-      }
-
-      return (
-        model.id.toLowerCase().includes(keyword) ||
-        model.ownedBy.toLowerCase().includes(keyword) ||
-        model.sourceName.toLowerCase().includes(keyword)
-      );
-    });
-  }, [availableModels, search, selectedModelIDs]);
-
-  const selectedModelDetails = selectedModels.map((item) => ({
-    ...item,
-    details: availableModels.find((model) => model.id === item.model_id) ?? null
-  }));
 
   const runtimeStateTone =
     runtime.runtime.healthy && runtime.runtime.running
@@ -293,7 +219,6 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
     setSourceProviderType("openai-compatible");
     setSourceDefaultModelID("");
     setSourceExposedModelIDs("");
-    setSourceEnabled(true);
   }
 
   function startEditingSource(source: LocalGatewayModelSource) {
@@ -304,7 +229,6 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
     setSourceProviderType(source.provider_type);
     setSourceDefaultModelID(source.default_model_id);
     setSourceExposedModelIDs(source.exposed_model_ids.join(", "));
-    setSourceEnabled(source.enabled);
     setFormOpen(true);
   }
 
@@ -337,7 +261,9 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
       provider_type: sourceProviderType,
       default_model_id: sourceDefaultModelID.trim(),
       exposed_model_ids: parseExposedModels(sourceExposedModelIDs),
-      enabled: sourceEnabled,
+      enabled: editingSourceId
+        ? sources.find((item) => item.id === editingSourceId)?.enabled ?? true
+        : true,
       position: editingSourceId
         ? sources.find((item) => item.id === editingSourceId)?.position ?? sources.length
         : sources.length
@@ -444,23 +370,6 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
     }
   }
 
-  async function persistSelectedModels(nextItems: SelectedModel[], successMessage: string) {
-    setSaving(true);
-    setError(null);
-    setFeedback(null);
-
-    try {
-      const saved = await updateLocalGatewaySelectedModels(nextItems, apiBase);
-      setSelectedModels(saved);
-      await loadAll();
-      setFeedback(successMessage);
-    } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : t("common.unknownError"));
-    } finally {
-      setSaving(false);
-    }
-  }
-
   async function handleSync() {
     setError(null);
     setFeedback(null);
@@ -472,8 +381,7 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
       setSourceHealthchecks({});
       setFeedback(
         t("models.feedback.synced", {
-          sources: result.applied_sources,
-          models: result.applied_selected_models
+          sources: result.applied_sources
         })
       );
     } catch (syncError) {
@@ -524,63 +432,6 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
     }
   }
 
-  function addModel(modelID: string) {
-    void persistSelectedModels(
-      [...selectedModels, { model_id: modelID, position: selectedModels.length }],
-      t("models.feedback.orderUpdated")
-    );
-  }
-
-  function removeModel(modelID: string) {
-    void persistSelectedModels(
-      selectedModels
-        .filter((item) => item.model_id !== modelID)
-        .map((item, index) => ({ ...item, position: index })),
-      t("models.feedback.removed")
-    );
-  }
-
-  function moveModel(targetModelID: string) {
-    if (!draggedModelId || draggedModelId === targetModelID) {
-      return;
-    }
-
-    const current = [...selectedModels];
-    const fromIndex = current.findIndex((item) => item.model_id === draggedModelId);
-    const toIndex = current.findIndex((item) => item.model_id === targetModelID);
-    if (fromIndex < 0 || toIndex < 0) {
-      return;
-    }
-
-    const [moved] = current.splice(fromIndex, 1);
-    current.splice(toIndex, 0, moved);
-    void persistSelectedModels(
-      current.map((item, index) => ({ ...item, position: index })),
-      t("models.feedback.orderUpdated")
-    );
-  }
-
-  function startResize(event: React.PointerEvent<HTMLDivElement>) {
-    const container = event.currentTarget.parentElement;
-    if (!container) {
-      return;
-    }
-
-    const rect = container.getBoundingClientRect();
-    const onMove = (moveEvent: PointerEvent) => {
-      const nextWidth = ((moveEvent.clientX - rect.left) / rect.width) * 100;
-      setLeftPaneWidth(Math.min(70, Math.max(30, nextWidth)));
-    };
-
-    const onUp = () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-    };
-
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-  }
-
   return (
     <main className={pageShellClass}>
       <ToastRegion items={toasts} onDismiss={dismissToast} />
@@ -598,7 +449,7 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
             {runtime.runtime.state.toUpperCase()}
           </span>
           <span className={statusPillClass(syncing ? "warning" : "default")}>
-            {syncing ? t("models.runtime.syncing") : t("models.section.state.selected", { count: selectedModels.length })}
+            {syncing ? t("models.runtime.syncing") : t("models.section.state.sources", { count: sources.length })}
           </span>
         </div>
       </section>
@@ -648,7 +499,10 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
             <p className={metaClass}>{t("models.runtime.lastSync")}</p>
             <p className={monoClass}>{runtime.last_sync.last_synced_at || "-"}</p>
             <p className="text-xs text-[color:var(--color-muted)]">
-              {runtime.last_sync_error || `${runtime.last_sync.applied_sources} / ${runtime.last_sync.applied_selected_models}`}
+              {runtime.last_sync_error ||
+                t("models.runtime.lastSyncSummary", {
+                  sources: runtime.last_sync.applied_sources
+                })}
             </p>
           </div>
           <div className={infoCardClass}>
@@ -754,17 +608,6 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
                 value={sourceDefaultModelID}
                 onChange={(event) => setSourceDefaultModelID(event.target.value)}
               />
-            </label>
-            <label className={labelClass}>
-              <span className={fieldLabelClass}>{t("models.form.enabled")}</span>
-              <select
-                className={inputClass}
-                value={sourceEnabled ? "enabled" : "disabled"}
-                onChange={(event) => setSourceEnabled(event.target.value === "enabled")}
-              >
-                <option value="enabled">{t("models.sources.enabled")}</option>
-                <option value="disabled">{t("models.sources.disabled")}</option>
-              </select>
             </label>
             <label className={`${labelClass} md:col-span-2`}>
               <span className={fieldLabelClass}>{t("models.form.exposedModels")}</span>
@@ -918,173 +761,6 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
               );
             })
           )}
-        </div>
-      </section>
-
-      <section className={sectionCardClass}>
-        <div className={sectionHeadClass}>
-          <div className="space-y-1">
-            <h2 className={sectionTitleClass}>{t("models.fallback.title")}</h2>
-            <p className={sectionMetaClass}>{t("models.fallback.subtitle")}</p>
-          </div>
-        </div>
-
-        <div className={`${compactStatGridClass} mt-4`}>
-          <div className={infoCardClass}>
-            <p className={metaClass}>{t("models.stats.providerModels")}</p>
-            <p className={metricNumberClass}>{availableModels.length}</p>
-          </div>
-          <div className={infoCardClass}>
-            <p className={metaClass}>{t("models.stats.availableToAdd")}</p>
-            <p className={metricNumberClass}>{filteredAvailableModels.length}</p>
-          </div>
-          <div className={infoCardClass}>
-            <p className={metaClass}>{t("models.stats.failoverSlots")}</p>
-            <p className={metricNumberClass}>{selectedModels.length}</p>
-          </div>
-        </div>
-
-        <div
-          className="mt-3 flex min-h-0 flex-col gap-3 xl:grid xl:h-[min(62vh,720px)] xl:items-stretch"
-          style={{
-            gridTemplateColumns: `minmax(0, ${leftPaneWidth}fr) 12px minmax(0, ${100 - leftPaneWidth}fr)`
-          }}
-        >
-          <section className={columnCardClass}>
-            <div className={sectionHeadClass}>
-              <div className="space-y-1">
-                <h3 className={sectionTitleClass}>{t("models.available.title")}</h3>
-                <p className={sectionMetaClass}>{filteredAvailableModels.length}</p>
-              </div>
-            </div>
-
-            <div className={`${stickySearchClass} mt-3`}>
-              <label className="relative block">
-                <input
-                  className={`${inputClass} pr-11`}
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder={t("models.available.searchPlaceholder")}
-                />
-                <span
-                  className="pointer-events-none absolute inset-y-0 right-4 inline-flex items-center text-[color:var(--color-subtle)]"
-                  aria-hidden="true"
-                >
-                  <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24">
-                    <path d="M10.5 4a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13Zm0 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
-                    <path d="m15.3 14 4.7 4.7-1.4 1.4-4.7-4.7z" />
-                  </svg>
-                </span>
-              </label>
-            </div>
-
-            <div className={`${scrollListClass} mt-3`}>
-              {filteredAvailableModels.length === 0 ? (
-                <div className={emptyStateClass}>
-                  <p>{loading ? t("common.loading") : t("models.available.empty")}</p>
-                </div>
-              ) : (
-                filteredAvailableModels.map((model) => (
-                  <article key={model.id} className={queueItemClass}>
-                    <button
-                      type="button"
-                      className={`${buttonClass("secondary")} absolute right-3 top-3 min-h-8 px-2.5 py-1 text-xs`}
-                      onClick={() => addModel(model.id)}
-                    >
-                      {t("models.available.add", { id: model.id })}
-                    </button>
-                    <div className="flex items-start gap-2.5 pr-28">
-                      <span className={`${iconBadgeClass} mt-0.5`}>
-                        <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
-                          <path d="M12 3 4 7v10l8 4 8-4V7zm0 2.2L17.8 8 12 10.8 6.2 8zM6 9.6l5 2.5v6.2l-5-2.5zm7 8.7v-6.2l5-2.5v6.2z" />
-                        </svg>
-                      </span>
-                      <div>
-                        <p className={monoClass}>{model.id}</p>
-                        <p className={`${metaClass} mt-1.5`}>
-                          {model.ownedBy} · {model.sourceName}
-                        </p>
-                      </div>
-                    </div>
-                  </article>
-                ))
-              )}
-            </div>
-          </section>
-
-          <div
-            className="pane-resizer"
-            role="separator"
-            aria-orientation="vertical"
-            aria-label={t("models.resizeColumns")}
-            onPointerDown={startResize}
-          >
-            <span className="pane-resizer-line" />
-          </div>
-
-          <section className={columnCardClass}>
-            <div className={sectionHeadClass}>
-              <div className="space-y-1">
-                <h3 className={sectionTitleClass}>{t("models.fallback.title")}</h3>
-                <p className={sectionMetaClass}>{selectedModels.length}</p>
-              </div>
-            </div>
-
-            <div className={`${scrollListClass} mt-3`}>
-              {selectedModelDetails.length === 0 ? (
-                <div className={emptyStateClass}>
-                  <p>{t("models.fallback.empty")}</p>
-                </div>
-              ) : (
-                selectedModelDetails.map((item, index) => (
-                  <article
-                    key={item.model_id}
-                    className={`${queueItemClass} cursor-grab`}
-                    draggable
-                    onDragStart={() => {
-                      setDraggedModelId(item.model_id);
-                    }}
-                    onDragOver={(event) => {
-                      event.preventDefault();
-                    }}
-                    onDrop={() => {
-                      moveModel(item.model_id);
-                    }}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="grid gap-1.5">
-                        <span
-                          className="pt-1 text-[11px] font-bold uppercase tracking-[0.3em] text-[color:var(--accent)]/75"
-                          aria-hidden="true"
-                        >
-                          :::
-                        </span>
-                        <span className="text-xs font-semibold text-[color:var(--color-subtle)]">
-                          #{index + 1}
-                        </span>
-                      </div>
-                      <div>
-                        <p className={monoClass}>{item.model_id}</p>
-                        <p className={`${metaClass} mt-1.5`}>
-                          {index === 0
-                            ? t("models.fallback.primary")
-                            : t("models.fallback.secondary", { index })}
-                          {item.details ? ` · ${item.details.ownedBy}` : ""}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      className={buttonClass("secondary")}
-                      onClick={() => removeModel(item.model_id)}
-                    >
-                      {t("models.fallback.remove")}
-                    </button>
-                  </article>
-                ))
-              )}
-            </div>
-          </section>
         </div>
       </section>
     </main>

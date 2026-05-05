@@ -205,14 +205,9 @@ func (s *Service) BuildSyncInput(ctx context.Context) (SyncInput, error) {
 		})
 	}
 
-	selectedModels, err := s.repository.ListSelectedModels(ctx)
-	if err != nil {
-		return SyncInput{}, err
-	}
-
 	input := SyncInput{
 		Sources:        resolvedSources,
-		SelectedModels: selectedModels,
+		SelectedModels: []SelectedModel{},
 	}
 
 	if err := s.ValidateSyncInput(input); err != nil {

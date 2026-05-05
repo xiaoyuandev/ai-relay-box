@@ -387,10 +387,22 @@ func (a *AIMiniGatewayAdapter) ListModelSourceCapabilities(ctx context.Context) 
 		return nil, err
 	}
 
+	runtimeSourceIDByExternalID, runtimeSourceExternalIDByID, err := a.runtimeModelSourceMappings(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	items := make([]ModelSourceCapability, 0, len(payload))
 	for _, item := range payload {
+		sourceID := item.ID
+		if externalID, ok := runtimeSourceExternalIDByID[item.ID]; ok {
+			sourceID = externalID
+		} else if runtimeID, ok := runtimeSourceIDByExternalID[item.ID]; ok {
+			sourceID = runtimeID
+		}
+
 		items = append(items, ModelSourceCapability{
-			SourceID:                      item.ID,
+			SourceID:                      sourceID,
 			Name:                          item.Name,
 			ProviderType:                  item.ProviderType,
 			SupportsModelsAPI:             item.SupportsModelsAPI,
@@ -425,15 +437,13 @@ func (a *AIMiniGatewayAdapter) CheckModelSourceHealth(ctx context.Context, id st
 }
 
 func (a *AIMiniGatewayAdapter) resolveRuntimeModelSourceID(ctx context.Context, id string) (string, error) {
-	sources, err := a.ListModelSources(ctx)
+	runtimeSourceIDByExternalID, _, err := a.runtimeModelSourceMappings(ctx)
 	if err != nil {
 		return "", err
 	}
 
-	for _, source := range sources {
-		if source.ID == id || source.ExternalID == id {
-			return source.ID, nil
-		}
+	if runtimeID, ok := runtimeSourceIDByExternalID[id]; ok {
+		return runtimeID, nil
 	}
 
 	return "", &AdapterError{
@@ -442,6 +452,26 @@ func (a *AIMiniGatewayAdapter) resolveRuntimeModelSourceID(ctx context.Context, 
 		RuntimeKind: a.RuntimeKind(),
 		Message:     "runtime model source not found; sync local gateway first",
 	}
+}
+
+func (a *AIMiniGatewayAdapter) runtimeModelSourceMappings(ctx context.Context) (map[string]string, map[string]string, error) {
+	sources, err := a.ListModelSources(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	runtimeSourceIDByExternalID := make(map[string]string, len(sources))
+	runtimeSourceExternalIDByID := make(map[string]string, len(sources))
+	for _, source := range sources {
+		runtimeSourceIDByExternalID[source.ID] = source.ID
+		runtimeSourceExternalIDByID[source.ID] = source.ID
+		if source.ExternalID != "" {
+			runtimeSourceIDByExternalID[source.ExternalID] = source.ID
+			runtimeSourceExternalIDByID[source.ID] = source.ExternalID
+		}
+	}
+
+	return runtimeSourceIDByExternalID, runtimeSourceExternalIDByID, nil
 }
 
 func (a *AIMiniGatewayAdapter) CreateModelSource(ctx context.Context, input RuntimeModelSourceInput) (RuntimeModelSource, error) {

@@ -203,7 +203,7 @@ func TestServiceBuildSyncInput(t *testing.T) {
 	if input.Sources[0].APIKey != "sk-test-openai" {
 		t.Fatalf("unexpected sync api key: %s", input.Sources[0].APIKey)
 	}
-	if len(input.SelectedModels) != 1 || input.SelectedModels[0].ModelID != "gpt-4.1" {
+	if len(input.SelectedModels) != 0 {
 		t.Fatalf("unexpected sync selected models: %+v", input.SelectedModels)
 	}
 }

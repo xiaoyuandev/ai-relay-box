@@ -47,7 +47,7 @@ func TestManagerSyncMarksSourcesSynced(t *testing.T) {
 		},
 		syncResult: SyncResult{
 			AppliedSources:        1,
-			AppliedSelectedModels: 1,
+			AppliedSelectedModels: 0,
 			LastSyncedAt:          "2026-05-01T00:00:00Z",
 		},
 	}
@@ -67,18 +67,12 @@ func TestManagerSyncMarksSourcesSynced(t *testing.T) {
 		t.Fatalf("create source: %v", err)
 	}
 
-	if _, err := manager.ReplaceSelectedModels(context.Background(), []SelectedModel{
-		{ModelID: "gpt-4.1", Position: 0},
-	}); err != nil {
-		t.Fatalf("replace selected models: %v", err)
-	}
-
 	result, err := manager.Sync(context.Background())
 	if err != nil {
 		t.Fatalf("sync: %v", err)
 	}
 
-	if result.AppliedSources != 1 || result.AppliedSelectedModels != 1 {
+	if result.AppliedSources != 1 || result.AppliedSelectedModels != 0 {
 		t.Fatalf("unexpected sync result: %+v", result)
 	}
 
@@ -102,6 +96,9 @@ func TestManagerSyncMarksSourcesSynced(t *testing.T) {
 	if adapter.syncInputs[0].Sources[0].APIKey != "sk-test-openai" {
 		t.Fatalf("unexpected synced api key: %s", adapter.syncInputs[0].Sources[0].APIKey)
 	}
+	if len(adapter.syncInputs[0].SelectedModels) != 0 {
+		t.Fatalf("expected selected models to be omitted from runtime sync, got %+v", adapter.syncInputs[0].SelectedModels)
+	}
 }
 
 func TestManagerSyncRejectsConcurrentRequests(t *testing.T) {
@@ -116,7 +113,7 @@ func TestManagerSyncRejectsConcurrentRequests(t *testing.T) {
 				Healthy:     true,
 				APIBase:     "http://127.0.0.1:3457",
 			},
-			syncResult: SyncResult{AppliedSources: 1, AppliedSelectedModels: 1},
+			syncResult: SyncResult{AppliedSources: 1, AppliedSelectedModels: 0},
 		},
 		blockCh: make(chan struct{}),
 		started: make(chan struct{}),
@@ -135,12 +132,6 @@ func TestManagerSyncRejectsConcurrentRequests(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("create source: %v", err)
 	}
-	if _, err := manager.ReplaceSelectedModels(context.Background(), []SelectedModel{
-		{ModelID: "gpt-4.1", Position: 0},
-	}); err != nil {
-		t.Fatalf("replace selected models: %v", err)
-	}
-
 	firstDone := make(chan error, 1)
 	go func() {
 		_, err := manager.Sync(context.Background())
