@@ -343,24 +343,37 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
         : sources.length
     };
 
+    let sourceSaved = false;
+
     try {
       setSaving(true);
+      setSyncing(true);
       if (editingSourceId) {
         await updateLocalGatewaySource(editingSourceId, payload, apiBase);
       } else {
         await createLocalGatewaySource(payload, apiBase);
       }
+      sourceSaved = true;
 
+      await syncLocalGateway(apiBase);
       await loadAll();
+      setSourceHealthchecks({});
       resetForm();
       setFormOpen(false);
       setFeedback(
         editingSourceId ? t("models.feedback.sourceUpdated") : t("models.feedback.sourceCreated")
       );
     } catch (saveError) {
+      if (sourceSaved) {
+        await loadAll().catch(() => undefined);
+        setSourceHealthchecks({});
+        resetForm();
+        setFormOpen(false);
+      }
       setError(saveError instanceof Error ? saveError.message : t("common.unknownError"));
     } finally {
       setSaving(false);
+      setSyncing(false);
     }
   }
 
@@ -368,16 +381,28 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
     setError(null);
     setFeedback(null);
 
+    let sourceDeleted = false;
+
     try {
+      setSyncing(true);
       await deleteLocalGatewaySource(sourceID, apiBase);
+      sourceDeleted = true;
       if (editingSourceId === sourceID) {
         resetForm();
         setFormOpen(false);
       }
+      await syncLocalGateway(apiBase);
       await loadAll();
+      setSourceHealthchecks({});
       setFeedback(t("models.feedback.sourceDeleted"));
     } catch (deleteError) {
+      if (sourceDeleted) {
+        await loadAll().catch(() => undefined);
+        setSourceHealthchecks({});
+      }
       setError(deleteError instanceof Error ? deleteError.message : t("common.unknownError"));
+    } finally {
+      setSyncing(false);
     }
   }
 
@@ -385,7 +410,10 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
     setError(null);
     setFeedback(null);
 
+    let sourceUpdated = false;
+
     try {
+      setSyncing(true);
       await updateLocalGatewaySource(
         source.id,
         {
@@ -400,10 +428,19 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
         },
         apiBase
       );
+      sourceUpdated = true;
+      await syncLocalGateway(apiBase);
       await loadAll();
+      setSourceHealthchecks({});
       setFeedback(t("models.feedback.sourceUpdated"));
     } catch (toggleError) {
+      if (sourceUpdated) {
+        await loadAll().catch(() => undefined);
+        setSourceHealthchecks({});
+      }
       setError(toggleError instanceof Error ? toggleError.message : t("common.unknownError"));
+    } finally {
+      setSyncing(false);
     }
   }
 
@@ -432,6 +469,7 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
       setSyncing(true);
       const result = await syncLocalGateway(apiBase);
       await loadAll();
+      setSourceHealthchecks({});
       setFeedback(
         t("models.feedback.synced", {
           sources: result.applied_sources,
@@ -439,6 +477,7 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
         })
       );
     } catch (syncError) {
+      await loadAll().catch(() => undefined);
       setError(syncError instanceof Error ? syncError.message : t("common.unknownError"));
     } finally {
       setSyncing(false);
