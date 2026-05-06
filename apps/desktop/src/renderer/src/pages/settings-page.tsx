@@ -51,6 +51,9 @@ type DesktopState = {
     apiPortSource: "default" | "config" | "env";
     localGatewayPort: number;
     localGatewayPortSource: "default" | "config" | "env";
+    launchAtLogin: boolean;
+    launchHidden: boolean;
+    closeToTray: boolean;
   };
   updates: UpdateState;
   core: {
@@ -74,6 +77,57 @@ interface SettingsPageProps {
   onCoreRestart: () => Promise<void>;
   onUpdateCorePort: (port: number) => Promise<void>;
   onUpdateLocalGatewayPort: (port: number) => Promise<void>;
+  onUpdateLaunchSettings: (settings: {
+    launchAtLogin?: boolean;
+    launchHidden?: boolean;
+    closeToTray?: boolean;
+  }) => Promise<void>;
+}
+
+function SettingsToggle({
+  checked,
+  label,
+  meta,
+  disabled,
+  onChange
+}: {
+  checked: boolean;
+  label: string;
+  meta: string;
+  disabled?: boolean;
+  onChange: () => void;
+}) {
+  return (
+    <div className={infoCardClass}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className={fieldLabelClass}>{label}</p>
+          <p className={`${metaClass} mt-2`}>{meta}</p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={checked}
+          aria-label={label}
+          disabled={disabled}
+          className={`inline-flex h-7 w-12 shrink-0 items-center rounded-full border px-1 transition ${
+            checked
+              ? "[border-color:var(--success-border)] [background:var(--success-soft)]"
+              : "[border-color:var(--border-soft)] [background:var(--panel-soft)]"
+          } disabled:cursor-not-allowed disabled:opacity-50`}
+          onClick={onChange}
+        >
+          <span
+            className={`h-5 w-5 rounded-full transition ${
+              checked
+                ? "translate-x-5 bg-[color:var(--accent-strong)]"
+                : "translate-x-0 bg-[color:var(--color-subtle)]"
+            }`}
+          />
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function StatCard({
@@ -106,12 +160,14 @@ export function SettingsPage({
   onQuitAndInstallUpdate,
   onCoreRestart,
   onUpdateCorePort,
-  onUpdateLocalGatewayPort
+  onUpdateLocalGatewayPort,
+  onUpdateLaunchSettings
 }: SettingsPageProps) {
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [updateBusy, setUpdateBusy] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
+  const [launchBusy, setLaunchBusy] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [feedbackTone, setFeedbackTone] = useState<"success" | "error">("success");
   const [portInput, setPortInput] = useState(String(desktopState?.config.apiPort ?? 3456));
@@ -223,6 +279,69 @@ export function SettingsPage({
       setFeedback(error instanceof Error ? error.message : t("settings.feedback.updateCheckFailed"));
     } finally {
       setUpdateBusy(false);
+    }
+  }
+
+  async function handleToggleLaunchAtLogin() {
+    setLaunchBusy(true);
+    setFeedback(null);
+
+    try {
+      const nextValue = !desktopState?.config.launchAtLogin;
+      await onUpdateLaunchSettings({ launchAtLogin: nextValue });
+      setFeedbackTone("success");
+      setFeedback(
+        nextValue
+          ? t("settings.feedback.launchAtLoginEnabled")
+          : t("settings.feedback.launchAtLoginDisabled")
+      );
+    } catch (error) {
+      setFeedbackTone("error");
+      setFeedback(error instanceof Error ? error.message : t("settings.feedback.launchSettingsFailed"));
+    } finally {
+      setLaunchBusy(false);
+    }
+  }
+
+  async function handleToggleLaunchHidden() {
+    setLaunchBusy(true);
+    setFeedback(null);
+
+    try {
+      const nextValue = !desktopState?.config.launchHidden;
+      await onUpdateLaunchSettings({ launchHidden: nextValue });
+      setFeedbackTone("success");
+      setFeedback(
+        nextValue
+          ? t("settings.feedback.launchHiddenEnabled")
+          : t("settings.feedback.launchHiddenDisabled")
+      );
+    } catch (error) {
+      setFeedbackTone("error");
+      setFeedback(error instanceof Error ? error.message : t("settings.feedback.launchSettingsFailed"));
+    } finally {
+      setLaunchBusy(false);
+    }
+  }
+
+  async function handleToggleCloseToTray() {
+    setLaunchBusy(true);
+    setFeedback(null);
+
+    try {
+      const nextValue = !desktopState?.config.closeToTray;
+      await onUpdateLaunchSettings({ closeToTray: nextValue });
+      setFeedbackTone("success");
+      setFeedback(
+        nextValue
+          ? t("settings.feedback.closeToTrayEnabled")
+          : t("settings.feedback.closeToTrayDisabled")
+      );
+    } catch (error) {
+      setFeedbackTone("error");
+      setFeedback(error instanceof Error ? error.message : t("settings.feedback.launchSettingsFailed"));
+    } finally {
+      setLaunchBusy(false);
     }
   }
 
@@ -385,6 +504,40 @@ export function SettingsPage({
             <span className={monoClass}>{desktopState.core.lastError}</span>
           </p>
         ) : null}
+      </section>
+
+      <section className={sectionCardClass}>
+        <div className={sectionHeadClass}>
+          <div className="space-y-1">
+            <h2 className={sectionTitleClass}>{t("settings.section.launch")}</h2>
+            <p className={sectionMetaClass}>{t("settings.meta.launchBehavior")}</p>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <SettingsToggle
+            checked={Boolean(desktopState?.config.launchAtLogin)}
+            label={t("settings.launchAtLogin")}
+            meta={t("settings.meta.launchAtLogin")}
+            disabled={launchBusy}
+            onChange={() => void handleToggleLaunchAtLogin()}
+          />
+          <SettingsToggle
+            checked={Boolean(desktopState?.config.launchHidden)}
+            label={t("settings.launchHidden")}
+            meta={t("settings.meta.launchHidden")}
+            disabled={launchBusy}
+            onChange={() => void handleToggleLaunchHidden()}
+          />
+          <SettingsToggle
+            checked={Boolean(desktopState?.config.closeToTray)}
+            label={t("settings.closeToTray")}
+            meta={t("settings.meta.closeToTray")}
+            disabled={launchBusy}
+            onChange={() => void handleToggleCloseToTray()}
+          />
+        </div>
+        <p className={`${metaClass} mt-4`}>{t("settings.meta.trayHint")}</p>
       </section>
 
       <section className={sectionCardClass}>

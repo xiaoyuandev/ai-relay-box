@@ -39,6 +39,9 @@ interface DesktopState {
     apiPortSource: "default" | "config" | "env";
     localGatewayPort: number;
     localGatewayPortSource: "default" | "config" | "env";
+    launchAtLogin: boolean;
+    launchHidden: boolean;
+    closeToTray: boolean;
   };
   updates: {
     currentVersion: string;
@@ -492,6 +495,24 @@ export default function App() {
                 }
 
                 const response = await window.desktopBridge.updateLocalGatewayPort(port);
+                setDesktopState((current) =>
+                  current
+                    ? {
+                        ...current,
+                        config: response.config,
+                        updates: response.updates,
+                        apiBase: response.core.apiBase,
+                        core: response.core
+                      }
+                    : null
+                );
+              }}
+              onUpdateLaunchSettings={async (settings) => {
+                if (!window.desktopBridge) {
+                  return;
+                }
+
+                const response = await window.desktopBridge.updateLaunchSettings(settings);
                 setDesktopState((current) =>
                   current
                     ? {

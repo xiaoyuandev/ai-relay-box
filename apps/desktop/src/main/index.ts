@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, ipcMain, nativeImage, shell } from "electron";
+import { app, BrowserWindow, clipboard, ipcMain, Menu, nativeImage, shell, Tray } from "electron";
 import { join } from "path";
 import { electronApp, is, optimizer } from "@electron-toolkit/utils";
 import { loadWorkspaceEnvLocal } from "./dev-env";
@@ -52,12 +52,21 @@ let coreRuntime: CoreRuntimeHandle = {
   },
   stop() {}
 };
-let desktopConfig: DesktopConfig = { apiPort: 3456, localGatewayPort: 3457 };
+let desktopConfig: DesktopConfig = {
+  apiPort: 3456,
+  localGatewayPort: 3457,
+  launchAtLogin: false,
+  launchHidden: false,
+  closeToTray: true
+};
 let configuredPortSource: PortSource = "default";
 let configuredLocalGatewayPortSource: PortSource = "default";
 let isBootstrapped = false;
 let mainWindow: BrowserWindow | null = null;
+let tray: Tray | null = null;
 let autoUpdater: AutoUpdaterType | null = null;
+let launchHiddenOnStartup = false;
+let isQuitting = false;
 let updateState: UpdateState = {
   currentVersion: app.getVersion(),
   status: app.isPackaged ? "idle" : "unsupported",
@@ -78,6 +87,96 @@ function resolveReleaseURL() {
   }
 
   return "https://github.com/xiaoyuandev/clash-for-ai/releases/latest";
+}
+
+function shouldStartHidden() {
+  if (desktopConfig.launchHidden) {
+    return true;
+  }
+
+  if (process.argv.includes("--hidden") || process.argv.includes("--silent")) {
+    return true;
+  }
+
+  if (process.platform === "darwin") {
+    return app.getLoginItemSettings().wasOpenedAsHidden;
+  }
+
+  return false;
+}
+
+function applyLaunchSettings() {
+  app.setLoginItemSettings({
+    openAtLogin: desktopConfig.launchAtLogin,
+    openAsHidden: desktopConfig.launchHidden,
+    args: desktopConfig.launchHidden ? ["--hidden"] : []
+  });
+}
+
+function showMainWindow() {
+  if (!mainWindow) {
+    createWindow(true);
+    return;
+  }
+
+  if (!mainWindow.isVisible()) {
+    mainWindow.show();
+  }
+
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+
+  mainWindow.focus();
+}
+
+function updateTrayMenu() {
+  if (!tray) {
+    return;
+  }
+
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      {
+        label: "Show Clash for AI",
+        click: () => showMainWindow()
+      },
+      {
+        label: mainWindow?.isVisible() ? "Hide Window" : "Open Settings",
+        click: () => {
+          if (mainWindow?.isVisible()) {
+            mainWindow.hide();
+            return;
+          }
+          showMainWindow();
+        }
+      },
+      { type: "separator" },
+      {
+        label: "Quit",
+        click: () => app.quit()
+      }
+    ])
+  );
+}
+
+function createTray() {
+  if (tray) {
+    return;
+  }
+
+  const icon = nativeImage.createFromPath(resolveIconPath());
+  tray = new Tray(icon);
+  tray.setToolTip("Clash for AI");
+  tray.on("click", () => {
+    if (mainWindow?.isVisible()) {
+      mainWindow.hide();
+    } else {
+      showMainWindow();
+    }
+    updateTrayMenu();
+  });
+  updateTrayMenu();
 }
 
 async function bootstrapCoreRuntime() {
@@ -107,7 +206,7 @@ async function bootstrapCoreRuntime() {
   }
 }
 
-function createWindow(): void {
+function createWindow(forceShow = false): void {
   const iconPath = resolveIconPath();
 
   mainWindow = new BrowserWindow({
@@ -126,7 +225,30 @@ function createWindow(): void {
   });
 
   mainWindow.on("ready-to-show", () => {
-    mainWindow?.show();
+    if (forceShow || !launchHiddenOnStartup) {
+      mainWindow?.show();
+    }
+    updateTrayMenu();
+  });
+
+  mainWindow.on("show", () => {
+    updateTrayMenu();
+  });
+
+  mainWindow.on("hide", () => {
+    updateTrayMenu();
+  });
+
+  mainWindow.on("close", (event) => {
+    if (!isQuitting && desktopConfig.closeToTray) {
+      event.preventDefault();
+      mainWindow?.hide();
+    }
+  });
+
+  mainWindow.on("closed", () => {
+    mainWindow = null;
+    updateTrayMenu();
   });
 
   if (is.dev) {
@@ -149,19 +271,11 @@ function createWindow(): void {
 
 const singleInstanceLock = app.requestSingleInstanceLock();
 
-if (!singleInstanceLock) {
+  if (!singleInstanceLock) {
   app.quit();
 } else {
   app.on("second-instance", () => {
-    if (!mainWindow) {
-      return;
-    }
-
-    if (mainWindow.isMinimized()) {
-      mainWindow.restore();
-    }
-
-    mainWindow.focus();
+    showMainWindow();
   });
 }
 
@@ -241,6 +355,9 @@ app.whenReady().then(() => {
   electronApp.setAppUserModelId("com.xiaoyuandev.clash-for-ai");
   configureAutoUpdater();
   desktopConfig = loadDesktopConfig();
+  launchHiddenOnStartup = shouldStartHidden();
+  applyLaunchSettings();
+  createTray();
 
   if (process.platform === "darwin" && app.dock) {
     const dockIcon = nativeImage.createFromPath(resolveIconPath());
@@ -262,7 +379,10 @@ app.whenReady().then(() => {
       apiPort: desktopConfig.apiPort,
       apiPortSource: configuredPortSource,
       localGatewayPort: desktopConfig.localGatewayPort,
-      localGatewayPortSource: configuredLocalGatewayPortSource
+      localGatewayPortSource: configuredLocalGatewayPortSource,
+      launchAtLogin: desktopConfig.launchAtLogin,
+      launchHidden: desktopConfig.launchHidden,
+      closeToTray: desktopConfig.closeToTray
     },
     updates: updateState,
     core: coreRuntime.state
@@ -277,7 +397,10 @@ app.whenReady().then(() => {
         apiPort: desktopConfig.apiPort,
         apiPortSource: configuredPortSource,
         localGatewayPort: desktopConfig.localGatewayPort,
-        localGatewayPortSource: configuredLocalGatewayPortSource
+        localGatewayPortSource: configuredLocalGatewayPortSource,
+        launchAtLogin: desktopConfig.launchAtLogin,
+        launchHidden: desktopConfig.launchHidden,
+        closeToTray: desktopConfig.closeToTray
       },
       updates: updateState,
       core: coreRuntime.state
@@ -303,7 +426,10 @@ app.whenReady().then(() => {
         apiPort: desktopConfig.apiPort,
         apiPortSource: configuredPortSource,
         localGatewayPort: desktopConfig.localGatewayPort,
-        localGatewayPortSource: configuredLocalGatewayPortSource
+        localGatewayPortSource: configuredLocalGatewayPortSource,
+        launchAtLogin: desktopConfig.launchAtLogin,
+        launchHidden: desktopConfig.launchHidden,
+        closeToTray: desktopConfig.closeToTray
       },
       updates: updateState,
       core: coreRuntime.state
@@ -331,7 +457,10 @@ app.whenReady().then(() => {
         apiPort: desktopConfig.apiPort,
         apiPortSource: configuredPortSource,
         localGatewayPort: desktopConfig.localGatewayPort,
-        localGatewayPortSource: configuredLocalGatewayPortSource
+        localGatewayPortSource: configuredLocalGatewayPortSource,
+        launchAtLogin: desktopConfig.launchAtLogin,
+        launchHidden: desktopConfig.launchHidden,
+        closeToTray: desktopConfig.closeToTray
       },
       updates: updateState,
       core: coreRuntime.state
@@ -342,6 +471,34 @@ app.whenReady().then(() => {
     clipboard.writeText(text);
     return { ok: true };
   });
+
+  ipcMain.handle(
+    "app:update-launch-settings",
+    async (_, nextSettings: { launchAtLogin?: boolean; launchHidden?: boolean; closeToTray?: boolean }) => {
+      desktopConfig = saveDesktopConfig({
+        ...desktopConfig,
+        launchAtLogin: nextSettings.launchAtLogin ?? desktopConfig.launchAtLogin,
+        launchHidden: nextSettings.launchHidden ?? desktopConfig.launchHidden,
+        closeToTray: nextSettings.closeToTray ?? desktopConfig.closeToTray
+      });
+      applyLaunchSettings();
+
+      return {
+        ok: true,
+        config: {
+          apiPort: desktopConfig.apiPort,
+          apiPortSource: configuredPortSource,
+          localGatewayPort: desktopConfig.localGatewayPort,
+          localGatewayPortSource: configuredLocalGatewayPortSource,
+          launchAtLogin: desktopConfig.launchAtLogin,
+          launchHidden: desktopConfig.launchHidden,
+          closeToTray: desktopConfig.closeToTray
+        },
+        updates: updateState,
+        core: coreRuntime.state
+      };
+    }
+  );
 
   ipcMain.handle("tools:list", async () => listToolIntegrations(coreRuntime.state.port));
 
@@ -411,7 +568,7 @@ app.whenReady().then(() => {
     });
 
   app.on("activate", function () {
-    if (isBootstrapped && BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (isBootstrapped && BrowserWindow.getAllWindows().length === 0) createWindow(true);
   });
 });
 
@@ -422,5 +579,8 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", () => {
+  isQuitting = true;
+  tray?.destroy();
+  tray = null;
   coreRuntime?.stop();
 });

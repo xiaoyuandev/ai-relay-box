@@ -7,6 +7,12 @@ const api = {
   updateCorePort: (port: number) => ipcRenderer.invoke("app:update-core-port", port),
   updateLocalGatewayPort: (port: number) =>
     ipcRenderer.invoke("app:update-local-gateway-port", port),
+  updateLaunchSettings: (settings: {
+    launchAtLogin?: boolean;
+    launchHidden?: boolean;
+    closeToTray?: boolean;
+  }) =>
+    ipcRenderer.invoke("app:update-launch-settings", settings),
   copyText: (text: string) => ipcRenderer.invoke("app:copy-text", text),
   listTools: () => ipcRenderer.invoke("tools:list"),
   configureTool: (toolId: string) => ipcRenderer.invoke("tools:configure", toolId),

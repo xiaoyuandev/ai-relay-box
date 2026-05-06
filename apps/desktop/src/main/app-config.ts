@@ -5,6 +5,9 @@ import { join } from "node:path";
 export interface DesktopConfig {
   apiPort: number;
   localGatewayPort: number;
+  launchAtLogin: boolean;
+  launchHidden: boolean;
+  closeToTray: boolean;
 }
 
 export type PortSource = "default" | "config" | "env";
@@ -20,7 +23,10 @@ export interface CoreProcessRecord {
 
 const DEFAULT_CONFIG: DesktopConfig = {
   apiPort: 3456,
-  localGatewayPort: 3457
+  localGatewayPort: 3457,
+  launchAtLogin: false,
+  launchHidden: false,
+  closeToTray: true
 };
 
 export function loadDesktopConfig(): DesktopConfig {
@@ -36,7 +42,11 @@ export function loadDesktopConfig(): DesktopConfig {
 
     return {
       apiPort: normalizePort(parsed.apiPort, DEFAULT_CONFIG.apiPort),
-      localGatewayPort: normalizePort(parsed.localGatewayPort, DEFAULT_CONFIG.localGatewayPort)
+      localGatewayPort: normalizePort(parsed.localGatewayPort, DEFAULT_CONFIG.localGatewayPort),
+      launchAtLogin: Boolean(parsed.launchAtLogin),
+      launchHidden: Boolean(parsed.launchHidden),
+      closeToTray:
+        typeof parsed.closeToTray === "boolean" ? parsed.closeToTray : DEFAULT_CONFIG.closeToTray
     };
   } catch (error) {
     console.error("[desktop-config] failed to read config:", error);
@@ -50,7 +60,10 @@ export function saveDesktopConfig(nextConfig: DesktopConfig): DesktopConfig {
     localGatewayPort: normalizePort(
       nextConfig.localGatewayPort,
       DEFAULT_CONFIG.localGatewayPort
-    )
+    ),
+    launchAtLogin: Boolean(nextConfig.launchAtLogin),
+    launchHidden: Boolean(nextConfig.launchHidden),
+    closeToTray: Boolean(nextConfig.closeToTray)
   };
 
   mkdirSync(app.getPath("userData"), { recursive: true });
