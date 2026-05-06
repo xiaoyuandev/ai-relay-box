@@ -35,6 +35,8 @@ interface DesktopState {
   config: {
     apiPort: number;
     apiPortSource: "default" | "config" | "env";
+    localGatewayPort: number;
+    localGatewayPortSource: "default" | "config" | "env";
   };
   updates: {
     currentVersion: string;
@@ -95,6 +97,15 @@ export default function App() {
       icon: (
         <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M13.4 3.4a2 2 0 0 1 2.8 0l4.4 4.4a2 2 0 0 1 0 2.8l-2.1 2.1-7.2-7.2zM10.1 6.7 3 13.8V21h7.2l7.1-7.1zM6 18H5v-1l7.4-7.4 1 1z" />
+        </svg>
+      )
+    },
+    {
+      id: "models",
+      label: t("app.nav.models"),
+      icon: (
+        <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3 4 7v10l8 4 8-4V7zm0 2.2L17.8 8 12 10.8 6.2 8zM6 9.6l5 2.5v6.2l-5-2.5zm7 8.7v-6.2l5-2.5v6.2z" />
         </svg>
       )
     },
@@ -293,11 +304,7 @@ export default function App() {
               onSelectedProviderChange={setSelectedProvider}
             />
           ) : view === "models" ? (
-            <ModelsPage
-              apiBase={desktopState?.apiBase}
-              selectedProvider={selectedProvider}
-              onSelectedProviderChange={setSelectedProvider}
-            />
+            <ModelsPage apiBase={desktopState?.apiBase} />
           ) : view === "tools" ? (
             <ToolsPage
               desktopState={desktopState}
@@ -320,6 +327,24 @@ export default function App() {
                 }
 
                 const response = await window.desktopBridge.updateCorePort(port);
+                setDesktopState((current) =>
+                  current
+                    ? {
+                        ...current,
+                        config: response.config,
+                        updates: response.updates,
+                        apiBase: response.core.apiBase,
+                        core: response.core
+                      }
+                    : null
+                );
+              }}
+              onUpdateLocalGatewayPort={async (port) => {
+                if (!window.desktopBridge) {
+                  return;
+                }
+
+                const response = await window.desktopBridge.updateLocalGatewayPort(port);
                 setDesktopState((current) =>
                   current
                     ? {

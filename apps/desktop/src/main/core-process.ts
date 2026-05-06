@@ -28,6 +28,7 @@ export interface CoreRuntimeHandle {
 
 interface StartCoreProcessOptions {
   desiredPort: number;
+  desiredLocalGatewayPort: number;
 }
 
 export async function startCoreProcess(
@@ -51,6 +52,7 @@ export async function startCoreProcess(
 
   const runtimePaths = resolveCoreRuntimePaths();
   const port = options.desiredPort;
+  const localGatewayPort = options.desiredLocalGatewayPort;
   const apiBase = `http://127.0.0.1:${port}`;
   console.info(`[core] using fixed port ${port}, api base ${apiBase}`);
 
@@ -97,11 +99,23 @@ export async function startCoreProcess(
 
   const explicitCoreExecutable = process.env.CORE_EXECUTABLE;
   if (explicitCoreExecutable) {
-    return spawnCoreBinary(explicitCoreExecutable, runtimePaths.coreDir, port, apiBase);
+    return spawnCoreBinary(
+      explicitCoreExecutable,
+      runtimePaths.coreDir,
+      port,
+      localGatewayPort,
+      apiBase
+    );
   }
 
   if (app.isPackaged && existsSync(runtimePaths.binaryPath)) {
-    return spawnCoreBinary(runtimePaths.binaryPath, runtimePaths.coreDir, port, apiBase);
+    return spawnCoreBinary(
+      runtimePaths.binaryPath,
+      runtimePaths.coreDir,
+      port,
+      localGatewayPort,
+      apiBase
+    );
   }
 
   if (app.isPackaged) {
@@ -124,13 +138,19 @@ export async function startCoreProcess(
     existsSync(runtimePaths.binaryPath) &&
     isDevelopmentBinaryFresh(runtimePaths.coreDir, runtimePaths.binaryPath);
   if (hasFreshBinary) {
-    return spawnCoreBinary(runtimePaths.binaryPath, runtimePaths.coreDir, port, apiBase);
+    return spawnCoreBinary(
+      runtimePaths.binaryPath,
+      runtimePaths.coreDir,
+      port,
+      localGatewayPort,
+      apiBase
+    );
   }
 
   if (goBinary) {
     const builtBinary = buildCoreBinary(goBinary, runtimePaths.coreDir, runtimePaths.binaryPath);
     if (builtBinary) {
-      return spawnCoreBinary(builtBinary, runtimePaths.coreDir, port, apiBase);
+      return spawnCoreBinary(builtBinary, runtimePaths.coreDir, port, localGatewayPort, apiBase);
     }
   }
 
@@ -151,10 +171,10 @@ export async function startCoreProcess(
 
   const builtBinary = buildCoreBinary(goBinary, runtimePaths.coreDir, runtimePaths.binaryPath);
   if (builtBinary) {
-    return spawnCoreBinary(builtBinary, runtimePaths.coreDir, port, apiBase);
+    return spawnCoreBinary(builtBinary, runtimePaths.coreDir, port, localGatewayPort, apiBase);
   }
 
-  return spawnGoCore(goBinary, runtimePaths.coreDir, port, apiBase);
+  return spawnGoCore(goBinary, runtimePaths.coreDir, port, localGatewayPort, apiBase);
 }
 
 function resolveCoreRuntimePaths() {
@@ -181,10 +201,49 @@ function resolveCoreRuntimePaths() {
   };
 }
 
+function resolveLocalGatewayRuntimeExecutable(): string | null {
+  if (process.env.LOCAL_GATEWAY_RUNTIME_EXECUTABLE) {
+    return process.env.LOCAL_GATEWAY_RUNTIME_EXECUTABLE;
+  }
+
+  const binaryName =
+    process.platform === "win32" ? "ai-mini-gateway.exe" : "ai-mini-gateway";
+
+  if (app.isPackaged) {
+    const bundledPath = join(process.resourcesPath, "ai-mini-gateway", "bin", binaryName);
+    return existsSync(bundledPath) ? bundledPath : null;
+  }
+
+  const workspaceRoot =
+    process.env.ELECTRON_WORKSPACE_ROOT ?? resolveWorkspaceRoot(process.cwd());
+  const localPath = join(
+    workspaceRoot,
+    "apps",
+    "desktop",
+    "resources",
+    "ai-mini-gateway",
+    "bin",
+    binaryName
+  );
+  return existsSync(localPath) ? localPath : null;
+}
+
+function localGatewayRuntimeEnv() {
+  const executable = resolveLocalGatewayRuntimeExecutable();
+  if (!executable) {
+    return {};
+  }
+
+  return {
+    LOCAL_GATEWAY_RUNTIME_EXECUTABLE: executable
+  };
+}
+
 function spawnCoreBinary(
   executable: string,
   coreDir: string,
   port: number,
+  localGatewayPort: number,
   apiBase: string
 ): CoreRuntimeHandle {
   console.info(`[core] starting binary ${executable} on port ${port}`);
@@ -195,7 +254,9 @@ function spawnCoreBinary(
     stdio: "inherit",
     env: {
       ...process.env,
+      ...localGatewayRuntimeEnv(),
       HTTP_PORT: String(port),
+      LOCAL_GATEWAY_RUNTIME_PORT: String(localGatewayPort),
       CORE_DATA_DIR: dataDir
     }
   });
@@ -251,6 +312,7 @@ async function spawnGoCore(
   goBinary: string,
   coreDir: string,
   port: number,
+  localGatewayPort: number,
   apiBase: string
 ): Promise<CoreRuntimeHandle> {
   const workspaceRoot =
@@ -269,7 +331,9 @@ async function spawnGoCore(
     stdio: "inherit",
     env: {
       ...process.env,
+      ...localGatewayRuntimeEnv(),
       HTTP_PORT: String(port),
+      LOCAL_GATEWAY_RUNTIME_PORT: String(localGatewayPort),
       CORE_DATA_DIR: dataDir,
       GOCACHE: cacheDir,
       GOMODCACHE: modCacheDir

@@ -1,0 +1,8 @@
+{
+  "runtime_kind": "ai-mini-gateway",
+  "release_repo": "xiaoyuandev/ai-mini-gateway",
+  "version": "v0.1.0",
+  "commit": "2c5df19",
+  "contract_version": "v1",
+  "source_commit_time": "2026-05-02T20:35:11+08:00"
+}

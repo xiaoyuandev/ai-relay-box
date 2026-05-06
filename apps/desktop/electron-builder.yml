@@ -14,6 +14,10 @@ extraResources:
     to: core/bin
     filter:
       - "**/*"
+  - from: resources/ai-mini-gateway
+    to: ai-mini-gateway
+    filter:
+      - "**/*"
 asarUnpack:
   - resources/**
 mac:

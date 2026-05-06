@@ -49,6 +49,8 @@ type DesktopState = {
   config: {
     apiPort: number;
     apiPortSource: "default" | "config" | "env";
+    localGatewayPort: number;
+    localGatewayPortSource: "default" | "config" | "env";
   };
   updates: UpdateState;
   core: {
@@ -72,6 +74,7 @@ interface SettingsPageProps {
   onOpenReleasePage: () => Promise<void>;
   onCoreRestart: () => Promise<void>;
   onUpdateCorePort: (port: number) => Promise<void>;
+  onUpdateLocalGatewayPort: (port: number) => Promise<void>;
 }
 
 function StatCard({
@@ -104,7 +107,8 @@ export function SettingsPage({
   onQuitAndInstallUpdate,
   onOpenReleasePage,
   onCoreRestart,
-  onUpdateCorePort
+  onUpdateCorePort,
+  onUpdateLocalGatewayPort
 }: SettingsPageProps) {
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
@@ -113,6 +117,9 @@ export function SettingsPage({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [feedbackTone, setFeedbackTone] = useState<"success" | "error">("success");
   const [portInput, setPortInput] = useState(String(desktopState?.config.apiPort ?? 3456));
+  const [localGatewayPortInput, setLocalGatewayPortInput] = useState(
+    String(desktopState?.config.localGatewayPort ?? 3457)
+  );
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const runtimeLabel = getRuntimeLabel(desktopState?.runtime, {
     desktopApp: t("settings.value.desktopApp"),
@@ -123,6 +130,10 @@ export function SettingsPage({
   useEffect(() => {
     setPortInput(String(desktopState?.config.apiPort ?? 3456));
   }, [desktopState?.config.apiPort]);
+
+  useEffect(() => {
+    setLocalGatewayPortInput(String(desktopState?.config.localGatewayPort ?? 3457));
+  }, [desktopState?.config.localGatewayPort]);
 
   const dismissToast = useCallback((id: string) => {
     setToasts((current) => current.filter((item) => item.id !== id));
@@ -173,6 +184,31 @@ export function SettingsPage({
     } catch (error) {
       setFeedbackTone("error");
       setFeedback(error instanceof Error ? error.message : t("settings.feedback.portUpdateFailed"));
+    } finally {
+      setSaveBusy(false);
+    }
+  }
+
+  async function handleSaveLocalGatewayPort() {
+    const nextPort = Number(localGatewayPortInput);
+    if (!Number.isInteger(nextPort) || nextPort < 1 || nextPort > 65535) {
+      setFeedbackTone("error");
+      setFeedback(t("settings.feedback.invalidPort"));
+      return;
+    }
+
+    setSaveBusy(true);
+    setFeedback(null);
+
+    try {
+      await onUpdateLocalGatewayPort(nextPort);
+      setFeedbackTone("success");
+      setFeedback(t("settings.feedback.localGatewayPortUpdated", { port: nextPort }));
+    } catch (error) {
+      setFeedbackTone("error");
+      setFeedback(
+        error instanceof Error ? error.message : t("settings.feedback.localGatewayPortUpdateFailed")
+      );
     } finally {
       setSaveBusy(false);
     }
@@ -238,6 +274,7 @@ export function SettingsPage({
   }
 
   const portLocked = desktopState?.config.apiPortSource === "env";
+  const localGatewayPortLocked = desktopState?.config.localGatewayPortSource === "env";
   const isMacPlatform = desktopState?.platform === "darwin";
 
   return (
@@ -278,6 +315,17 @@ export function SettingsPage({
             />
             <p className={`${metaClass} mt-2`}>{t("settings.meta.portConflict")}</p>
           </div>
+          <div className={infoCardClass}>
+            <p className={fieldLabelClass}>{t("settings.localGatewayFixedPort")}</p>
+            <input
+              className={`${inputClass} mt-3`}
+              value={localGatewayPortInput}
+              disabled={localGatewayPortLocked || saveBusy}
+              onChange={(event) => setLocalGatewayPortInput(event.target.value)}
+              inputMode="numeric"
+            />
+            <p className={`${metaClass} mt-2`}>{t("settings.meta.localGatewayPortConflict")}</p>
+          </div>
           <StatCard
             label={t("settings.connectedApiBase")}
             value={desktopState?.apiBase ?? "-"}
@@ -308,6 +356,14 @@ export function SettingsPage({
               disabled={portLocked || saveBusy}
             >
               {saveBusy ? t("common.saving") : t("settings.button.savePort")}
+            </button>
+            <button
+              type="button"
+              className={buttonClass("secondary")}
+              onClick={() => void handleSaveLocalGatewayPort()}
+              disabled={localGatewayPortLocked || saveBusy}
+            >
+              {saveBusy ? t("common.saving") : t("settings.button.saveLocalGatewayPort")}
             </button>
           </div>
         </div>
@@ -345,6 +401,10 @@ export function SettingsPage({
                 <path d="M7 7h10v10H7zm2 2v6h6V9zM4 11h2v2H4zm14 0h2v2h-2zM11 4h2v2h-2zm0 14h2v2h-2z" />
               </svg>
             }
+          />
+          <StatCard
+            label={t("settings.runtime.localGatewayPort")}
+            value={String(desktopState?.config.localGatewayPort ?? "-")}
           />
           <StatCard
             label={t("settings.runtime.corePid")}

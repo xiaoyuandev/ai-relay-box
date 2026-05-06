@@ -5,6 +5,8 @@ const api = {
   ping: () => ipcRenderer.invoke("app:ping"),
   restartCore: () => ipcRenderer.invoke("app:restart-core"),
   updateCorePort: (port: number) => ipcRenderer.invoke("app:update-core-port", port),
+  updateLocalGatewayPort: (port: number) =>
+    ipcRenderer.invoke("app:update-local-gateway-port", port),
   copyText: (text: string) => ipcRenderer.invoke("app:copy-text", text),
   listTools: () => ipcRenderer.invoke("tools:list"),
   configureTool: (toolId: string) => ipcRenderer.invoke("tools:configure", toolId),

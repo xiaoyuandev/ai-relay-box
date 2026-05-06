@@ -6,11 +6,13 @@ import {
   createProvider,
   deleteProvider,
   getHealth,
+  getLocalGatewayRuntime,
   getProviderModels,
   getProviders,
   runProviderHealthcheck,
   updateProvider
 } from "../services/api";
+import type { LocalGatewayRuntimeStatus } from "../types/local-gateway";
 import type { ClaudeCodeModelMap, Provider } from "../types/provider";
 import type { ProviderModel } from "../types/provider-model";
 import {
@@ -79,6 +81,7 @@ export function ProvidersPage({
     sonnet: "",
     haiku: ""
   });
+  const [localGatewayRuntime, setLocalGatewayRuntime] = useState<LocalGatewayRuntimeStatus | null>(null);
   const [savingClaudeMap, setSavingClaudeMap] = useState(false);
   const [draggedProviderModelId, setDraggedProviderModelId] = useState<string | null>(null);
   const [draggedClaudeSlot, setDraggedClaudeSlot] = useState<keyof ClaudeCodeModelMap | null>(null);
@@ -103,6 +106,9 @@ export function ProvidersPage({
       return model.id.toLowerCase().includes(keyword) || owner.includes(keyword);
     });
   }, [modelSearch, providerModels]);
+
+  const localGatewayReady =
+    localGatewayRuntime?.running === true && localGatewayRuntime.healthy === true;
 
   const maskApiKey = useCallback((value: string) => {
     const trimmed = value.trim();
@@ -152,6 +158,7 @@ export function ProvidersPage({
           getHealth(apiBase),
           getProviders(apiBase)
         ]);
+        const localGatewayRuntimeData = await getLocalGatewayRuntime(apiBase).catch(() => null);
 
         if (cancelled) {
           return;
@@ -159,6 +166,7 @@ export function ProvidersPage({
 
         setHealth(healthData.status);
         setProviders(providersData);
+        setLocalGatewayRuntime(localGatewayRuntimeData?.runtime ?? null);
         const nextSelected =
           providersData.find((provider) => provider.id === selectedProviderId) ??
           providersData.find((provider) => provider.status.is_active) ??
@@ -232,8 +240,12 @@ export function ProvidersPage({
   }, [selectedProvider?.claude_code_model_map, selectedProvider?.id]);
 
   async function refreshProviders(preferredProviderId?: string) {
-    const providersData = await getProviders(apiBase);
+    const [providersData, localGatewayRuntimeData] = await Promise.all([
+      getProviders(apiBase),
+      getLocalGatewayRuntime(apiBase).catch(() => null)
+    ]);
     setProviders(providersData);
+    setLocalGatewayRuntime(localGatewayRuntimeData?.runtime ?? null);
     const nextSelected =
       providersData.find((provider) => provider.id === preferredProviderId) ??
       providersData.find((provider) => provider.id === selectedProviderId) ??
@@ -439,6 +451,22 @@ export function ProvidersPage({
     setDetailProviderID(provider.id);
   }
 
+  function isManagedLocalGatewayProvider(provider: Provider) {
+    return provider.is_system_managed && provider.runtime_kind === "local-gateway";
+  }
+
+  function localGatewayActivationHint() {
+    if (localGatewayReady) {
+      return t("providers.localGateway.runtimeReady");
+    }
+    if (localGatewayRuntime?.last_error) {
+      return t("providers.localGateway.runtimeUnavailableWithReason", {
+        reason: localGatewayRuntime.last_error
+      });
+    }
+    return t("providers.localGateway.runtimeUnavailable");
+  }
+
   return (
     <main className={`${pageShellClass} h-full overflow-hidden`}>
       <ToastRegion items={toasts} onDismiss={dismissToast} />
@@ -465,6 +493,11 @@ export function ProvidersPage({
               <span className={monoClass}>
                 {desktopState?.apiBase ?? apiBase ?? "http://127.0.0.1:3456"}
               </span>
+            </span>
+            <span className={statusPillClass(localGatewayReady ? "success" : "default")}>
+              {t("providers.localGateway.runtimeSummary", {
+                status: localGatewayReady ? t("providers.localGateway.runtimeReady") : localGatewayActivationHint()
+              })}
             </span>
           </div>
         </div>
@@ -534,10 +567,23 @@ export function ProvidersPage({
                           type="button"
                           className={buttonClass("primary")}
                           onClick={() => void handleActivateProvider(provider)}
+                          disabled={isManagedLocalGatewayProvider(provider) && !localGatewayReady}
+                          title={
+                            isManagedLocalGatewayProvider(provider) && !localGatewayReady
+                              ? localGatewayActivationHint()
+                              : undefined
+                          }
                         >
                           {t("providers.action.activate")}
                         </button>
                       )}
+                      {isManagedLocalGatewayProvider(provider) ? (
+                        <span className={statusPillClass(localGatewayReady ? "success" : "default")}>
+                          {localGatewayReady
+                            ? t("providers.localGateway.runtimeReady")
+                            : t("providers.localGateway.runtimeUnavailable")}
+                        </span>
+                      ) : null}
                       <div className="relative">
                         <button
                           type="button"
@@ -555,24 +601,26 @@ export function ProvidersPage({
                           {t("providers.action.view")}
                         </span>
                       </div>
-                      <div className="relative">
-                        <button
-                          type="button"
-                          className={`${iconButtonSmallClass} peer`}
-                          aria-label={t("common.edit")}
-                          onClick={() => {
-                            onSelectedProviderChange(provider);
-                            startEditing(provider);
-                          }}
-                        >
-                          <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M13.4 3.4a2 2 0 0 1 2.8 0l4.4 4.4a2 2 0 0 1 0 2.8l-2.1 2.1-7.2-7.2zM10.1 6.7 3 13.8V21h7.2l7.1-7.1zM6 18H5v-1l7.4-7.4 1 1z" />
-                          </svg>
-                        </button>
-                        <span className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 hidden -translate-x-1/2 whitespace-nowrap rounded-md border [border-color:var(--border-soft)] [background:var(--panel-solid)] px-2 py-1 text-[11px] text-[color:var(--color-text)] shadow-[var(--shadow-soft)] peer-hover:block">
-                          {t("common.edit")}
-                        </span>
-                      </div>
+                      {provider.is_editable ? (
+                        <div className="relative">
+                          <button
+                            type="button"
+                            className={`${iconButtonSmallClass} peer`}
+                            aria-label={t("common.edit")}
+                            onClick={() => {
+                              onSelectedProviderChange(provider);
+                              startEditing(provider);
+                            }}
+                          >
+                            <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                              <path d="M13.4 3.4a2 2 0 0 1 2.8 0l4.4 4.4a2 2 0 0 1 0 2.8l-2.1 2.1-7.2-7.2zM10.1 6.7 3 13.8V21h7.2l7.1-7.1zM6 18H5v-1l7.4-7.4 1 1z" />
+                            </svg>
+                          </button>
+                          <span className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 hidden -translate-x-1/2 whitespace-nowrap rounded-md border [border-color:var(--border-soft)] [background:var(--panel-solid)] px-2 py-1 text-[11px] text-[color:var(--color-text)] shadow-[var(--shadow-soft)] peer-hover:block">
+                            {t("common.edit")}
+                          </span>
+                        </div>
+                      ) : null}
                       <div className="relative">
                         <button
                           type="button"
@@ -590,23 +638,25 @@ export function ProvidersPage({
                           {t("providers.action.test")}
                         </span>
                       </div>
-                      <div className="relative">
-                        <button
-                          type="button"
-                          className={`${iconButtonSmallClass} peer`}
-                          aria-label={t("common.delete")}
-                          onClick={() => {
-                            void handleDeleteProvider(provider.id);
-                          }}
-                        >
-                          <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M9 3h6l1 2h4v2H4V5h4zm1 6h2v8h-2zm4 0h2v8h-2zM7 9h2v8H7zm1 12a2 2 0 0 1-2-2V8h12v11a2 2 0 0 1-2 2z" />
-                          </svg>
-                        </button>
-                        <span className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 hidden -translate-x-1/2 whitespace-nowrap rounded-md border [border-color:var(--border-soft)] [background:var(--panel-solid)] px-2 py-1 text-[11px] text-[color:var(--color-text)] shadow-[var(--shadow-soft)] peer-hover:block">
-                          {t("common.delete")}
-                        </span>
-                      </div>
+                      {provider.is_deletable ? (
+                        <div className="relative">
+                          <button
+                            type="button"
+                            className={`${iconButtonSmallClass} peer`}
+                            aria-label={t("common.delete")}
+                            onClick={() => {
+                              void handleDeleteProvider(provider.id);
+                            }}
+                          >
+                            <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                              <path d="M9 3h6l1 2h4v2H4V5h4zm1 6h2v8h-2zm4 0h2v8h-2zM7 9h2v8H7zm1 12a2 2 0 0 1-2-2V8h12v11a2 2 0 0 1-2 2z" />
+                            </svg>
+                          </button>
+                          <span className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 hidden -translate-x-1/2 whitespace-nowrap rounded-md border [border-color:var(--border-soft)] [background:var(--panel-solid)] px-2 py-1 text-[11px] text-[color:var(--color-text)] shadow-[var(--shadow-soft)] peer-hover:block">
+                            {t("common.delete")}
+                          </span>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 </article>

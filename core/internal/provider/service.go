@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"reflect"
 	"strings"
 	"time"
 
@@ -124,6 +125,21 @@ func NewService(repository Repository, credentials credential.Store) *Service {
 	}
 }
 
+func normalizeProviderManagement(item Provider) Provider {
+	if item.RuntimeKind == "" {
+		item.RuntimeKind = RuntimeKindExternal
+	}
+	if !item.IsSystemManaged {
+		item.IsEditable = true
+		item.IsDeletable = true
+		return item
+	}
+	if !item.IsEditable && !item.IsDeletable {
+		return item
+	}
+	return item
+}
+
 func (s *Service) List(ctx context.Context) ([]Provider, error) {
 	items, err := s.repository.List(ctx)
 	if err != nil {
@@ -192,6 +208,7 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (Provider, erro
 	}
 
 	item.Status.LastHealthcheckAt = now
+	item = normalizeProviderManagement(item)
 
 	return s.repository.Create(ctx, item)
 }
@@ -204,6 +221,14 @@ func (s *Service) Update(ctx context.Context, id string, input UpdateInput) (Pro
 	item, err := s.repository.GetByID(ctx, id)
 	if err != nil {
 		return Provider{}, err
+	}
+	if item.IsSystemManaged && !item.IsEditable {
+		if !s.canUpdateManagedProviderClaudeSlots(ctx, *item, input) {
+			return Provider{}, ErrProviderNotEditable
+		}
+
+		item.ClaudeCodeModelMap = normalizeClaudeCodeModelMap(input.ClaudeCodeModelMap)
+		return s.repository.Update(ctx, normalizeProviderManagement(*item))
 	}
 
 	if input.AuthMode == "" {
@@ -234,7 +259,45 @@ func (s *Service) Update(ctx context.Context, id string, input UpdateInput) (Pro
 		item.APIKeyMasked = maskAPIKey(input.APIKey)
 	}
 
-	return s.repository.Update(ctx, *item)
+	normalized := normalizeProviderManagement(*item)
+
+	return s.repository.Update(ctx, normalized)
+}
+
+func (s *Service) canUpdateManagedProviderClaudeSlots(ctx context.Context, item Provider, input UpdateInput) bool {
+	if strings.TrimSpace(input.Name) != strings.TrimSpace(item.Name) {
+		return false
+	}
+	if strings.TrimSpace(input.BaseURL) != strings.TrimSpace(item.BaseURL) {
+		return false
+	}
+
+	expectedAuthMode := item.AuthMode
+	if expectedAuthMode == "" {
+		expectedAuthMode = InferAuthMode(item.Name, item.BaseURL)
+	}
+	inputAuthMode := input.AuthMode
+	if inputAuthMode == "" {
+		inputAuthMode = InferAuthMode(input.Name, input.BaseURL)
+	}
+	if inputAuthMode != expectedAuthMode {
+		return false
+	}
+
+	if !reflect.DeepEqual(normalizeExtraHeaders(input.ExtraHeaders), normalizeExtraHeaders(item.ExtraHeaders)) {
+		return false
+	}
+
+	trimmedAPIKey := strings.TrimSpace(input.APIKey)
+	if trimmedAPIKey == "" {
+		return true
+	}
+
+	currentAPIKey, err := s.credentials.Get(ctx, item.APIKeyRef)
+	if err != nil {
+		return false
+	}
+	return trimmedAPIKey == currentAPIKey
 }
 
 func normalizeClaudeCodeModelMap(input ClaudeCodeModelMap) ClaudeCodeModelMap {
@@ -243,6 +306,18 @@ func normalizeClaudeCodeModelMap(input ClaudeCodeModelMap) ClaudeCodeModelMap {
 		Sonnet: strings.TrimSpace(input.Sonnet),
 		Haiku:  strings.TrimSpace(input.Haiku),
 	}
+}
+
+func normalizeExtraHeaders(input map[string]string) map[string]string {
+	if len(input) == 0 {
+		return map[string]string{}
+	}
+
+	result := make(map[string]string, len(input))
+	for key, value := range input {
+		result[key] = value
+	}
+	return result
 }
 
 func (s *Service) ListSelectedModels(ctx context.Context, id string) ([]SelectedModel, error) {
@@ -289,12 +364,95 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
+	if item.IsSystemManaged && !item.IsDeletable {
+		return ErrProviderNotDeletable
+	}
 
 	if err := s.credentials.Delete(ctx, item.APIKeyRef); err != nil {
 		return err
 	}
 
 	return s.repository.Delete(ctx, id)
+}
+
+func (s *Service) EnsureManagedLocalGateway(ctx context.Context, name string, baseURL string, apiKey string) (Provider, error) {
+	items, err := s.repository.List(ctx)
+	if err != nil {
+		return Provider{}, err
+	}
+
+	for _, item := range items {
+		if !item.IsSystemManaged || item.RuntimeKind != RuntimeKindManagedLocalGate {
+			continue
+		}
+
+		item.Name = strings.TrimSpace(name)
+		item.BaseURL = strings.TrimSpace(baseURL)
+		item.AuthMode = AuthModeBearer
+		item.ExtraHeaders = map[string]string{}
+		item.IsSystemManaged = true
+		item.IsEditable = false
+		item.IsDeletable = false
+		item.RuntimeKind = RuntimeKindManagedLocalGate
+		item.Capabilities = Capabilities{
+			SupportsOpenAICompatible:    true,
+			SupportsAnthropicCompatible: true,
+			SupportsModelsAPI:           true,
+			SupportsBalanceAPI:          false,
+			SupportsStream:              true,
+		}
+
+		if strings.TrimSpace(apiKey) != "" {
+			if err := s.credentials.Delete(ctx, item.APIKeyRef); err != nil {
+				return Provider{}, err
+			}
+
+			apiKeyRef, err := s.credentials.Save(ctx, fmt.Sprintf("provider/%s/api-key", item.ID), apiKey)
+			if err != nil {
+				return Provider{}, err
+			}
+
+			item.APIKeyRef = apiKeyRef
+			item.APIKeyMasked = maskAPIKey(apiKey)
+		}
+
+		return s.repository.Update(ctx, normalizeProviderManagement(item))
+	}
+
+	id := "provider-local-gateway"
+	apiKeyRef, err := s.credentials.Save(ctx, fmt.Sprintf("provider/%s/api-key", id), apiKey)
+	if err != nil {
+		return Provider{}, err
+	}
+
+	item := normalizeProviderManagement(Provider{
+		ID:           id,
+		Name:         strings.TrimSpace(name),
+		BaseURL:      strings.TrimSpace(baseURL),
+		APIKeyRef:    apiKeyRef,
+		APIKey:       apiKey,
+		AuthMode:     AuthModeBearer,
+		ExtraHeaders: map[string]string{},
+		Capabilities: Capabilities{
+			SupportsOpenAICompatible:    true,
+			SupportsAnthropicCompatible: true,
+			SupportsModelsAPI:           true,
+			SupportsBalanceAPI:          false,
+			SupportsStream:              true,
+		},
+		Status: Status{
+			IsActive:         false,
+			LastHealthStatus: "pending",
+		},
+		APIKeyMasked:    maskAPIKey(apiKey),
+		IsSystemManaged: true,
+		IsEditable:      false,
+		IsDeletable:     false,
+		RuntimeKind:     RuntimeKindManagedLocalGate,
+	})
+	item.Status.LastHealthcheckAt = time.Now().UTC().Format(time.RFC3339)
+
+	return s.repository.Create(ctx, item)
 }
 
 func (s *Service) UpdateStatus(ctx context.Context, id string, status Status) (Provider, error) {

@@ -13,3 +13,5 @@ core/.gomodcache
 core/bin
 core/data
 .codex
+.env.local
+.docs/

@@ -2,6 +2,17 @@ import type { Provider } from "../types/provider";
 import type { RequestLog } from "../types/request-log";
 import type { ProviderModel } from "../types/provider-model";
 import type { SelectedModel } from "../types/selected-model";
+import type {
+  CreateLocalGatewayModelSourceInput,
+  LocalGatewayCapabilities,
+  LocalGatewayModelSource,
+  LocalGatewaySourceModel,
+  LocalGatewaySourceCapability,
+  LocalGatewaySourceHealthcheck,
+  LocalGatewayRuntimeResponse,
+  PreviewLocalGatewayModelSourceInput,
+  SyncLocalGatewayResponse
+} from "../types/local-gateway";
 
 function getApiBase(apiBase?: string) {
   return apiBase ?? "http://127.0.0.1:3456";
@@ -217,5 +228,153 @@ export async function updateSelectedProviderModels(
       body: JSON.stringify(items)
     },
     "Update selected models failed"
+  );
+}
+
+export async function getLocalGatewayRuntime(apiBase?: string): Promise<LocalGatewayRuntimeResponse> {
+  return fetchJson<LocalGatewayRuntimeResponse>(
+    `${getApiBase(apiBase)}/api/local-gateway/runtime`,
+    {},
+    "Local gateway runtime request failed"
+  );
+}
+
+export async function getLocalGatewayCapabilities(
+  apiBase?: string
+): Promise<LocalGatewayCapabilities> {
+  return fetchJson<LocalGatewayCapabilities>(
+    `${getApiBase(apiBase)}/api/local-gateway/capabilities`,
+    {},
+    "Local gateway capabilities request failed"
+  );
+}
+
+export async function getLocalGatewaySources(apiBase?: string): Promise<LocalGatewayModelSource[]> {
+  return fetchJson<LocalGatewayModelSource[]>(
+    `${getApiBase(apiBase)}/api/local-gateway/sources`,
+    {},
+    "Local gateway sources request failed"
+  );
+}
+
+export async function getLocalGatewaySourceCapabilities(
+  apiBase?: string
+): Promise<LocalGatewaySourceCapability[]> {
+  return fetchJson<LocalGatewaySourceCapability[]>(
+    `${getApiBase(apiBase)}/api/local-gateway/source-capabilities`,
+    {},
+    "Local gateway source capabilities request failed"
+  );
+}
+
+export async function createLocalGatewaySource(
+  input: CreateLocalGatewayModelSourceInput,
+  apiBase?: string
+): Promise<LocalGatewayModelSource> {
+  return fetchJson<LocalGatewayModelSource>(
+    `${getApiBase(apiBase)}/api/local-gateway/sources`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(input)
+    },
+    "Create local gateway source failed"
+  );
+}
+
+export async function updateLocalGatewaySource(
+  id: string,
+  input: CreateLocalGatewayModelSourceInput,
+  apiBase?: string
+): Promise<LocalGatewayModelSource> {
+  return fetchJson<LocalGatewayModelSource>(
+    `${getApiBase(apiBase)}/api/local-gateway/sources/${id}`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(input)
+    },
+    "Update local gateway source failed"
+  );
+}
+
+export async function deleteLocalGatewaySource(id: string, apiBase?: string): Promise<void> {
+  return fetchVoid(
+    `${getApiBase(apiBase)}/api/local-gateway/sources/${id}`,
+    {
+      method: "DELETE"
+    },
+    "Delete local gateway source failed"
+  );
+}
+
+export async function checkLocalGatewaySourceHealth(
+  id: string,
+  apiBase?: string
+): Promise<LocalGatewaySourceHealthcheck> {
+  return fetchJson<LocalGatewaySourceHealthcheck>(
+    `${getApiBase(apiBase)}/api/local-gateway/sources/${id}/healthcheck`,
+    {
+      method: "POST"
+    },
+    "Local gateway source healthcheck failed"
+  );
+}
+
+export async function previewLocalGatewaySourceModels(
+  input: PreviewLocalGatewayModelSourceInput,
+  apiBase?: string
+): Promise<LocalGatewaySourceModel[]> {
+  return fetchJson<LocalGatewaySourceModel[]>(
+    `${getApiBase(apiBase)}/api/local-gateway/source-models/preview`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(input)
+    },
+    "Local gateway source models preview failed"
+  );
+}
+
+export async function getLocalGatewaySelectedModels(
+  apiBase?: string
+): Promise<SelectedModel[]> {
+  return fetchJson<SelectedModel[]>(
+    `${getApiBase(apiBase)}/api/local-gateway/selected-models`,
+    {},
+    "Local gateway selected models request failed"
+  );
+}
+
+export async function updateLocalGatewaySelectedModels(
+  items: SelectedModel[],
+  apiBase?: string
+): Promise<SelectedModel[]> {
+  return fetchJson<SelectedModel[]>(
+    `${getApiBase(apiBase)}/api/local-gateway/selected-models`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(items)
+    },
+    "Update local gateway selected models failed"
+  );
+}
+
+export async function syncLocalGateway(apiBase?: string): Promise<SyncLocalGatewayResponse> {
+  return fetchJson<SyncLocalGatewayResponse>(
+    `${getApiBase(apiBase)}/api/local-gateway/sync`,
+    {
+      method: "POST"
+    },
+    "Local gateway sync failed"
   );
 }
