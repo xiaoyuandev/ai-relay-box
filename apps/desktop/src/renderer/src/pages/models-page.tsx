@@ -837,7 +837,7 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
       </section>
 
       {formOpen ? (
-        <div className={modalBackdropClass} role="presentation" onClick={closeForm}>
+        <div className={modalBackdropClass} role="presentation">
           <div
             className={`${modalPanelClass} max-w-3xl`}
             role="dialog"
@@ -962,11 +962,7 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
                         ))}
                       </div>
                     </div>
-                  ) : (
-                    <div className={emptyStateClass}>
-                      <p>{t("models.form.fetchHint")}</p>
-                    </div>
-                  )}
+                  ) : null}
 
                   <div className="grid gap-3">
                     <label className={labelClass}>

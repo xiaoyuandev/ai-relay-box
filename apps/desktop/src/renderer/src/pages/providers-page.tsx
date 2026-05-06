@@ -882,7 +882,7 @@ export function ProvidersPage({
       </section>
 
       {formOpen ? (
-        <div className={modalBackdropClass} role="presentation" onClick={() => setFormOpen(false)}>
+        <div className={modalBackdropClass} role="presentation">
           <section
             className={`${modalPanelClass} max-w-3xl`}
             role="dialog"
