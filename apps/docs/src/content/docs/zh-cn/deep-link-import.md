@@ -28,9 +28,7 @@ clash-for-ai://v1/import?resource=provider&payload=BASE64URL_JSON
 
 如果你想直接使用现成的生成器页面，可以打开：
 
-```text
-/deeplink.html
-```
+<a href="/deeplink.html" target="_blank" rel="noreferrer">/deeplink.html</a>
 
 ## URL 格式
 
@@ -46,6 +44,27 @@ clash-for-ai://v1/import?resource=<provider|model>&payload=<base64url-json>
 2. `payload` 必须是 base64url 编码后的 JSON 对象
 3. 如果路由不支持、payload 非法或缺少必填字段，应用会拒绝导入
 
+## 本地验证方式
+
+如果你想在自己的机器上验证这条链路，建议使用打包后的桌面应用，而不是只依赖 `pnpm dev`。
+
+原因：
+
+1. 浏览器点击 `clash-for-ai://...` 时，实际是让操作系统去打开这个协议
+2. 操作系统必须先知道哪个应用负责处理这个 scheme
+3. 打包后的桌面应用会更稳定地声明这个协议处理器
+4. 仅靠开发态进程，浏览器通常无法稳定识别这个协议
+
+推荐验证步骤：
+
+1. 先构建一个本地打包版桌面应用
+2. 至少启动一次这个打包后的应用
+3. 打开 <a href="/deeplink.html" target="_blank" rel="noreferrer">/deeplink.html</a>
+4. 点击 `Open Deep Link`
+5. 确认 Clash for AI 被唤起，并出现导入确认弹窗
+
+如果浏览器提示这个 scheme 没有注册 handler，最常见的原因就是打包后的应用还没有安装或至少启动过一次。
+
 ## Provider payload
 
 支持字段：
@@ -54,20 +73,16 @@ clash-for-ai://v1/import?resource=<provider|model>&payload=<base64url-json>
 {
   "name": "OpenRouter",
   "baseUrl": "https://openrouter.ai/api/v1",
-  "apiKey": "sk-or-example",
-  "authMode": "bearer"
+  "apiKey": "sk-or-example"
 }
 ```
 
 说明：
 
 1. `name`、`baseUrl`、`apiKey` 为必填
-2. `authMode` 为可选
-3. 支持的 `authMode` 值：
-   `bearer`
-   `x-api-key`
-   `both`
-4. 如果不传 `authMode`，Clash for AI 默认使用 `bearer`
+2. 这里的公开 payload 设计刻意与当前桌面端手动添加 Provider 的表单字段保持一致
+3. 对第三方接入方来说，最小导入流程不需要额外提供 `authMode`
+4. Clash for AI 当前会按现有添加表单的默认 bearer 行为处理这类导入
 
 示例 deep link：
 

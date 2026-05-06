@@ -6,16 +6,21 @@
     <title>Clash for AI Deep Link Generator</title>
     <style>
       :root {
-        color-scheme: light;
-        --bg: #f5efe9;
-        --panel: rgba(255, 255, 255, 0.82);
-        --panel-strong: #fff;
-        --text: #231815;
-        --muted: #6f6259;
-        --border: rgba(111, 98, 89, 0.18);
-        --accent: #b45309;
-        --accent-strong: #7c2d12;
-        --shadow: 0 24px 70px rgba(35, 24, 21, 0.12);
+        color-scheme: dark;
+        --bg: #020617;
+        --panel: rgba(15, 23, 42, 0.72);
+        --panel-strong: rgba(15, 23, 42, 0.88);
+        --text: #e2e8f0;
+        --muted: #94a3b8;
+        --border: rgba(148, 163, 184, 0.16);
+        --accent: #2dd4bf;
+        --accent-strong: #0f766e;
+        --surface: rgba(2, 6, 23, 0.58);
+        --surface-strong: rgba(15, 23, 42, 0.96);
+        --warning-border: rgba(251, 191, 36, 0.24);
+        --warning-bg: rgba(120, 53, 15, 0.28);
+        --warning-text: #fde68a;
+        --shadow: 0 24px 70px rgba(2, 6, 23, 0.44);
       }
 
       * {
@@ -31,9 +36,9 @@
           "Microsoft YaHei",
           sans-serif;
         background:
-          radial-gradient(circle at top left, rgba(180, 83, 9, 0.14), transparent 28%),
-          radial-gradient(circle at top right, rgba(124, 45, 18, 0.08), transparent 24%),
-          linear-gradient(180deg, #fbf7f3 0%, var(--bg) 100%);
+          radial-gradient(circle at top left, rgba(45, 212, 191, 0.18), transparent 24%),
+          radial-gradient(circle at top right, rgba(20, 184, 166, 0.14), transparent 22%),
+          linear-gradient(180deg, #0f172a 0%, var(--bg) 100%);
         color: var(--text);
       }
 
@@ -48,8 +53,16 @@
         backdrop-filter: blur(18px);
       }
 
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 14px;
+      }
+
       .eyebrow {
-        margin: 0 0 10px;
+        margin: 0;
         font-size: 12px;
         font-weight: 700;
         letter-spacing: 0.22em;
@@ -88,6 +101,7 @@
         border-radius: 22px;
         background: var(--panel-strong);
         padding: 18px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
       }
 
       .stack {
@@ -95,25 +109,41 @@
         gap: 14px;
       }
 
+      [hidden] {
+        display: none !important;
+      }
+
       .tabs {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
+        display: inline-flex;
+        align-items: center;
         gap: 8px;
+        padding: 0;
+        border: 0;
+        background: transparent;
       }
 
       .tab {
+        min-height: 42px;
+        min-width: 124px;
         border: 1px solid var(--border);
         border-radius: 14px;
-        background: #fff;
-        padding: 10px 12px;
+        background: var(--surface);
+        padding: 0 18px;
         font: inherit;
         color: var(--text);
         cursor: pointer;
+        transition:
+          background 180ms ease,
+          border-color 180ms ease,
+          color 180ms ease,
+          box-shadow 180ms ease;
       }
 
       .tab.active {
-        border-color: rgba(180, 83, 9, 0.28);
-        background: linear-gradient(135deg, rgba(251, 191, 36, 0.18), rgba(180, 83, 9, 0.16));
+        border-color: rgba(45, 212, 191, 0.22);
+        background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+        color: #042f2e;
+        box-shadow: 0 12px 28px rgba(20, 184, 166, 0.2);
       }
 
       label {
@@ -139,7 +169,7 @@
         padding: 11px 12px;
         font: inherit;
         color: var(--text);
-        background: #fff;
+        background: var(--surface);
       }
 
       textarea {
@@ -169,14 +199,18 @@
 
       .action.primary {
         background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-        color: #fff9f5;
-        box-shadow: 0 14px 30px rgba(180, 83, 9, 0.24);
+        color: #042f2e;
+        box-shadow: 0 14px 30px rgba(20, 184, 166, 0.24);
       }
 
       .action.secondary {
         border-color: var(--border);
-        background: #fff;
+        background: var(--surface);
         color: var(--text);
+      }
+
+      .action:hover {
+        filter: brightness(1.04);
       }
 
       pre {
@@ -185,7 +219,7 @@
         word-break: break-all;
         border: 1px solid var(--border);
         border-radius: 18px;
-        background: #fcfbfa;
+        background: var(--surface);
         padding: 14px;
         font-size: 13px;
         line-height: 1.7;
@@ -198,11 +232,54 @@
         font-size: 14px;
         line-height: 1.7;
       }
+
+      .status {
+        display: none;
+        margin-top: 2px;
+        border: 1px solid var(--warning-border);
+        border-radius: 16px;
+        background: var(--warning-bg);
+        padding: 12px 14px;
+        color: var(--warning-text);
+        font-size: 14px;
+        line-height: 1.7;
+      }
+
+      .status.visible {
+        display: block;
+      }
+
+      .back-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 40px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        padding: 0 14px;
+        color: var(--text);
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 600;
+        transition:
+          background 180ms ease,
+          border-color 180ms ease,
+          color 180ms ease;
+      }
+
+      .back-link:hover {
+        border-color: rgba(45, 212, 191, 0.22);
+        background: rgba(15, 23, 42, 0.92);
+      }
     </style>
   </head>
   <body>
     <main class="shell">
-      <p class="eyebrow">Clash for AI</p>
+      <div class="topbar">
+        <p class="eyebrow">Clash for AI</p>
+        <a class="back-link" href="/">Back to Docs Home</a>
+      </div>
       <h1>Deep Link Generator</h1>
       <p class="lead">
         Use this page to generate a `clash-for-ai://v1/import?...` link for Provider or Models
@@ -216,7 +293,7 @@
             <button id="model-tab" class="tab" type="button">Models</button>
           </div>
 
-          <div id="provider-form" class="stack">
+          <div id="provider-form" class="stack" data-resource="provider">
             <label>
               <span class="label">Name</span>
               <input id="provider-name" value="OpenRouter" />
@@ -229,17 +306,9 @@
               <span class="label">API Key</span>
               <input id="provider-api-key" value="sk-or-example" />
             </label>
-            <label>
-              <span class="label">Auth Mode</span>
-              <select id="provider-auth-mode">
-                <option value="bearer">bearer</option>
-                <option value="x-api-key">x-api-key</option>
-                <option value="both">both</option>
-              </select>
-            </label>
           </div>
 
-          <div id="model-form" class="stack" hidden>
+          <div id="model-form" class="stack" data-resource="model" hidden>
             <label>
               <span class="label">Name</span>
               <input id="model-name" value="Relay Models" />
@@ -273,6 +342,8 @@ claude-3-7-sonnet</textarea>
             <a id="open-link" class="action secondary" href="#">Open Deep Link</a>
           </div>
 
+          <div id="launch-status" class="status" role="status" aria-live="polite"></div>
+
           <div class="stack">
             <div>
               <p class="label">Payload JSON</p>
@@ -301,8 +372,10 @@ claude-3-7-sonnet</textarea>
       const deepLinkUrl = document.getElementById("deep-link-url");
       const openLink = document.getElementById("open-link");
       const generateButton = document.getElementById("generate-button");
+      const launchStatus = document.getElementById("launch-status");
 
       let activeResource = "provider";
+      let launchReminderTimer = null;
 
       function toBase64Url(value) {
         return btoa(unescape(encodeURIComponent(JSON.stringify(value))))
@@ -315,9 +388,23 @@ claude-3-7-sonnet</textarea>
         activeResource = resource;
         providerTab.classList.toggle("active", resource === "provider");
         modelTab.classList.toggle("active", resource === "model");
+        providerTab.setAttribute("aria-pressed", String(resource === "provider"));
+        modelTab.setAttribute("aria-pressed", String(resource === "model"));
         providerForm.hidden = resource !== "provider";
         modelForm.hidden = resource !== "model";
+        providerForm.style.display = resource === "provider" ? "grid" : "none";
+        modelForm.style.display = resource === "model" ? "grid" : "none";
         updateOutput();
+      }
+
+      function showLaunchStatus(message) {
+        launchStatus.textContent = message;
+        launchStatus.classList.add("visible");
+      }
+
+      function clearLaunchStatus() {
+        launchStatus.textContent = "";
+        launchStatus.classList.remove("visible");
       }
 
       function getCurrentPayload() {
@@ -327,8 +414,7 @@ claude-3-7-sonnet</textarea>
             payload: {
               name: document.getElementById("provider-name").value.trim(),
               baseUrl: document.getElementById("provider-base-url").value.trim(),
-              apiKey: document.getElementById("provider-api-key").value.trim(),
-              authMode: document.getElementById("provider-auth-mode").value
+              apiKey: document.getElementById("provider-api-key").value.trim()
             }
           };
         }
@@ -362,6 +448,32 @@ claude-3-7-sonnet</textarea>
       providerTab.addEventListener("click", () => setActiveResource("provider"));
       modelTab.addEventListener("click", () => setActiveResource("model"));
       generateButton.addEventListener("click", updateOutput);
+      openLink.addEventListener("click", (event) => {
+        event.preventDefault();
+        clearLaunchStatus();
+
+        if (launchReminderTimer) {
+          window.clearTimeout(launchReminderTimer);
+        }
+
+        const href = openLink.href;
+        const handleVisibilityChange = () => {
+          if (document.visibilityState === "hidden" && launchReminderTimer) {
+            window.clearTimeout(launchReminderTimer);
+            launchReminderTimer = null;
+            clearLaunchStatus();
+          }
+        };
+
+        document.addEventListener("visibilitychange", handleVisibilityChange, { once: true });
+        window.location.href = href;
+        launchReminderTimer = window.setTimeout(() => {
+          showLaunchStatus(
+            "If nothing opened, Clash for AI may not be installed yet, or the packaged app has not registered the `clash-for-ai://` handler on this machine."
+          );
+          launchReminderTimer = null;
+        }, 1400);
+      });
 
       document.querySelectorAll("input, textarea, select").forEach((element) => {
         element.addEventListener("input", updateOutput);

@@ -28,9 +28,7 @@ The current minimum scope supports:
 
 If you want a ready-to-use generator page, open:
 
-```text
-/deeplink.html
-```
+<a href="/deeplink.html" target="_blank" rel="noreferrer">/deeplink.html</a>
 
 ## URL format
 
@@ -46,6 +44,27 @@ Rules:
 2. `payload` must be a base64url-encoded JSON object
 3. the app will reject unsupported routes, invalid payloads, or missing required fields
 
+## Local verification
+
+If you want to verify this flow on your own machine, use a packaged desktop build instead of relying only on `pnpm dev`.
+
+Why:
+
+1. browsers ask the operating system to open `clash-for-ai://...`
+2. the operating system needs a registered handler for that scheme
+3. the packaged app declares that handler reliably
+4. a dev process alone is often not enough to make the browser recognize the scheme
+
+Recommended verification steps:
+
+1. build a local packaged desktop app
+2. launch the packaged app at least once
+3. open <a href="/deeplink.html" target="_blank" rel="noreferrer">/deeplink.html</a>
+4. click `Open Deep Link`
+5. confirm that Clash for AI opens and shows the import confirmation dialog
+
+If the browser reports that the scheme has no registered handler, the most common reason is that the packaged app has not been installed or launched yet.
+
 ## Provider payload
 
 Supported fields:
@@ -54,20 +73,16 @@ Supported fields:
 {
   "name": "OpenRouter",
   "baseUrl": "https://openrouter.ai/api/v1",
-  "apiKey": "sk-or-example",
-  "authMode": "bearer"
+  "apiKey": "sk-or-example"
 }
 ```
 
 Notes:
 
 1. `name`, `baseUrl`, and `apiKey` are required
-2. `authMode` is optional
-3. supported `authMode` values are:
-   `bearer`
-   `x-api-key`
-   `both`
-4. if `authMode` is omitted, Clash for AI defaults to `bearer`
+2. this public payload is intentionally aligned with the current desktop add form
+3. third-party integrators do not need to provide an auth mode field for the minimum import flow
+4. Clash for AI currently treats imported Provider links with the default bearer-style behavior used by the existing add form
 
 Example deep link:
 
