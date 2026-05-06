@@ -28,7 +28,7 @@ clash-for-ai://v1/import?resource=provider&payload=BASE64URL_JSON
 
 如果你想直接使用现成的生成器页面，可以打开：
 
-<a href="/deeplink.html" target="_blank" rel="noreferrer">/deeplink.html</a>
+<a href="../../deeplink.html" target="_blank" rel="noreferrer">/deeplink.html</a>
 
 ## URL 格式
 
@@ -59,7 +59,7 @@ clash-for-ai://v1/import?resource=<provider|model>&payload=<base64url-json>
 
 1. 先构建一个本地打包版桌面应用
 2. 至少启动一次这个打包后的应用
-3. 打开 <a href="/deeplink.html" target="_blank" rel="noreferrer">/deeplink.html</a>
+3. 打开 <a href="../../deeplink.html" target="_blank" rel="noreferrer">/deeplink.html</a>
 4. 点击 `Open Deep Link`
 5. 确认 Clash for AI 被唤起，并出现导入确认弹窗
 

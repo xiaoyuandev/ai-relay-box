@@ -28,7 +28,7 @@ The current minimum scope supports:
 
 If you want a ready-to-use generator page, open:
 
-<a href="/deeplink.html" target="_blank" rel="noreferrer">/deeplink.html</a>
+<a href="../deeplink.html" target="_blank" rel="noreferrer">/deeplink.html</a>
 
 ## URL format
 
@@ -59,7 +59,7 @@ Recommended verification steps:
 
 1. build a local packaged desktop app
 2. launch the packaged app at least once
-3. open <a href="/deeplink.html" target="_blank" rel="noreferrer">/deeplink.html</a>
+3. open <a href="../deeplink.html" target="_blank" rel="noreferrer">/deeplink.html</a>
 4. click `Open Deep Link`
 5. confirm that Clash for AI opens and shows the import confirmation dialog
 
