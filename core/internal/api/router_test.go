@@ -192,6 +192,48 @@ func TestLocalGatewaySourceAndSyncEndpoints(t *testing.T) {
 	}
 }
 
+func TestLocalGatewaySourceModelsPreviewEndpoint(t *testing.T) {
+	t.Parallel()
+
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/models" {
+			t.Fatalf("unexpected upstream path: %s", r.URL.Path)
+		}
+		if got := r.Header.Get("Authorization"); got != "Bearer sk-test-openai" {
+			t.Fatalf("unexpected upstream auth header: %s", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"gpt-4.1","object":"model"}]}`))
+	}))
+	defer upstream.Close()
+
+	handler := newTestRouter(t, nil, localgateway.RuntimeConfig{
+		Host:    "127.0.0.1",
+		Port:    3457,
+		DataDir: filepath.Join(t.TempDir(), "runtime"),
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/local-gateway/source-models/preview", bytes.NewBufferString(`{
+		"base_url":"`+upstream.URL+`/v1",
+		"api_key":"sk-test-openai",
+		"provider_type":"openai-compatible"
+	}`))
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("unexpected preview status: %d body=%s", rec.Code, rec.Body.String())
+	}
+
+	var payload []localgateway.SourceModelInfo
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode preview payload: %v", err)
+	}
+	if len(payload) != 1 || payload[0].ID != "gpt-4.1" {
+		t.Fatalf("unexpected preview payload: %+v", payload)
+	}
+}
+
 func TestManagedLocalGatewayProviderActivationRequiresHealthyRuntime(t *testing.T) {
 	t.Parallel()
 

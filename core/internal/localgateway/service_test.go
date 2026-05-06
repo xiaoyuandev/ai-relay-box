@@ -2,6 +2,8 @@ package localgateway
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"testing"
 
@@ -205,6 +207,54 @@ func TestServiceBuildSyncInput(t *testing.T) {
 	}
 	if len(input.SelectedModels) != 0 {
 		t.Fatalf("unexpected sync selected models: %+v", input.SelectedModels)
+	}
+}
+
+func TestServicePreviewSourceModels(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/models" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		if got := r.Header.Get("Authorization"); got != "Bearer sk-test-openai" {
+			t.Fatalf("unexpected auth header: %s", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"gpt-4.1","object":"model"},{"id":"gpt-4.1-mini","object":"model"}]}`))
+	}))
+	defer server.Close()
+
+	service := NewService(nil, nil)
+
+	items, err := service.PreviewSourceModels(context.Background(), PreviewModelSourceInput{
+		BaseURL:      server.URL + "/v1",
+		APIKey:       "sk-test-openai",
+		ProviderType: "openai-compatible",
+	})
+	if err != nil {
+		t.Fatalf("preview source models: %v", err)
+	}
+
+	if len(items) != 2 {
+		t.Fatalf("unexpected source models length: %d", len(items))
+	}
+	if items[0].ID != "gpt-4.1" || items[1].ID != "gpt-4.1-mini" {
+		t.Fatalf("unexpected source models: %+v", items)
+	}
+}
+
+func TestServicePreviewSourceModelsRejectsInvalidInput(t *testing.T) {
+	t.Parallel()
+
+	service := NewService(nil, nil)
+
+	if _, err := service.PreviewSourceModels(context.Background(), PreviewModelSourceInput{
+		BaseURL:      "https://example.com/v1",
+		APIKey:       "",
+		ProviderType: "openai-compatible",
+	}); err == nil {
+		t.Fatal("expected preview source models validation error")
 	}
 }
 

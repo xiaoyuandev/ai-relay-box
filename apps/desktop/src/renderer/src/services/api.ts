@@ -6,9 +6,11 @@ import type {
   CreateLocalGatewayModelSourceInput,
   LocalGatewayCapabilities,
   LocalGatewayModelSource,
+  LocalGatewaySourceModel,
   LocalGatewaySourceCapability,
   LocalGatewaySourceHealthcheck,
   LocalGatewayRuntimeResponse,
+  PreviewLocalGatewayModelSourceInput,
   SyncLocalGatewayResponse
 } from "../types/local-gateway";
 
@@ -320,6 +322,23 @@ export async function checkLocalGatewaySourceHealth(
       method: "POST"
     },
     "Local gateway source healthcheck failed"
+  );
+}
+
+export async function previewLocalGatewaySourceModels(
+  input: PreviewLocalGatewayModelSourceInput,
+  apiBase?: string
+): Promise<LocalGatewaySourceModel[]> {
+  return fetchJson<LocalGatewaySourceModel[]>(
+    `${getApiBase(apiBase)}/api/local-gateway/source-models/preview`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(input)
+    },
+    "Local gateway source models preview failed"
   );
 }
 

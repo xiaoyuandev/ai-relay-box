@@ -2,12 +2,16 @@ package localgateway
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/xiaoyuandev/clash-for-ai/core/internal/credential"
+	upstreamprovider "github.com/xiaoyuandev/clash-for-ai/core/internal/provider"
 )
 
 type CreateModelSourceInput struct {
@@ -32,15 +36,31 @@ type UpdateModelSourceInput struct {
 	Position        int      `json:"position"`
 }
 
+type PreviewModelSourceInput struct {
+	BaseURL      string `json:"base_url"`
+	APIKey       string `json:"api_key"`
+	ProviderType string `json:"provider_type"`
+}
+
+type SourceModelInfo struct {
+	ID      string `json:"id"`
+	Object  string `json:"object,omitempty"`
+	OwnedBy string `json:"owned_by,omitempty"`
+}
+
 type Service struct {
 	repository  Repository
 	credentials credential.Store
+	client      *http.Client
 }
 
 func NewService(repository Repository, credentials credential.Store) *Service {
 	return &Service{
 		repository:  repository,
 		credentials: credentials,
+		client: &http.Client{
+			Timeout: 10 * time.Second,
+		},
 	}
 }
 
@@ -217,6 +237,54 @@ func (s *Service) BuildSyncInput(ctx context.Context) (SyncInput, error) {
 	return input, nil
 }
 
+func (s *Service) PreviewSourceModels(ctx context.Context, input PreviewModelSourceInput) ([]SourceModelInfo, error) {
+	normalizedInput, err := normalizePreviewSourceInput(input)
+	if err != nil {
+		return nil, err
+	}
+
+	baseURL, err := url.Parse(normalizedInput.BaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid source base_url: %w", err)
+	}
+
+	target := *baseURL
+	target.Path = upstreamprovider.ResolveModelsPath(baseURL.Path)
+	target.RawPath = target.Path
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("build source models request: %w", err)
+	}
+
+	upstreamprovider.ApplyCredentialHeaders(req, upstreamprovider.Provider{
+		Name:         normalizedInput.ProviderType,
+		BaseURL:      normalizedInput.BaseURL,
+		AuthMode:     authModeForSourceProviderType(normalizedInput.ProviderType),
+		ExtraHeaders: map[string]string{},
+	}, normalizedInput.APIKey, nil)
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request source models: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1024*1024))
+	if err != nil {
+		return nil, fmt.Errorf("read source models response: %w", err)
+	}
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("source models request failed: HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+
+	items, err := parseSourceModelsResponse(body, normalizedInput.ProviderType)
+	if err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 func (s *Service) ValidateSyncInput(input SyncInput) error {
 	availableModels := make(map[string]struct{})
 	for _, source := range input.Sources {
@@ -374,6 +442,21 @@ func validateSyncSource(source SyncModelSource) error {
 	}
 }
 
+func normalizePreviewSourceInput(input PreviewModelSourceInput) (PreviewModelSourceInput, error) {
+	normalized := PreviewModelSourceInput{
+		BaseURL:      strings.TrimSpace(input.BaseURL),
+		APIKey:       strings.TrimSpace(input.APIKey),
+		ProviderType: strings.TrimSpace(input.ProviderType),
+	}
+	if normalized.APIKey == "" {
+		return PreviewModelSourceInput{}, fmt.Errorf("source api_key is required")
+	}
+	if err := validateSourceFields("preview", normalized.BaseURL, normalized.ProviderType, "preview"); err != nil {
+		return PreviewModelSourceInput{}, err
+	}
+	return normalized, nil
+}
+
 func normalizeCreateSourceInput(input CreateModelSourceInput) (CreateModelSourceInput, error) {
 	normalized := CreateModelSourceInput{
 		Name:            strings.TrimSpace(input.Name),
@@ -428,6 +511,59 @@ func validateSourceFields(name string, baseURL string, providerType string, defa
 	default:
 		return fmt.Errorf("source provider_type %q is not supported", providerType)
 	}
+}
+
+func authModeForSourceProviderType(providerType string) upstreamprovider.AuthMode {
+	switch strings.TrimSpace(providerType) {
+	case "anthropic-compatible":
+		return upstreamprovider.AuthModeAPIKey
+	default:
+		return upstreamprovider.AuthModeBearer
+	}
+}
+
+func parseSourceModelsResponse(body []byte, providerType string) ([]SourceModelInfo, error) {
+	var openAIResponse struct {
+		Data []SourceModelInfo `json:"data"`
+	}
+	if err := json.Unmarshal(body, &openAIResponse); err == nil && len(openAIResponse.Data) > 0 {
+		for index := range openAIResponse.Data {
+			if openAIResponse.Data[index].OwnedBy == "" {
+				openAIResponse.Data[index].OwnedBy = providerType
+			}
+		}
+		return openAIResponse.Data, nil
+	}
+
+	var stringList []string
+	if err := json.Unmarshal(body, &stringList); err == nil && len(stringList) > 0 {
+		items := make([]SourceModelInfo, 0, len(stringList))
+		for _, id := range stringList {
+			items = append(items, SourceModelInfo{
+				ID:      id,
+				Object:  "model",
+				OwnedBy: providerType,
+			})
+		}
+		return items, nil
+	}
+
+	var wrappedStrings struct {
+		Data []string `json:"data"`
+	}
+	if err := json.Unmarshal(body, &wrappedStrings); err == nil && len(wrappedStrings.Data) > 0 {
+		items := make([]SourceModelInfo, 0, len(wrappedStrings.Data))
+		for _, id := range wrappedStrings.Data {
+			items = append(items, SourceModelInfo{
+				ID:      id,
+				Object:  "model",
+				OwnedBy: providerType,
+			})
+		}
+		return items, nil
+	}
+
+	return nil, fmt.Errorf("source models response format not recognized")
 }
 
 func (s *Service) removeInvalidSelectedModels(ctx context.Context) ([]SelectedModel, error) {

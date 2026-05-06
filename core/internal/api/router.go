@@ -44,6 +44,7 @@ func NewRouter(
 	mux.HandleFunc("/api/local-gateway/runtime", router.handleLocalGatewayRuntime)
 	mux.HandleFunc("/api/local-gateway/capabilities", router.handleLocalGatewayCapabilities)
 	mux.HandleFunc("/api/local-gateway/source-capabilities", router.handleLocalGatewaySourceCapabilities)
+	mux.HandleFunc("/api/local-gateway/source-models/preview", router.handleLocalGatewaySourceModelsPreview)
 	mux.HandleFunc("/api/local-gateway/sync", router.handleLocalGatewaySync)
 	mux.HandleFunc("/api/local-gateway/sources", router.handleLocalGatewaySources)
 	mux.HandleFunc("/api/local-gateway/sources/", router.handleLocalGatewaySourceActions)
@@ -310,6 +311,31 @@ func (r *Router) handleLocalGatewaySourceCapabilities(w http.ResponseWriter, req
 	items, err := r.local.ListSourceCapabilities(req.Context())
 	if err != nil {
 		writeLocalGatewayManagerError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, items)
+}
+
+func (r *Router) handleLocalGatewaySourceModelsPreview(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if r.local == nil {
+		writeLocalGatewayError(w, http.StatusServiceUnavailable, "local gateway manager unavailable")
+		return
+	}
+
+	var input localgateway.PreviewModelSourceInput
+	if err := json.NewDecoder(req.Body).Decode(&input); err != nil {
+		writeLocalGatewayError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	items, err := r.local.PreviewSourceModels(req.Context(), input)
+	if err != nil {
+		writeLocalGatewayError(w, http.StatusBadGateway, err.Error())
 		return
 	}
 

@@ -176,6 +176,10 @@ func (m *Manager) ListSelectedModels(ctx context.Context) ([]SelectedModel, erro
 	return m.service.ListSelectedModels(ctx)
 }
 
+func (m *Manager) PreviewSourceModels(ctx context.Context, input PreviewModelSourceInput) ([]SourceModelInfo, error) {
+	return m.service.PreviewSourceModels(ctx, input)
+}
+
 func (m *Manager) ReplaceSelectedModels(ctx context.Context, items []SelectedModel) ([]SelectedModel, error) {
 	selected, err := m.service.ReplaceSelectedModels(ctx, items)
 	if err != nil {

@@ -81,6 +81,18 @@ export interface LocalGatewaySourceHealthcheck {
   checked_at: string;
 }
 
+export interface PreviewLocalGatewayModelSourceInput {
+  base_url: string;
+  api_key: string;
+  provider_type: "openai-compatible" | "anthropic-compatible";
+}
+
+export interface LocalGatewaySourceModel {
+  id: string;
+  object?: string;
+  owned_by?: string;
+}
+
 export interface CreateLocalGatewayModelSourceInput {
   name: string;
   base_url: string;
