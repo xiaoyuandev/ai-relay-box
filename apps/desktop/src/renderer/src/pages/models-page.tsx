@@ -690,9 +690,7 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
                       </span>
                     </div>
                     <p className={monoClass}>{source.base_url}</p>
-                    <p className={metaClass}>
-                      {source.provider_type} · default {source.default_model_id}
-                    </p>
+                    <p className={metaClass}>{source.provider_type}</p>
                     <div className="space-y-1">
                       <p className={metaClass}>{t("models.sources.modelIDs")}</p>
                       <div className="flex flex-wrap gap-2">
