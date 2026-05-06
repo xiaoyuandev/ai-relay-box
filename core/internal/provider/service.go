@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"reflect"
 	"strings"
 	"time"
 
@@ -222,7 +223,12 @@ func (s *Service) Update(ctx context.Context, id string, input UpdateInput) (Pro
 		return Provider{}, err
 	}
 	if item.IsSystemManaged && !item.IsEditable {
-		return Provider{}, ErrProviderNotEditable
+		if !s.canUpdateManagedProviderClaudeSlots(ctx, *item, input) {
+			return Provider{}, ErrProviderNotEditable
+		}
+
+		item.ClaudeCodeModelMap = normalizeClaudeCodeModelMap(input.ClaudeCodeModelMap)
+		return s.repository.Update(ctx, normalizeProviderManagement(*item))
 	}
 
 	if input.AuthMode == "" {
@@ -258,12 +264,60 @@ func (s *Service) Update(ctx context.Context, id string, input UpdateInput) (Pro
 	return s.repository.Update(ctx, normalized)
 }
 
+func (s *Service) canUpdateManagedProviderClaudeSlots(ctx context.Context, item Provider, input UpdateInput) bool {
+	if strings.TrimSpace(input.Name) != strings.TrimSpace(item.Name) {
+		return false
+	}
+	if strings.TrimSpace(input.BaseURL) != strings.TrimSpace(item.BaseURL) {
+		return false
+	}
+
+	expectedAuthMode := item.AuthMode
+	if expectedAuthMode == "" {
+		expectedAuthMode = InferAuthMode(item.Name, item.BaseURL)
+	}
+	inputAuthMode := input.AuthMode
+	if inputAuthMode == "" {
+		inputAuthMode = InferAuthMode(input.Name, input.BaseURL)
+	}
+	if inputAuthMode != expectedAuthMode {
+		return false
+	}
+
+	if !reflect.DeepEqual(normalizeExtraHeaders(input.ExtraHeaders), normalizeExtraHeaders(item.ExtraHeaders)) {
+		return false
+	}
+
+	trimmedAPIKey := strings.TrimSpace(input.APIKey)
+	if trimmedAPIKey == "" {
+		return true
+	}
+
+	currentAPIKey, err := s.credentials.Get(ctx, item.APIKeyRef)
+	if err != nil {
+		return false
+	}
+	return trimmedAPIKey == currentAPIKey
+}
+
 func normalizeClaudeCodeModelMap(input ClaudeCodeModelMap) ClaudeCodeModelMap {
 	return ClaudeCodeModelMap{
 		Opus:   strings.TrimSpace(input.Opus),
 		Sonnet: strings.TrimSpace(input.Sonnet),
 		Haiku:  strings.TrimSpace(input.Haiku),
 	}
+}
+
+func normalizeExtraHeaders(input map[string]string) map[string]string {
+	if len(input) == 0 {
+		return map[string]string{}
+	}
+
+	result := make(map[string]string, len(input))
+	for key, value := range input {
+		result[key] = value
+	}
+	return result
 }
 
 func (s *Service) ListSelectedModels(ctx context.Context, id string) ([]SelectedModel, error) {
