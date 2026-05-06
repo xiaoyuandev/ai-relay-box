@@ -115,6 +115,7 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [runtimePanelOpen, setRuntimePanelOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editingSourceId, setEditingSourceId] = useState<string | null>(null);
   const [sourceName, setSourceName] = useState("");
@@ -495,28 +496,6 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
     }
   }
 
-  async function handleSync() {
-    setError(null);
-    setFeedback(null);
-
-    try {
-      setSyncing(true);
-      const result = await syncLocalGateway(apiBase);
-      await loadAll();
-      setSourceHealthchecks({});
-      setFeedback(
-        t("models.feedback.synced", {
-          sources: result.applied_sources
-        })
-      );
-    } catch (syncError) {
-      await loadAll().catch(() => undefined);
-      setError(syncError instanceof Error ? syncError.message : t("common.unknownError"));
-    } finally {
-      setSyncing(false);
-    }
-  }
-
   async function handleCheckSourceHealth(sourceID: string) {
     setError(null);
     setFeedback(null);
@@ -596,65 +575,68 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
             </button>
             <button
               type="button"
-              className={buttonClass("primary")}
-              onClick={() => void handleSync()}
-              disabled={syncing || loading}
+              className={buttonClass("ghost")}
+              onClick={() => setRuntimePanelOpen((current) => !current)}
             >
-              {syncing ? t("models.runtime.syncing") : t("models.runtime.sync")}
+              {runtimePanelOpen ? t("models.runtime.collapse") : t("models.runtime.expand")}
             </button>
           </div>
         </div>
 
-        <div className={`${compactStatGridClass} mt-4`}>
-          <div className={infoCardClass}>
-            <p className={metaClass}>{t("models.runtime.status")}</p>
-            <p className={metricNumberClass}>{runtime.runtime.state}</p>
-            <p className="text-xs text-[color:var(--color-muted)]">
-              {runtime.runtime.last_error || (runtime.runtime.healthy ? "healthy" : "waiting")}
-            </p>
-          </div>
-          <div className={infoCardClass}>
-            <p className={metaClass}>{t("models.runtime.apiBase")}</p>
-            <p className={monoClass}>{runtime.runtime.api_base || "-"}</p>
-            <p className="text-xs text-[color:var(--color-muted)]">
-              pid {runtime.runtime.pid ?? "-"} · {runtime.runtime.runtime_kind || "-"}
-            </p>
-          </div>
-          <div className={infoCardClass}>
-            <p className={metaClass}>{t("models.runtime.lastSync")}</p>
-            <p className={monoClass}>{runtime.last_sync.last_synced_at || "-"}</p>
-            <p className="text-xs text-[color:var(--color-muted)]">
-              {runtime.last_sync_error ||
-                t("models.runtime.lastSyncSummary", {
-                  sources: runtime.last_sync.applied_sources
-                })}
-            </p>
-          </div>
-          <div className={infoCardClass}>
-            <p className={metaClass}>Runtime version</p>
-            <p className={monoClass}>{runtime.runtime.version || "-"}</p>
-            <p className="text-xs text-[color:var(--color-muted)]">
-              commit {runtime.runtime.commit || "-"}
-            </p>
-          </div>
+        <div className="mt-4 flex flex-wrap items-center gap-3 rounded-[16px] border [border-color:var(--border-soft)] [background:var(--panel-solid)] px-4 py-3">
+          <span className={statusPillClass(runtimeStateTone)}>
+            {runtime.runtime.state.toUpperCase()}
+          </span>
+          <span className={monoClass}>{runtime.runtime.api_base || "-"}</span>
+          <span className={metaClass}>
+            pid {runtime.runtime.pid ?? "-"} · {runtime.runtime.runtime_kind || "-"}
+          </span>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          {([
-            ["OpenAI", capabilities.supports_openai_compatible],
-            ["Anthropic", capabilities.supports_anthropic_compatible],
-            ["Models API", capabilities.supports_models_api],
-            ["Stream", capabilities.supports_stream],
-            ["Admin API", capabilities.supports_admin_api]
-          ] as const).map(([label, enabled]) => (
-            <span
-              key={label}
-              className={statusPillClass(enabled ? "success" : "default")}
-            >
-              {label}
-            </span>
-          ))}
-        </div>
+        {runtimePanelOpen ? (
+          <>
+            <div className={`${compactStatGridClass} mt-4`}>
+              <div className={infoCardClass}>
+                <p className={metaClass}>{t("models.runtime.status")}</p>
+                <p className={metricNumberClass}>{runtime.runtime.state}</p>
+                <p className="text-xs text-[color:var(--color-muted)]">
+                  {runtime.runtime.last_error || (runtime.runtime.healthy ? "healthy" : "waiting")}
+                </p>
+              </div>
+              <div className={infoCardClass}>
+                <p className={metaClass}>{t("models.runtime.apiBase")}</p>
+                <p className={monoClass}>{runtime.runtime.api_base || "-"}</p>
+                <p className="text-xs text-[color:var(--color-muted)]">
+                  pid {runtime.runtime.pid ?? "-"} · {runtime.runtime.runtime_kind || "-"}
+                </p>
+              </div>
+              <div className={infoCardClass}>
+                <p className={metaClass}>{t("models.runtime.version")}</p>
+                <p className={monoClass}>{runtime.runtime.version || "-"}</p>
+                <p className="text-xs text-[color:var(--color-muted)]">
+                  commit {runtime.runtime.commit || "-"}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              {([
+                ["OpenAI", capabilities.supports_openai_compatible],
+                ["Anthropic", capabilities.supports_anthropic_compatible],
+                ["Models API", capabilities.supports_models_api],
+                ["Stream", capabilities.supports_stream],
+                ["Admin API", capabilities.supports_admin_api]
+              ] as const).map(([label, enabled]) => (
+                <span
+                  key={label}
+                  className={statusPillClass(enabled ? "success" : "default")}
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
+          </>
+        ) : null}
       </section>
 
       <section className={sectionCardClass}>
