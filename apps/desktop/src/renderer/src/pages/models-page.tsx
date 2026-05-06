@@ -121,12 +121,12 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
   const [sourceName, setSourceName] = useState("");
   const [sourceBaseURL, setSourceBaseURL] = useState("");
   const [sourceAPIKey, setSourceAPIKey] = useState("");
+  const [showSourceAPIKey, setShowSourceAPIKey] = useState(false);
   const [sourceProviderType, setSourceProviderType] = useState<
     "openai-compatible" | "anthropic-compatible"
   >("openai-compatible");
   const [sourceModelIDsInput, setSourceModelIDsInput] = useState("");
   const [sourceModelOptions, setSourceModelOptions] = useState<string[]>([]);
-  const [fetchingSourceModels, setFetchingSourceModels] = useState(false);
   const [sourceModelsMessage, setSourceModelsMessage] = useState<string | null>(null);
   const [sourceModelsMessageTone, setSourceModelsMessageTone] = useState<"default" | "success" | "error">("default");
   const [checkingSourceHealthID, setCheckingSourceHealthID] = useState<string | null>(null);
@@ -236,10 +236,10 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
     setSourceName("");
     setSourceBaseURL("");
     setSourceAPIKey("");
+    setShowSourceAPIKey(false);
     setSourceProviderType("openai-compatible");
     setSourceModelIDsInput("");
     setSourceModelOptions([]);
-    setFetchingSourceModels(false);
     setSourceModelsMessage(null);
     setSourceModelsMessageTone("default");
   }
@@ -249,7 +249,8 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
     setEditingSourceId(source.id);
     setSourceName(source.name);
     setSourceBaseURL(source.base_url);
-    setSourceAPIKey("");
+    setSourceAPIKey(source.api_key || "");
+    setShowSourceAPIKey(false);
     setSourceProviderType(source.provider_type);
     setSourceModelIDsInput(modelIDs.join(", "));
     setSourceModelOptions(modelIDs);
@@ -301,7 +302,6 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
     }
 
     if (!sourceBaseURL.trim() || !sourceAPIKey.trim()) {
-      setFetchingSourceModels(false);
       setSourceModelsMessage(null);
       setSourceModelsMessageTone("default");
       return;
@@ -311,7 +311,6 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
       const requestID = autoDetectRequestRef.current + 1;
       autoDetectRequestRef.current = requestID;
 
-      setFetchingSourceModels(true);
       setSourceModelsMessage(t("models.form.autoDetecting"));
       setSourceModelsMessageTone("default");
 
@@ -353,11 +352,7 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
           );
           setSourceModelsMessageTone("error");
         })
-        .finally(() => {
-          if (autoDetectRequestRef.current == requestID) {
-            setFetchingSourceModels(false);
-          }
-        });
+        .finally(() => undefined);
     }, 700);
 
     return () => {
@@ -691,6 +686,9 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
                     </div>
                     <p className={monoClass}>{source.base_url}</p>
                     <p className={metaClass}>{source.provider_type}</p>
+                    <p className={metaClass}>
+                      API Key <span className={monoClass}>{source.api_key_masked || source.api_key}</span>
+                    </p>
                     <div className="space-y-1">
                       <p className={metaClass}>{t("models.sources.modelIDs")}</p>
                       <div className="flex flex-wrap gap-2">
@@ -895,12 +893,36 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
               </label>
               <label className={labelClass}>
                 <span className={fieldLabelClass}>{t("models.form.apiKey")}</span>
-                <input
-                  className={inputClass}
-                  value={sourceAPIKey}
-                  onChange={(event) => handleSourceAPIKeyChange(event.target.value)}
-                  placeholder={editingSourceId ? t("models.form.apiKeyHintUpdate") : ""}
-                />
+                <div className="relative">
+                  <input
+                    className={`${inputClass} pr-11`}
+                    value={sourceAPIKey}
+                    onChange={(event) => handleSourceAPIKeyChange(event.target.value)}
+                    placeholder={editingSourceId ? t("models.form.apiKeyHintUpdate") : ""}
+                    type={showSourceAPIKey ? "text" : "password"}
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-2 inline-flex items-center justify-center px-2 text-[color:var(--color-subtle)] transition hover:text-[color:var(--color-text)]"
+                    onClick={() => setShowSourceAPIKey((current) => !current)}
+                    aria-label={
+                      showSourceAPIKey ? t("providers.form.hideApiKey") : t("providers.form.showApiKey")
+                    }
+                    title={
+                      showSourceAPIKey ? t("providers.form.hideApiKey") : t("providers.form.showApiKey")
+                    }
+                  >
+                    {showSourceAPIKey ? (
+                      <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M2.7 1.3 1.3 2.7l3 3C2.9 6.9 1.9 8.2 1.3 9.2a1.3 1.3 0 0 0 0 1.6C2.5 12.4 6.5 17 12 17c2 0 3.8-.6 5.3-1.5l4 4 1.4-1.4zM9.9 11.3l2.8 2.8a2.5 2.5 0 0 1-2.8-2.8m4.1 1.3-3.6-3.6A2.5 2.5 0 0 1 14 12.6M12 7c3.8 0 7 3 8.6 5-.5.6-1.1 1.3-2 2l1.4 1.4c1.1-.8 2-1.8 2.7-2.8.4-.5.4-1.1 0-1.6C21.5 9.4 17.5 5 12 5c-1.4 0-2.7.3-3.9.8l1.7 1.7A9 9 0 0 1 12 7" />
+                      </svg>
+                    ) : (
+                      <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 5c5.5 0 9.5 4.6 10.7 6.2.4.5.4 1.1 0 1.6C21.5 14.4 17.5 19 12 19S2.5 14.4 1.3 12.8a1.3 1.3 0 0 1 0-1.6C2.5 9.6 6.5 5 12 5m0 2C8.2 7 5 10 3.4 12 5 14 8.2 17 12 17s7-3 8.6-5C19 10 15.8 7 12 7m0 2.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
               </label>
               <label className={`${labelClass} md:col-span-2`}>
                 <span className={fieldLabelClass}>{t("models.form.models")}</span>
@@ -917,9 +939,7 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
                     >
                       {sourceModelsMessage
                         ? sourceModelsMessage
-                        : fetchingSourceModels
-                          ? t("models.form.autoDetecting")
-                          : t("models.form.fetchHint")}
+                        : t("models.form.fetchHint")}
                     </span>
                     {sourceModelsMessageTone === "error" ? (
                       <span className="text-sm text-[color:var(--danger-text)]">
@@ -944,7 +964,7 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
                     </div>
                   ) : (
                     <div className={emptyStateClass}>
-                      <p>{t("models.form.fetchEmptyState")}</p>
+                      <p>{t("models.form.fetchHint")}</p>
                     </div>
                   )}
 

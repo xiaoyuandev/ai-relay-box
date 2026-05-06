@@ -28,6 +28,7 @@ type PublicModelSource struct {
 	ID              string   `json:"id"`
 	Name            string   `json:"name"`
 	BaseURL         string   `json:"base_url"`
+	APIKey          string   `json:"api_key"`
 	ProviderType    string   `json:"provider_type"`
 	DefaultModelID  string   `json:"default_model_id"`
 	ExposedModelIDs []string `json:"exposed_model_ids"`
@@ -50,6 +51,7 @@ func ToPublicModelSource(item ModelSource) PublicModelSource {
 		ID:              item.ID,
 		Name:            item.Name,
 		BaseURL:         item.BaseURL,
+		APIKey:          item.APIKey,
 		ProviderType:    item.ProviderType,
 		DefaultModelID:  item.DefaultModelID,
 		ExposedModelIDs: append([]string(nil), item.ExposedModelIDs...),

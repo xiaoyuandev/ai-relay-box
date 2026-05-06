@@ -138,8 +138,10 @@ export const messages = {
     "models.form.models": "Model IDs",
     "models.form.modelsPlaceholder": "Comma or newline separated supported model ids. Requests use the exact model id provided by the client.",
     "models.form.enabled": "Source State",
-    "models.form.fetchHint": "Fetch from the upstream /models API after connection details are filled in.",
-    "models.form.fetchEmptyState": "Fill in Base URL, API Key, and Provider Type, then fetch models from the upstream API.",
+    "models.form.fetchHint":
+      "After the connection details are filled in, we will try to fetch supported model IDs from upstream automatically. If it fails, fill them in manually.",
+    "models.form.fetchEmptyState":
+      "After the connection details are filled in, we will try to fetch supported model IDs from upstream automatically. If it fails, fill them in manually.",
     "models.form.fetchEmpty": "The upstream API returned no model IDs.",
     "models.form.fetchSuccess": "Fetched {count} model IDs.",
     "models.form.autoDetecting": "Detecting model IDs from the upstream API...",
@@ -529,8 +531,8 @@ export const messages = {
     "models.form.models": "模型 ID",
     "models.form.modelsPlaceholder": "使用逗号或换行分隔支持的模型 ID。请求会优先使用调用方传入的精确模型 ID。",
     "models.form.enabled": "来源状态",
-    "models.form.fetchHint": "填写连接信息后，从上游 `/models` 接口获取模型列表。",
-    "models.form.fetchEmptyState": "请先填写 Base URL、API Key 和 Provider 类型，然后从上游接口获取模型列表。",
+    "models.form.fetchHint": "填写连接信息后，会尝试从上游自动获取支持的模型 ID 列表，如果获取失败则需要手动填写。",
+    "models.form.fetchEmptyState": "填写连接信息后，会尝试从上游自动获取支持的模型 ID 列表，如果获取失败则需要手动填写。",
     "models.form.fetchEmpty": "上游接口没有返回任何模型 ID。",
     "models.form.fetchSuccess": "已获取 {count} 个模型 ID。",
     "models.form.autoDetecting": "正在从上游接口自动探测模型 ID...",

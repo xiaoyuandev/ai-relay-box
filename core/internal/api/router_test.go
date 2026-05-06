@@ -115,7 +115,7 @@ func TestLocalGatewaySourceAndSyncEndpoints(t *testing.T) {
 	if createRec.Code != http.StatusCreated {
 		t.Fatalf("unexpected create status: %d body=%s", createRec.Code, createRec.Body.String())
 	}
-	assertLocalGatewaySourceResponseHidesAPIKey(t, createRec.Body.Bytes())
+	assertLocalGatewaySourceResponseIncludesAPIKey(t, createRec.Body.Bytes())
 
 	listReq := httptest.NewRequest(http.MethodGet, "/api/local-gateway/sources", nil)
 	listRec := httptest.NewRecorder()
@@ -123,7 +123,7 @@ func TestLocalGatewaySourceAndSyncEndpoints(t *testing.T) {
 	if listRec.Code != http.StatusOK {
 		t.Fatalf("unexpected list status: %d body=%s", listRec.Code, listRec.Body.String())
 	}
-	assertLocalGatewaySourceResponseHidesAPIKey(t, listRec.Body.Bytes())
+	assertLocalGatewaySourceResponseIncludesAPIKey(t, listRec.Body.Bytes())
 
 	var created struct {
 		ID string `json:"id"`
@@ -147,7 +147,7 @@ func TestLocalGatewaySourceAndSyncEndpoints(t *testing.T) {
 	if updateRec.Code != http.StatusOK {
 		t.Fatalf("unexpected update status: %d body=%s", updateRec.Code, updateRec.Body.String())
 	}
-	assertLocalGatewaySourceResponseHidesAPIKey(t, updateRec.Body.Bytes())
+	assertLocalGatewaySourceResponseIncludesAPIKey(t, updateRec.Body.Bytes())
 
 	selectedBody := bytes.NewBufferString(`[{"model_id":"gpt-4.1","position":0}]`)
 	selectedReq := httptest.NewRequest(http.MethodPut, "/api/local-gateway/selected-models", selectedBody)
@@ -294,7 +294,7 @@ func TestManagedLocalGatewayProviderActivationRequiresHealthyRuntime(t *testing.
 	}
 }
 
-func assertLocalGatewaySourceResponseHidesAPIKey(t *testing.T, body []byte) {
+func assertLocalGatewaySourceResponseIncludesAPIKey(t *testing.T, body []byte) {
 	t.Helper()
 
 	var payload any
@@ -304,8 +304,8 @@ func assertLocalGatewaySourceResponseHidesAPIKey(t *testing.T, body []byte) {
 
 	switch typed := payload.(type) {
 	case map[string]any:
-		if _, ok := typed["api_key"]; ok {
-			t.Fatalf("expected source response to hide api_key, got %s", string(body))
+		if _, ok := typed["api_key"]; !ok {
+			t.Fatalf("expected source response to include api_key, got %s", string(body))
 		}
 		if _, ok := typed["api_key_masked"]; !ok {
 			t.Fatalf("expected source response to include api_key_masked, got %s", string(body))
@@ -316,8 +316,8 @@ func assertLocalGatewaySourceResponseHidesAPIKey(t *testing.T, body []byte) {
 			if !ok {
 				t.Fatalf("unexpected source list item: %T", item)
 			}
-			if _, ok := object["api_key"]; ok {
-				t.Fatalf("expected source list item to hide api_key, got %s", string(body))
+			if _, ok := object["api_key"]; !ok {
+				t.Fatalf("expected source list item to include api_key, got %s", string(body))
 			}
 			if _, ok := object["api_key_masked"]; !ok {
 				t.Fatalf("expected source list item to include api_key_masked, got %s", string(body))

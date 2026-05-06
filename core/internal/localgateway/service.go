@@ -364,10 +364,6 @@ func (s *Service) UpdateAllSourcesSyncState(ctx context.Context, status string, 
 }
 
 func (s *Service) refreshMaskedKey(ctx context.Context, item ModelSource) ModelSource {
-	if item.APIKeyMasked != "" {
-		return item
-	}
-
 	if item.APIKeyRef == "" {
 		return item
 	}
@@ -377,7 +373,10 @@ func (s *Service) refreshMaskedKey(ctx context.Context, item ModelSource) ModelS
 		return item
 	}
 
-	item.APIKeyMasked = maskAPIKey(value)
+	item.APIKey = value
+	if item.APIKeyMasked == "" {
+		item.APIKeyMasked = maskAPIKey(value)
+	}
 	return item
 }
 
