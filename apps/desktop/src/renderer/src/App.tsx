@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ToastRegion, type ToastItem } from "./components/toast-region";
 import { useI18n } from "./i18n/i18n-provider";
 import { LogsPage } from "./pages/logs-page";
 import { ModelsPage } from "./pages/models-page";
@@ -12,6 +13,7 @@ import appIcon from "../../../build/icon.png";
 import {
   appBackdropClass,
   appShellClass,
+  buttonClass,
   eyebrowClass,
   glassPanelClass,
   heroClass,
@@ -71,11 +73,15 @@ export default function App() {
   const { locale, localeLabels, setLocale, t } = useI18n();
   const { resolvedTheme, toggleTheme } = useTheme();
   const [desktopState, setDesktopState] = useState<DesktopState | null>(null);
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [view, setView] = useState<"providers" | "tools" | "models" | "logs" | "settings">(
     "providers"
   );
   const [bootError, setBootError] = useState<string | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
+  const [dismissedUpdateReminderKey, setDismissedUpdateReminderKey] = useState<string | null>(null);
+  const autoUpdateCheckStartedRef = useRef(false);
+  const lastUpdateToastKeyRef = useRef<string | null>(null);
   const runtimeLabel = getRuntimeLabel(desktopState?.runtime, {
     desktopApp: t("settings.value.desktopApp"),
     browser: t("settings.value.browser"),
@@ -129,6 +135,20 @@ export default function App() {
     }
   ] as const;
 
+  const dismissToast = useCallback((id: string) => {
+    setToasts((current) => current.filter((item) => item.id !== id));
+  }, []);
+
+  const updates = desktopState?.updates ?? null;
+  const updateReminderKey =
+    updates?.status === "available" && updates.availableVersion
+      ? `available:${updates.availableVersion}`
+      : updates?.status === "downloaded" && (updates.downloadedVersion ?? updates.availableVersion)
+        ? `downloaded:${updates.downloadedVersion ?? updates.availableVersion}`
+        : null;
+  const showUpdateReminder =
+    updateReminderKey !== null && updateReminderKey !== dismissedUpdateReminderKey;
+
   useEffect(() => {
     if (!window.desktopBridge) {
       return;
@@ -163,6 +183,92 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!window.desktopBridge || !desktopState || autoUpdateCheckStartedRef.current) {
+      return;
+    }
+
+    if (desktopState.updates.status === "unsupported") {
+      autoUpdateCheckStartedRef.current = true;
+      return;
+    }
+
+    autoUpdateCheckStartedRef.current = true;
+    const timeoutId = window.setTimeout(() => {
+      void window.desktopBridge.checkUpdates().catch(() => undefined);
+    }, 4000);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [desktopState]);
+
+  useEffect(() => {
+    if (!updates) {
+      return;
+    }
+
+    const key =
+      updates.status === "available" && updates.availableVersion
+        ? `available:${updates.availableVersion}`
+        : updates.status === "downloaded" && (updates.downloadedVersion ?? updates.availableVersion)
+          ? `downloaded:${updates.downloadedVersion ?? updates.availableVersion}`
+          : updates.status === "error" && updates.message
+            ? `error:${updates.message}`
+            : null;
+
+    if (!key || key === lastUpdateToastKeyRef.current) {
+      return;
+    }
+
+    lastUpdateToastKeyRef.current = key;
+    setToasts((current) => [
+      ...current,
+      {
+        id: `${Date.now()}-${key}`,
+        tone: updates.status === "error" ? "error" : "default",
+        message:
+          updates.status === "available" && updates.availableVersion
+            ? t("updates.toast.available", { version: updates.availableVersion })
+            : updates.status === "downloaded"
+              ? t("updates.toast.downloaded", {
+                  version: updates.downloadedVersion ?? updates.availableVersion ?? ""
+                })
+              : t("updates.toast.error", {
+                  message: updates.message ?? t("updates.status.error")
+                })
+      }
+    ]);
+  }, [t, updates]);
+
+  async function handleCheckUpdates() {
+    if (!window.desktopBridge) {
+      return;
+    }
+
+    const nextUpdates = await window.desktopBridge.checkUpdates();
+    setDesktopState((current) => (current ? { ...current, updates: nextUpdates } : current));
+    setView("settings");
+  }
+
+  async function handleDownloadUpdate() {
+    if (!window.desktopBridge) {
+      return;
+    }
+
+    const nextUpdates = await window.desktopBridge.downloadUpdate();
+    setDesktopState((current) => (current ? { ...current, updates: nextUpdates } : current));
+  }
+
+  async function handleQuitAndInstallUpdate() {
+    if (!window.desktopBridge) {
+      return;
+    }
+
+    const nextUpdates = await window.desktopBridge.quitAndInstallUpdate();
+    setDesktopState((current) => (current ? { ...current, updates: nextUpdates } : current));
+  }
+
   if (!desktopState && window.desktopBridge) {
     return (
       <main className={pageShellClass}>
@@ -179,6 +285,7 @@ export default function App() {
 
   return (
     <div className={appShellClass}>
+      <ToastRegion items={toasts} onDismiss={dismissToast} />
       <div className={appBackdropClass} />
       <div className="relative mx-auto flex h-screen w-full max-w-[1600px] flex-row gap-3 overflow-hidden px-3 py-3 sm:px-4 sm:py-4 xl:gap-4 xl:px-6">
         <aside
@@ -268,6 +375,46 @@ export default function App() {
           </div>
 
           <div className="mt-auto grid gap-3">
+            {updates && showUpdateReminder ? (
+              <div className="rounded-[16px] border [border-color:var(--success-border)] [background:var(--panel-solid)] p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-2 text-sm font-medium text-[color:var(--color-text)]">
+                      <span className={statusDotClass("warning")} />
+                      {updates.status === "downloaded"
+                        ? t("updates.card.installReady")
+                        : t("updates.card.availableCompact")}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="inline-flex min-h-7 min-w-7 items-center justify-center rounded-lg text-[color:var(--color-subtle)] transition hover:[background:var(--panel-soft)] hover:text-[color:var(--color-text)]"
+                    onClick={() => setDismissedUpdateReminderKey(updateReminderKey)}
+                    aria-label={t("common.close")}
+                    title={t("common.close")}
+                  >
+                    <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="m6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6l5.6-5.6L5 6.4z" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="mt-2">
+                  <button
+                    type="button"
+                    className={buttonClass(updates.status === "downloaded" ? "primary" : "secondary")}
+                    onClick={() =>
+                      void (updates.status === "downloaded"
+                        ? handleQuitAndInstallUpdate()
+                        : handleDownloadUpdate())
+                    }
+                  >
+                    {updates.status === "downloaded"
+                      ? t("settings.button.installUpdate")
+                      : t("settings.button.downloadUpdate")}
+                  </button>
+                </div>
+              </div>
+            ) : null}
             <span
               className={statusPillClass(
                 desktopState?.core.running ? "success" : "danger"
@@ -358,35 +505,13 @@ export default function App() {
                 );
               }}
               onCheckUpdates={async () => {
-                if (!window.desktopBridge) {
-                  return;
-                }
-
-                const updates = await window.desktopBridge.checkUpdates();
-                setDesktopState((current) => (current ? { ...current, updates } : current));
+                await handleCheckUpdates();
               }}
               onDownloadUpdate={async () => {
-                if (!window.desktopBridge) {
-                  return;
-                }
-
-                const updates = await window.desktopBridge.downloadUpdate();
-                setDesktopState((current) => (current ? { ...current, updates } : current));
+                await handleDownloadUpdate();
               }}
               onQuitAndInstallUpdate={async () => {
-                if (!window.desktopBridge) {
-                  return;
-                }
-
-                const updates = await window.desktopBridge.quitAndInstallUpdate();
-                setDesktopState((current) => (current ? { ...current, updates } : current));
-              }}
-              onOpenReleasePage={async () => {
-                if (!window.desktopBridge) {
-                  return;
-                }
-
-                await window.desktopBridge.openReleasePage();
+                await handleQuitAndInstallUpdate();
               }}
               onCoreRestart={async () => {
                 if (!window.desktopBridge) {

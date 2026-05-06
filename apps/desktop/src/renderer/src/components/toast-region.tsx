@@ -3,7 +3,7 @@ import { useEffect } from "react";
 export interface ToastItem {
   id: string;
   message: string;
-  tone: "success" | "error";
+  tone: "success" | "error" | "default";
 }
 
 interface ToastRegionProps {
@@ -40,13 +40,19 @@ export function ToastRegion({ items, onDismiss }: ToastRegionProps) {
           className={`pointer-events-auto rounded-3xl border px-4 py-3 shadow-[0_18px_40px_rgba(15,23,42,0.18)] backdrop-blur-xl ${
             item.tone === "success"
               ? "[border-color:var(--success-border)] [background:var(--success-soft)] text-[color:var(--success-text)]"
-              : "[border-color:var(--danger-border)] [background:var(--danger-soft)] text-[color:var(--danger-text)]"
+              : item.tone === "error"
+                ? "[border-color:var(--danger-border)] [background:var(--danger-soft)] text-[color:var(--danger-text)]"
+                : "[border-color:var(--border-soft)] [background:var(--panel-solid)] text-[color:var(--color-text)]"
           }`}
         >
           <div className="flex items-start gap-3">
             <span
               className={`mt-1 inline-flex h-2.5 w-2.5 shrink-0 rounded-full ${
-                item.tone === "success" ? "bg-[color:var(--accent-strong)]" : "bg-rose-400"
+                item.tone === "success"
+                  ? "bg-[color:var(--accent-strong)]"
+                  : item.tone === "error"
+                    ? "bg-rose-400"
+                    : "bg-[color:var(--color-subtle)]"
               }`}
             />
             <p className="text-sm leading-6">{item.message}</p>
