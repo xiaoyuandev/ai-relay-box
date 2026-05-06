@@ -48,6 +48,7 @@ interface ProvidersPageProps {
     apiBase: string;
   } | null;
   apiBase?: string;
+  refreshToken?: number;
   selectedProviderId: string | null;
   onSelectedProviderChange: (provider: Provider | null) => void;
 }
@@ -55,6 +56,7 @@ interface ProvidersPageProps {
 export function ProvidersPage({
   desktopState,
   apiBase,
+  refreshToken = 0,
   selectedProviderId,
   onSelectedProviderChange
 }: ProvidersPageProps) {
@@ -188,7 +190,7 @@ export function ProvidersPage({
     return () => {
       cancelled = true;
     };
-  }, [apiBase, onSelectedProviderChange, selectedProviderId, t]);
+  }, [apiBase, onSelectedProviderChange, refreshToken, selectedProviderId, t]);
 
   useEffect(() => {
     let cancelled = false;

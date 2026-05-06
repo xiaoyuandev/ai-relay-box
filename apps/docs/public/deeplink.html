@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Clash for AI Deep Link Generator</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f5efe9;
+        --panel: rgba(255, 255, 255, 0.82);
+        --panel-strong: #fff;
+        --text: #231815;
+        --muted: #6f6259;
+        --border: rgba(111, 98, 89, 0.18);
+        --accent: #b45309;
+        --accent-strong: #7c2d12;
+        --shadow: 0 24px 70px rgba(35, 24, 21, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family:
+          "SF Pro Text",
+          "PingFang SC",
+          "Microsoft YaHei",
+          sans-serif;
+        background:
+          radial-gradient(circle at top left, rgba(180, 83, 9, 0.14), transparent 28%),
+          radial-gradient(circle at top right, rgba(124, 45, 18, 0.08), transparent 24%),
+          linear-gradient(180deg, #fbf7f3 0%, var(--bg) 100%);
+        color: var(--text);
+      }
+
+      .shell {
+        width: min(980px, calc(100vw - 32px));
+        margin: 32px auto;
+        padding: 28px;
+        border: 1px solid var(--border);
+        border-radius: 28px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(18px);
+      }
+
+      .eyebrow {
+        margin: 0 0 10px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(32px, 5vw, 48px);
+        line-height: 1;
+        letter-spacing: -0.05em;
+      }
+
+      .lead {
+        max-width: 700px;
+        margin: 14px 0 0;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .grid {
+        display: grid;
+        gap: 18px;
+        margin-top: 28px;
+      }
+
+      @media (min-width: 860px) {
+        .grid {
+          grid-template-columns: 320px minmax(0, 1fr);
+        }
+      }
+
+      .card {
+        border: 1px solid var(--border);
+        border-radius: 22px;
+        background: var(--panel-strong);
+        padding: 18px;
+      }
+
+      .stack {
+        display: grid;
+        gap: 14px;
+      }
+
+      .tabs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .tab {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: #fff;
+        padding: 10px 12px;
+        font: inherit;
+        color: var(--text);
+        cursor: pointer;
+      }
+
+      .tab.active {
+        border-color: rgba(180, 83, 9, 0.28);
+        background: linear-gradient(135deg, rgba(251, 191, 36, 0.18), rgba(180, 83, 9, 0.16));
+      }
+
+      label {
+        display: grid;
+        gap: 8px;
+        font-size: 14px;
+      }
+
+      .label {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      input,
+      textarea,
+      select {
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 11px 12px;
+        font: inherit;
+        color: var(--text);
+        background: #fff;
+      }
+
+      textarea {
+        min-height: 108px;
+        resize: vertical;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      button.action,
+      a.action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 42px;
+        border-radius: 14px;
+        padding: 0 16px;
+        border: 1px solid transparent;
+        text-decoration: none;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      .action.primary {
+        background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+        color: #fff9f5;
+        box-shadow: 0 14px 30px rgba(180, 83, 9, 0.24);
+      }
+
+      .action.secondary {
+        border-color: var(--border);
+        background: #fff;
+        color: var(--text);
+      }
+
+      pre {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-all;
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        background: #fcfbfa;
+        padding: 14px;
+        font-size: 13px;
+        line-height: 1.7;
+        color: var(--text);
+      }
+
+      .note {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.7;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <p class="eyebrow">Clash for AI</p>
+      <h1>Deep Link Generator</h1>
+      <p class="lead">
+        Use this page to generate a `clash-for-ai://v1/import?...` link for Provider or Models
+        import. The desktop app will still show a confirmation dialog before saving anything.
+      </p>
+
+      <section class="grid">
+        <div class="card stack">
+          <div class="tabs">
+            <button id="provider-tab" class="tab active" type="button">Provider</button>
+            <button id="model-tab" class="tab" type="button">Models</button>
+          </div>
+
+          <div id="provider-form" class="stack">
+            <label>
+              <span class="label">Name</span>
+              <input id="provider-name" value="OpenRouter" />
+            </label>
+            <label>
+              <span class="label">Base URL</span>
+              <input id="provider-base-url" value="https://openrouter.ai/api/v1" />
+            </label>
+            <label>
+              <span class="label">API Key</span>
+              <input id="provider-api-key" value="sk-or-example" />
+            </label>
+            <label>
+              <span class="label">Auth Mode</span>
+              <select id="provider-auth-mode">
+                <option value="bearer">bearer</option>
+                <option value="x-api-key">x-api-key</option>
+                <option value="both">both</option>
+              </select>
+            </label>
+          </div>
+
+          <div id="model-form" class="stack" hidden>
+            <label>
+              <span class="label">Name</span>
+              <input id="model-name" value="Relay Models" />
+            </label>
+            <label>
+              <span class="label">Base URL</span>
+              <input id="model-base-url" value="https://relay.example.com/v1" />
+            </label>
+            <label>
+              <span class="label">API Key</span>
+              <input id="model-api-key" value="sk-model-example" />
+            </label>
+            <label>
+              <span class="label">Provider Type</span>
+              <select id="model-provider-type">
+                <option value="openai-compatible">openai-compatible</option>
+                <option value="anthropic-compatible">anthropic-compatible</option>
+              </select>
+            </label>
+            <label>
+              <span class="label">Model IDs</span>
+              <textarea id="model-ids">gpt-4o-mini
+claude-3-7-sonnet</textarea>
+            </label>
+          </div>
+        </div>
+
+        <div class="card stack">
+          <div class="actions">
+            <button id="generate-button" class="action primary" type="button">Generate Link</button>
+            <a id="open-link" class="action secondary" href="#">Open Deep Link</a>
+          </div>
+
+          <div class="stack">
+            <div>
+              <p class="label">Payload JSON</p>
+              <pre id="payload-json"></pre>
+            </div>
+            <div>
+              <p class="label">Deep Link URL</p>
+              <pre id="deep-link-url"></pre>
+            </div>
+          </div>
+
+          <p class="note">
+            Notes: the generated URL may contain a real API key if you fill one in. Do not publish
+            or share production links without considering that exposure.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const providerTab = document.getElementById("provider-tab");
+      const modelTab = document.getElementById("model-tab");
+      const providerForm = document.getElementById("provider-form");
+      const modelForm = document.getElementById("model-form");
+      const payloadJson = document.getElementById("payload-json");
+      const deepLinkUrl = document.getElementById("deep-link-url");
+      const openLink = document.getElementById("open-link");
+      const generateButton = document.getElementById("generate-button");
+
+      let activeResource = "provider";
+
+      function toBase64Url(value) {
+        return btoa(unescape(encodeURIComponent(JSON.stringify(value))))
+          .replace(/\+/g, "-")
+          .replace(/\//g, "_")
+          .replace(/=+$/g, "");
+      }
+
+      function setActiveResource(resource) {
+        activeResource = resource;
+        providerTab.classList.toggle("active", resource === "provider");
+        modelTab.classList.toggle("active", resource === "model");
+        providerForm.hidden = resource !== "provider";
+        modelForm.hidden = resource !== "model";
+        updateOutput();
+      }
+
+      function getCurrentPayload() {
+        if (activeResource === "provider") {
+          return {
+            resource: "provider",
+            payload: {
+              name: document.getElementById("provider-name").value.trim(),
+              baseUrl: document.getElementById("provider-base-url").value.trim(),
+              apiKey: document.getElementById("provider-api-key").value.trim(),
+              authMode: document.getElementById("provider-auth-mode").value
+            }
+          };
+        }
+
+        return {
+          resource: "model",
+          payload: {
+            name: document.getElementById("model-name").value.trim(),
+            baseUrl: document.getElementById("model-base-url").value.trim(),
+            apiKey: document.getElementById("model-api-key").value.trim(),
+            providerType: document.getElementById("model-provider-type").value,
+            modelIds: document
+              .getElementById("model-ids")
+              .value
+              .split(/[\n,]/)
+              .map((item) => item.trim())
+              .filter(Boolean)
+          }
+        };
+      }
+
+      function updateOutput() {
+        const { resource, payload } = getCurrentPayload();
+        const encoded = toBase64Url(payload);
+        const url = `clash-for-ai://v1/import?resource=${resource}&payload=${encoded}`;
+        payloadJson.textContent = JSON.stringify(payload, null, 2);
+        deepLinkUrl.textContent = url;
+        openLink.href = url;
+      }
+
+      providerTab.addEventListener("click", () => setActiveResource("provider"));
+      modelTab.addEventListener("click", () => setActiveResource("model"));
+      generateButton.addEventListener("click", updateOutput);
+
+      document.querySelectorAll("input, textarea, select").forEach((element) => {
+        element.addEventListener("input", updateOutput);
+        element.addEventListener("change", updateOutput);
+      });
+
+      updateOutput();
+    </script>
+  </body>
+</html>

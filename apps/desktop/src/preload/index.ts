@@ -1,6 +1,25 @@
 import { contextBridge, ipcRenderer } from "electron";
 import { electronAPI } from "@electron-toolkit/preload";
 
+export interface DesktopDeepLinkImportEvent {
+  id: string;
+  kind: "import";
+  request: {
+    resource: "provider" | "model";
+    payload: Record<string, unknown>;
+    originalURL: string;
+  };
+}
+
+export interface DesktopDeepLinkErrorEvent {
+  id: string;
+  kind: "error";
+  message: string;
+  originalURL?: string;
+}
+
+export type DesktopDeepLinkEvent = DesktopDeepLinkImportEvent | DesktopDeepLinkErrorEvent;
+
 const api = {
   ping: () => ipcRenderer.invoke("app:ping"),
   restartCore: () => ipcRenderer.invoke("app:restart-core"),
@@ -21,7 +40,15 @@ const api = {
   checkUpdates: () => ipcRenderer.invoke("app:check-updates"),
   downloadUpdate: () => ipcRenderer.invoke("app:download-update"),
   quitAndInstallUpdate: () => ipcRenderer.invoke("app:quit-and-install-update"),
-  openReleasePage: () => ipcRenderer.invoke("app:open-release-page")
+  openReleasePage: () => ipcRenderer.invoke("app:open-release-page"),
+  consumeDeepLinkEvent: () => ipcRenderer.invoke("app:consume-deep-link-event"),
+  onDeepLinkEvent: (listener: (event: DesktopDeepLinkEvent) => void) => {
+    const wrapped = (_event: unknown, payload: DesktopDeepLinkEvent) => listener(payload);
+    ipcRenderer.on("app:deep-link-event", wrapped);
+    return () => {
+      ipcRenderer.removeListener("app:deep-link-event", wrapped);
+    };
+  }
 };
 
 if (process.contextIsolated) {
@@ -32,8 +59,10 @@ if (process.contextIsolated) {
     console.error(error);
   }
 } else {
-  // @ts-expect-error runtime fallback
-  window.electron = electronAPI;
-  // @ts-expect-error runtime fallback
-  window.desktopBridge = api;
+  const nextWindow = window as typeof window & {
+    electron: typeof electronAPI;
+    desktopBridge: typeof api;
+  };
+  nextWindow.electron = electronAPI;
+  nextWindow.desktopBridge = api;
 }

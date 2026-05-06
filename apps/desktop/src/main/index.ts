@@ -39,6 +39,27 @@ interface UpdateState {
   message?: string;
 }
 
+type DeepLinkImportResource = "provider" | "model";
+
+interface DeepLinkImportEvent {
+  id: string;
+  kind: "import";
+  request: {
+    resource: DeepLinkImportResource;
+    payload: Record<string, unknown>;
+    originalURL: string;
+  };
+}
+
+interface DeepLinkErrorEvent {
+  id: string;
+  kind: "error";
+  message: string;
+  originalURL?: string;
+}
+
+type DeepLinkEvent = DeepLinkImportEvent | DeepLinkErrorEvent;
+
 type AutoUpdaterType = typeof import("electron-updater").autoUpdater;
 
 let coreRuntime: CoreRuntimeHandle = {
@@ -67,6 +88,7 @@ let tray: Tray | null = null;
 let autoUpdater: AutoUpdaterType | null = null;
 let launchHiddenOnStartup = false;
 let isQuitting = false;
+let pendingDeepLinkEvent: DeepLinkEvent | null = null;
 let updateState: UpdateState = {
   currentVersion: app.getVersion(),
   status: app.isPackaged ? "idle" : "unsupported",
@@ -78,6 +100,111 @@ let updateState: UpdateState = {
 function resolveIconPath() {
   const iconFile = process.platform === "win32" ? "icon.ico" : "icon.png";
   return join(app.getAppPath(), "build", iconFile);
+}
+
+function getAppState() {
+  return {
+    ok: true,
+    runtime: "desktop" as const,
+    platform: process.platform,
+    apiBase: coreRuntime.state.apiBase,
+    config: {
+      apiPort: desktopConfig.apiPort,
+      apiPortSource: configuredPortSource,
+      localGatewayPort: desktopConfig.localGatewayPort,
+      localGatewayPortSource: configuredLocalGatewayPortSource,
+      launchAtLogin: desktopConfig.launchAtLogin,
+      launchHidden: desktopConfig.launchHidden,
+      closeToTray: desktopConfig.closeToTray
+    },
+    updates: updateState,
+    core: coreRuntime.state
+  };
+}
+
+function createDeepLinkEventId() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function decodeBase64UrlJson(value: string) {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+  const decoded = Buffer.from(padded, "base64").toString("utf8");
+  const parsed = JSON.parse(decoded);
+  if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("Deep link payload must be a JSON object.");
+  }
+  return parsed as Record<string, unknown>;
+}
+
+function parseDeepLinkImportURL(input: string): DeepLinkEvent {
+  try {
+    const url = new URL(input);
+    if (url.protocol !== "clash-for-ai:") {
+      throw new Error("Unsupported deep link protocol.");
+    }
+
+    if (url.hostname !== "v1" || url.pathname !== "/import") {
+      throw new Error("Unsupported deep link route.");
+    }
+
+    const resourceParam = (url.searchParams.get("resource") ?? "").trim().toLowerCase();
+    const resource =
+      resourceParam === "provider"
+        ? "provider"
+        : resourceParam === "model" || resourceParam === "models" || resourceParam === "model-source"
+          ? "model"
+          : null;
+    if (!resource) {
+      throw new Error("Unsupported import resource.");
+    }
+
+    const payloadParam = url.searchParams.get("payload");
+    if (!payloadParam) {
+      throw new Error("Missing payload parameter.");
+    }
+
+    return {
+      id: createDeepLinkEventId(),
+      kind: "import",
+      request: {
+        resource,
+        payload: decodeBase64UrlJson(payloadParam),
+        originalURL: input
+      }
+    };
+  } catch (error) {
+    return {
+      id: createDeepLinkEventId(),
+      kind: "error",
+      message: error instanceof Error ? error.message : "Failed to parse deep link.",
+      originalURL: input
+    };
+  }
+}
+
+function findDeepLinkURL(argv: string[]) {
+  return argv.find((item) => item.startsWith("clash-for-ai://")) ?? null;
+}
+
+function dispatchDeepLinkEvent(event: DeepLinkEvent) {
+  pendingDeepLinkEvent = event;
+  mainWindow?.webContents.send("app:deep-link-event", event);
+}
+
+function handleDeepLinkURL(url: string) {
+  dispatchDeepLinkEvent(parseDeepLinkImportURL(url));
+}
+
+function registerProtocolClient() {
+  if (process.defaultApp) {
+    if (process.argv.length >= 2) {
+      app.setAsDefaultProtocolClient("clash-for-ai", process.execPath, [join(process.cwd(), process.argv[1])]);
+    }
+    return;
+  }
+
+  app.setAsDefaultProtocolClient("clash-for-ai");
 }
 
 function resolveReleaseURL() {
@@ -271,13 +398,23 @@ function createWindow(forceShow = false): void {
 
 const singleInstanceLock = app.requestSingleInstanceLock();
 
-  if (!singleInstanceLock) {
+if (!singleInstanceLock) {
   app.quit();
 } else {
-  app.on("second-instance", () => {
+  app.on("second-instance", (_, argv) => {
+    const deepLinkURL = findDeepLinkURL(argv);
+    if (deepLinkURL) {
+      handleDeepLinkURL(deepLinkURL);
+    }
     showMainWindow();
   });
 }
+
+app.on("open-url", (event, url) => {
+  event.preventDefault();
+  handleDeepLinkURL(url);
+  showMainWindow();
+});
 
 function configureAutoUpdater() {
   if (!app.isPackaged) {
@@ -356,6 +493,7 @@ app.whenReady().then(() => {
   configureAutoUpdater();
   desktopConfig = loadDesktopConfig();
   launchHiddenOnStartup = shouldStartHidden();
+  registerProtocolClient();
   applyLaunchSettings();
   createTray();
 
@@ -370,41 +508,12 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window);
   });
 
-  ipcMain.handle("app:ping", async () => ({
-    ok: true,
-    runtime: "desktop",
-    platform: process.platform,
-    apiBase: coreRuntime.state.apiBase,
-    config: {
-      apiPort: desktopConfig.apiPort,
-      apiPortSource: configuredPortSource,
-      localGatewayPort: desktopConfig.localGatewayPort,
-      localGatewayPortSource: configuredLocalGatewayPortSource,
-      launchAtLogin: desktopConfig.launchAtLogin,
-      launchHidden: desktopConfig.launchHidden,
-      closeToTray: desktopConfig.closeToTray
-    },
-    updates: updateState,
-    core: coreRuntime.state
-  }));
+  ipcMain.handle("app:ping", async () => getAppState());
 
   ipcMain.handle("app:restart-core", async () => {
     coreRuntime.stop();
     await bootstrapCoreRuntime();
-    return {
-      ok: true,
-      config: {
-        apiPort: desktopConfig.apiPort,
-        apiPortSource: configuredPortSource,
-        localGatewayPort: desktopConfig.localGatewayPort,
-        localGatewayPortSource: configuredLocalGatewayPortSource,
-        launchAtLogin: desktopConfig.launchAtLogin,
-        launchHidden: desktopConfig.launchHidden,
-        closeToTray: desktopConfig.closeToTray
-      },
-      updates: updateState,
-      core: coreRuntime.state
-    };
+    return getAppState();
   });
 
   ipcMain.handle("app:update-core-port", async (_, nextPort: number) => {
@@ -420,20 +529,7 @@ app.whenReady().then(() => {
     coreRuntime.stop();
     await bootstrapCoreRuntime();
 
-    return {
-      ok: true,
-      config: {
-        apiPort: desktopConfig.apiPort,
-        apiPortSource: configuredPortSource,
-        localGatewayPort: desktopConfig.localGatewayPort,
-        localGatewayPortSource: configuredLocalGatewayPortSource,
-        launchAtLogin: desktopConfig.launchAtLogin,
-        launchHidden: desktopConfig.launchHidden,
-        closeToTray: desktopConfig.closeToTray
-      },
-      updates: updateState,
-      core: coreRuntime.state
-    };
+    return getAppState();
   });
 
   ipcMain.handle("app:update-local-gateway-port", async (_, nextPort: number) => {
@@ -451,20 +547,7 @@ app.whenReady().then(() => {
     coreRuntime.stop();
     await bootstrapCoreRuntime();
 
-    return {
-      ok: true,
-      config: {
-        apiPort: desktopConfig.apiPort,
-        apiPortSource: configuredPortSource,
-        localGatewayPort: desktopConfig.localGatewayPort,
-        localGatewayPortSource: configuredLocalGatewayPortSource,
-        launchAtLogin: desktopConfig.launchAtLogin,
-        launchHidden: desktopConfig.launchHidden,
-        closeToTray: desktopConfig.closeToTray
-      },
-      updates: updateState,
-      core: coreRuntime.state
-    };
+    return getAppState();
   });
 
   ipcMain.handle("app:copy-text", async (_, text: string) => {
@@ -483,22 +566,15 @@ app.whenReady().then(() => {
       });
       applyLaunchSettings();
 
-      return {
-        ok: true,
-        config: {
-          apiPort: desktopConfig.apiPort,
-          apiPortSource: configuredPortSource,
-          localGatewayPort: desktopConfig.localGatewayPort,
-          localGatewayPortSource: configuredLocalGatewayPortSource,
-          launchAtLogin: desktopConfig.launchAtLogin,
-          launchHidden: desktopConfig.launchHidden,
-          closeToTray: desktopConfig.closeToTray
-        },
-        updates: updateState,
-        core: coreRuntime.state
-      };
+      return getAppState();
     }
   );
+
+  ipcMain.handle("app:consume-deep-link-event", async () => {
+    const nextEvent = pendingDeepLinkEvent;
+    pendingDeepLinkEvent = null;
+    return nextEvent;
+  });
 
   ipcMain.handle("tools:list", async () => listToolIntegrations(coreRuntime.state.port));
 
@@ -565,6 +641,10 @@ app.whenReady().then(() => {
     .finally(() => {
       isBootstrapped = true;
       createWindow();
+      const deepLinkURL = findDeepLinkURL(process.argv);
+      if (deepLinkURL) {
+        handleDeepLinkURL(deepLinkURL);
+      }
     });
 
   app.on("activate", function () {

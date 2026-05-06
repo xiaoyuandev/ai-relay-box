@@ -1,4 +1,5 @@
 import { ElectronAPI } from "@electron-toolkit/preload";
+import type { DesktopDeepLinkEvent } from "./index";
 
 declare global {
   type DesktopToolIntegrationId =
@@ -280,6 +281,8 @@ declare global {
         };
       }>;
       openReleasePage: () => Promise<{ ok: boolean; url: string }>;
+      consumeDeepLinkEvent: () => Promise<DesktopDeepLinkEvent | null>;
+      onDeepLinkEvent: (listener: (event: DesktopDeepLinkEvent) => void) => () => void;
     };
   }
 }

@@ -1,13 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ToastRegion, type ToastItem } from "./components/toast-region";
 import { useI18n } from "./i18n/i18n-provider";
+import {
+  createLocalGatewaySource,
+  createProvider,
+  syncLocalGateway
+} from "./services/api";
 import { LogsPage } from "./pages/logs-page";
 import { ModelsPage } from "./pages/models-page";
 import { ProvidersPage } from "./pages/providers-page";
 import { SettingsPage } from "./pages/settings-page";
 import { ToolsPage } from "./pages/tools-page";
 import { useTheme } from "./theme/theme-provider";
-import type { Provider } from "./types/provider";
+import type { AuthMode, Provider } from "./types/provider";
+import type { CreateLocalGatewayModelSourceInput } from "./types/local-gateway";
 import { getRuntimeLabel } from "./utils/runtime-label";
 import appIcon from "../../../build/icon.png";
 import {
@@ -15,16 +21,20 @@ import {
   appShellClass,
   buttonClass,
   eyebrowClass,
+  fieldLabelClass,
   glassPanelClass,
   heroClass,
   heroCopyClass,
   heroTitleClass,
   iconBadgeClass,
   inputClass,
+  modalBackdropClass,
+  modalPanelClass,
   metaClass,
   navButtonClass,
   pageShellClass,
   sectionMetaClass,
+  sectionTitleClass,
   statusDotClass,
   statusPillClass
 } from "./ui";
@@ -72,6 +82,125 @@ interface DesktopState {
   };
 }
 
+interface DeepLinkImportEvent {
+  id: string;
+  kind: "import";
+  request: {
+    resource: "provider" | "model";
+    payload: Record<string, unknown>;
+    originalURL: string;
+  };
+}
+
+interface DeepLinkErrorEvent {
+  id: string;
+  kind: "error";
+  message: string;
+  originalURL?: string;
+}
+
+type DesktopDeepLinkEvent = DeepLinkImportEvent | DeepLinkErrorEvent;
+
+type ImportRequest =
+  | {
+      id: string;
+      resource: "provider";
+      originalURL: string;
+      data: {
+        name: string;
+        baseUrl: string;
+        apiKey: string;
+        authMode: AuthMode;
+      };
+    }
+  | {
+      id: string;
+      resource: "model";
+      originalURL: string;
+      data: {
+        name: string;
+        baseUrl: string;
+        apiKey: string;
+        providerType: "openai-compatible" | "anthropic-compatible";
+        modelIds: string[];
+      };
+    };
+
+function readRequiredString(payload: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = payload[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  throw new Error(`Missing required field: ${keys[0]}.`);
+}
+
+function readOptionalString(payload: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = payload[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return "";
+}
+
+function normalizeImportRequest(event: DeepLinkImportEvent): ImportRequest {
+  const { payload, resource, originalURL } = event.request;
+
+  if (resource === "provider") {
+    const authModeValue = readOptionalString(payload, ["authMode", "auth_mode"]).toLowerCase();
+    const authMode: AuthMode =
+      authModeValue === "x-api-key" || authModeValue === "both" ? authModeValue : "bearer";
+
+    return {
+      id: event.id,
+      resource: "provider",
+      originalURL,
+      data: {
+        name: readRequiredString(payload, ["name"]),
+        baseUrl: readRequiredString(payload, ["baseUrl", "base_url", "endpoint"]),
+        apiKey: readRequiredString(payload, ["apiKey", "api_key"]),
+        authMode
+      }
+    };
+  }
+
+  const providerTypeValue = readOptionalString(payload, ["providerType", "provider_type"]).toLowerCase();
+  const providerType =
+    providerTypeValue === "anthropic-compatible" ? "anthropic-compatible" : "openai-compatible";
+  const listCandidate =
+    payload.modelIds ?? payload.model_ids ?? payload.models ?? payload.exposedModelIds ?? payload.exposed_model_ids;
+  const modelIds = Array.isArray(listCandidate)
+    ? listCandidate
+        .filter((item): item is string => typeof item === "string")
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : [];
+  const defaultModelId = readOptionalString(payload, ["defaultModelId", "default_model_id"]);
+  const normalizedModelIds = Array.from(new Set([defaultModelId, ...modelIds].filter(Boolean)));
+
+  if (normalizedModelIds.length === 0) {
+    throw new Error("Missing required field: modelIds.");
+  }
+
+  return {
+    id: event.id,
+    resource: "model",
+    originalURL,
+    data: {
+      name: readRequiredString(payload, ["name"]),
+      baseUrl: readRequiredString(payload, ["baseUrl", "base_url", "endpoint"]),
+      apiKey: readRequiredString(payload, ["apiKey", "api_key"]),
+      providerType,
+      modelIds: normalizedModelIds
+    }
+  };
+}
+
 export default function App() {
   const { locale, localeLabels, setLocale, t } = useI18n();
   const { resolvedTheme, toggleTheme } = useTheme();
@@ -82,9 +211,14 @@ export default function App() {
   );
   const [bootError, setBootError] = useState<string | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
+  const [providersRefreshToken, setProvidersRefreshToken] = useState(0);
+  const [modelsRefreshToken, setModelsRefreshToken] = useState(0);
+  const [pendingImportRequest, setPendingImportRequest] = useState<ImportRequest | null>(null);
+  const [importBusy, setImportBusy] = useState(false);
   const [dismissedUpdateReminderKey, setDismissedUpdateReminderKey] = useState<string | null>(null);
   const autoUpdateCheckStartedRef = useRef(false);
   const lastUpdateToastKeyRef = useRef<string | null>(null);
+  const lastHandledDeepLinkEventIdRef = useRef<string | null>(null);
   const runtimeLabel = getRuntimeLabel(desktopState?.runtime, {
     desktopApp: t("settings.value.desktopApp"),
     browser: t("settings.value.browser"),
@@ -140,6 +274,17 @@ export default function App() {
 
   const dismissToast = useCallback((id: string) => {
     setToasts((current) => current.filter((item) => item.id !== id));
+  }, []);
+
+  const pushToast = useCallback((message: string, tone: ToastItem["tone"]) => {
+    setToasts((current) => [
+      ...current,
+      {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        message,
+        tone
+      }
+    ]);
   }, []);
 
   const updates = desktopState?.updates ?? null;
@@ -207,6 +352,46 @@ export default function App() {
   }, [desktopState]);
 
   useEffect(() => {
+    if (!window.desktopBridge) {
+      return;
+    }
+
+    const handleDeepLinkEvent = (event: DesktopDeepLinkEvent | null) => {
+      if (!event || event.id === lastHandledDeepLinkEventIdRef.current) {
+        return;
+      }
+
+      lastHandledDeepLinkEventIdRef.current = event.id;
+
+      if (event.kind === "error") {
+        pushToast(
+          t("importDeepLink.error.parse", { message: event.message }),
+          "error"
+        );
+        return;
+      }
+
+      try {
+        setPendingImportRequest(normalizeImportRequest(event));
+      } catch (error) {
+        pushToast(
+          t("importDeepLink.error.invalidPayload", {
+            message: error instanceof Error ? error.message : t("common.unknownError")
+          }),
+          "error"
+        );
+      }
+    };
+
+    const unsubscribe = window.desktopBridge.onDeepLinkEvent(handleDeepLinkEvent);
+    void window.desktopBridge.consumeDeepLinkEvent().then(handleDeepLinkEvent);
+
+    return () => {
+      unsubscribe();
+    };
+  }, [pushToast, t]);
+
+  useEffect(() => {
     if (!updates) {
       return;
     }
@@ -272,6 +457,65 @@ export default function App() {
     setDesktopState((current) => (current ? { ...current, updates: nextUpdates } : current));
   }
 
+  async function handleConfirmImport() {
+    if (!desktopState || !pendingImportRequest) {
+      return;
+    }
+
+    setImportBusy(true);
+    try {
+      if (pendingImportRequest.resource === "provider") {
+        const created = await createProvider(
+          {
+            name: pendingImportRequest.data.name,
+            base_url: pendingImportRequest.data.baseUrl,
+            api_key: pendingImportRequest.data.apiKey,
+            auth_mode: pendingImportRequest.data.authMode,
+            extra_headers: {},
+            claude_code_model_map: {
+              opus: "",
+              sonnet: "",
+              haiku: ""
+            }
+          },
+          desktopState.apiBase
+        );
+        setSelectedProvider(created);
+        setProvidersRefreshToken((current) => current + 1);
+        setView("providers");
+        pushToast(t("importDeepLink.success.provider", { name: created.name }), "success");
+      } else {
+        const payload: CreateLocalGatewayModelSourceInput = {
+          name: pendingImportRequest.data.name,
+          base_url: pendingImportRequest.data.baseUrl,
+          api_key: pendingImportRequest.data.apiKey,
+          provider_type: pendingImportRequest.data.providerType,
+          default_model_id: pendingImportRequest.data.modelIds[0],
+          exposed_model_ids: pendingImportRequest.data.modelIds.slice(1),
+          enabled: true,
+          position: 0
+        };
+        await createLocalGatewaySource(payload, desktopState.apiBase);
+        await syncLocalGateway(desktopState.apiBase);
+        setModelsRefreshToken((current) => current + 1);
+        setView("models");
+        pushToast(
+          t("importDeepLink.success.model", { name: pendingImportRequest.data.name }),
+          "success"
+        );
+      }
+
+      setPendingImportRequest(null);
+    } catch (error) {
+      pushToast(
+        error instanceof Error ? error.message : t("common.unknownError"),
+        "error"
+      );
+    } finally {
+      setImportBusy(false);
+    }
+  }
+
   if (!desktopState && window.desktopBridge) {
     return (
       <main className={pageShellClass}>
@@ -289,6 +533,91 @@ export default function App() {
   return (
     <div className={appShellClass}>
       <ToastRegion items={toasts} onDismiss={dismissToast} />
+      {pendingImportRequest ? (
+        <div className={modalBackdropClass} role="presentation">
+          <section
+            className={`${modalPanelClass} max-w-2xl`}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("importDeepLink.modal.title")}
+          >
+            <div className="space-y-1">
+              <h2 className={sectionTitleClass}>{t("importDeepLink.modal.title")}</h2>
+              <p className={sectionMetaClass}>
+                {pendingImportRequest.resource === "provider"
+                  ? t("importDeepLink.modal.providerSubtitle")
+                  : t("importDeepLink.modal.modelSubtitle")}
+              </p>
+            </div>
+
+            <div className="mt-4 grid gap-3 rounded-[16px] border [border-color:var(--border-soft)] [background:var(--panel-solid)] p-4">
+              <div>
+                <p className={fieldLabelClass}>{t("importDeepLink.fields.resource")}</p>
+                <p className="mt-1 text-sm text-[color:var(--color-text)]">
+                  {pendingImportRequest.resource === "provider"
+                    ? t("importDeepLink.resource.provider")
+                    : t("importDeepLink.resource.model")}
+                </p>
+              </div>
+              <div>
+                <p className={fieldLabelClass}>{t("providers.form.name")}</p>
+                <p className="mt-1 text-sm text-[color:var(--color-text)]">
+                  {pendingImportRequest.data.name}
+                </p>
+              </div>
+              <div>
+                <p className={fieldLabelClass}>
+                  {pendingImportRequest.resource === "provider"
+                    ? t("providers.form.baseUrl")
+                    : t("models.form.baseUrl")}
+                </p>
+                <p className="mt-1 break-all text-sm text-[color:var(--color-text)]">
+                  {pendingImportRequest.data.baseUrl}
+                </p>
+              </div>
+              {pendingImportRequest.resource === "model" ? (
+                <div>
+                  <p className={fieldLabelClass}>{t("models.form.models")}</p>
+                  <p className="mt-1 break-all text-sm text-[color:var(--color-text)]">
+                    {pendingImportRequest.data.modelIds.join(", ")}
+                  </p>
+                </div>
+              ) : null}
+              <div>
+                <p className={fieldLabelClass}>
+                  {pendingImportRequest.resource === "provider"
+                    ? t("providers.form.apiKey")
+                    : t("models.form.apiKey")}
+                </p>
+                <p className="mt-1 text-sm text-[color:var(--color-text)]">
+                  {t("importDeepLink.fields.apiKeyMasked")}
+                </p>
+              </div>
+            </div>
+
+            <p className={`${metaClass} mt-4`}>{t("importDeepLink.modal.notice")}</p>
+
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                className={buttonClass("primary")}
+                onClick={() => void handleConfirmImport()}
+                disabled={importBusy}
+              >
+                {importBusy ? t("importDeepLink.actions.importing") : t("importDeepLink.actions.import")}
+              </button>
+              <button
+                type="button"
+                className={buttonClass("secondary")}
+                onClick={() => setPendingImportRequest(null)}
+                disabled={importBusy}
+              >
+                {t("common.cancel")}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
       <div className={appBackdropClass} />
       <div className="relative mx-auto flex h-screen w-full max-w-[1600px] flex-row gap-3 overflow-hidden px-3 py-3 sm:px-4 sm:py-4 xl:gap-4 xl:px-6">
         <aside
@@ -450,11 +779,12 @@ export default function App() {
             <ProvidersPage
               desktopState={desktopState}
               apiBase={desktopState?.apiBase}
+              refreshToken={providersRefreshToken}
               selectedProviderId={selectedProvider?.id ?? null}
               onSelectedProviderChange={setSelectedProvider}
             />
           ) : view === "models" ? (
-            <ModelsPage apiBase={desktopState?.apiBase} />
+            <ModelsPage apiBase={desktopState?.apiBase} refreshToken={modelsRefreshToken} />
           ) : view === "tools" ? (
             <ToolsPage
               desktopState={desktopState}
