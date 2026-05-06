@@ -35,7 +35,11 @@ interface Props {
 const props = Astro.props as Props;
 import logo from "../assets/logo.svg";
 import "../styles/site.css";
-const withBase = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\//, "")}`;
+const withBase = (path: string) => {
+  const base = (import.meta.env.BASE_URL || "/").replace(/\/?$/, "/");
+  const relative = path.replace(/^\//, "");
+  return `${base}${relative}`;
+};
 
 const previewMeta =
   props.lang === "zh-CN"
