@@ -66,7 +66,14 @@ const previewMeta =
     <title>Clash for AI Docs</title>
     <meta name="description" content={props.description} />
   </head>
-  <body class="min-h-screen bg-transparent text-slate-100 antialiased">
+  <body
+    class="min-h-screen text-slate-100 antialiased"
+    style="background:
+      radial-gradient(circle at top left, rgba(45, 212, 191, 0.15), transparent 0, transparent 28%),
+      radial-gradient(circle at top right, rgba(20, 184, 166, 0.14), transparent 0, transparent 24%),
+      radial-gradient(circle at bottom, rgba(15, 23, 42, 0.42), transparent 0, transparent 32%),
+      linear-gradient(180deg, #020617 0%, #06101d 44%, #020617 100%);"
+  >
     <main class="mx-auto w-[min(1040px,calc(100vw-40px))] px-0 pb-14 pt-6">
       <header class="mb-9 flex flex-col items-start justify-between gap-3 md:flex-row md:items-center">
         <a

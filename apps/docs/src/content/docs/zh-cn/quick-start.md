@@ -24,7 +24,7 @@ http://127.0.0.1:3456/v1
 
 如果默认端口被占用，应用会改用其他本地端口。请以应用界面显示的 `connected api base` 为准。
 
-![启动后的桌面首页](/img/quick-start-launch.png)
+<img src="../../img/quick-start-launch.png" alt="启动后的桌面首页" />
 
 ## 第二步：添加 Provider
 
@@ -36,7 +36,7 @@ http://127.0.0.1:3456/v1
 
 对于 OpenAI 兼容中转服务，通常推荐填写带 `/v1` 的 Base URL。
 
-![Provider 表单](/img/quick-start-provider-form.png)
+<img src="../../img/quick-start-provider-form.png" alt="Provider 表单" />
 
 ## 第三步：激活 Provider
 
@@ -65,4 +65,4 @@ API Key: dummy
 
 如果请求失败，先检查 provider healthcheck，再看请求日志中的详细报错。
 
-![Request Log](/img/quick-start-request-log.png)
+<img src="../../img/quick-start-request-log.png" alt="Request Log" />

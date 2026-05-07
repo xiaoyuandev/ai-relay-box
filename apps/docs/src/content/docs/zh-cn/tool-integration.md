@@ -126,4 +126,4 @@ Clash for AI 是本地网关和 Provider 切换工具，不会替用户主控模
 
 Clash for AI 中配置的模型排序，只会在“请求模型已经命中已选列表，并且上游失败到可重试条件”时，作为 fallback 链条生效。
 
-![IDE / 插件接入字段](/img/connectatool.png)
+<img src="../../img/connectatool.png" alt="IDE / 插件接入字段" />
