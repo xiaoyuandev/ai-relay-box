@@ -2,7 +2,7 @@
 
 [English README](./README.md) | [中文 README](./README.zh-CN.md)
 
-[使用教程](./docs/user-guide.md) | [公开文档](./apps/docs/src/content/docs/) | [Deep Link 导入说明](./apps/docs/src/content/docs/zh-cn/deep-link-import.md)
+<a href="https://www.clashforai.com/" target="_blank" rel="noopener noreferrer">公开文档</a> | <a href="https://www.clashforai.com/deep-link-import/" target="_blank" rel="noopener noreferrer">Deep Link 导入说明</a>
 
 Clash for AI 是一个面向多 AI Gateway / 中转 API 使用场景的本地桌面网关工具。
 

@@ -2,7 +2,7 @@
 
 [English README](./README.md) | [中文 README](./README.zh-CN.md)
 
-[User Guide](./docs/user-guide.md) | [Public Docs](./apps/docs/src/content/docs/) | [Deep Link Import Guide](./apps/docs/src/content/docs/deep-link-import.md)
+<a href="https://www.clashforai.com/" target="_blank" rel="noopener noreferrer">Public Docs</a> | <a href="https://www.clashforai.com/deep-link-import/" target="_blank" rel="noopener noreferrer">Deep Link Import Guide</a>
 
 Clash for AI is a local desktop gateway for people who switch between multiple AI gateways or API relay providers.
 
