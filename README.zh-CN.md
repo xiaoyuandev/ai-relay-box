@@ -1,5 +1,45 @@
 # Clash for AI
 
+[English README](./README.md) | [中文 README](./README.zh-CN.md)
+
+[使用教程](./docs/user-guide.md) | [公开文档](./apps/docs/src/content/docs/) | [Deep Link 导入说明](./apps/docs/src/content/docs/zh-cn/deep-link-import.md)
+
+## macOS 安装提示
+
+当前公开发布的 macOS 构建，在用户第一次安装或第一次启动时，仍然可能出现 Gatekeeper 安全拦截。
+
+原因是：当前项目的公开分发流程里，macOS 这边仍然采用了免费 ad-hoc 风格的签名路径，而不是对所有公开产物都走完整的付费 Apple 可信分发链路。
+
+这也是为什么用户可能会看到类似提示：
+
+```text
+“Clash for AI” 无法打开，因为无法验证开发者。
+```
+
+或者：
+
+```text
+“Clash for AI” 无法打开，因为 Apple 无法检查其是否包含恶意软件。
+```
+
+如果遇到这种情况，用户可以这样操作：
+
+1. 如果应用还在下载目录或临时目录中，先移动到 `/Applications`
+2. 在 Finder 中右键 `Clash for AI.app`
+3. 选择 `打开`
+4. 在系统确认框里再次选择 `打开`
+
+如果右键打开后仍然没有成功，可以继续：
+
+1. 打开 `系统设置`
+2. 进入 `隐私与安全性`
+3. 找到 Clash for AI 的安全拦截提示
+4. 点击 `仍要打开`
+
+通常第一次成功打开之后，后续再启动就不会反复出现相同的拦截提示。
+
+如果某个 release 同时提供了 `.pkg` 安装包，优先使用 `.pkg` 安装，通常体验会比手动拖拽裸 `.app` 更稳定。
+
 Clash for AI 是一个面向多 AI Gateway / 中转 API 使用场景的本地桌面网关工具。
 
 它的定位是：
@@ -8,15 +48,18 @@ Clash for AI 是一个面向多 AI Gateway / 中转 API 使用场景的本地桌
 2. 在这个统一入口后面切换不同上游 Gateway
 3. 用桌面界面管理 Provider、健康检查和请求日志
 
-它并不是某一个特定 AI 工具的专用管理器，而是更偏向“本地网关 + 多上游切换控制台”。
+它并不是某一个特定 AI 工具的专用管理器，而更适合被理解为：
 
-[English README](./README.md)
+1. 一个给客户端工具使用的本地转发网关
+2. 一个多上游 Provider 切换控制台
+3. 一个用于管理原生模型上游来源的本地 Models Gateway
 
 它当前提供：
 
 1. 一个稳定的本地统一接入地址
 2. 一个可视化的 Provider 切换控制台
-3. 本地请求日志和健康检查能力，方便排障
+3. 一个用于管理原生模型上游的本地 Models Gateway
+4. 本地请求日志和健康检查能力，方便排障
 
 ## 核心思路
 
@@ -45,6 +88,10 @@ Clash for AI 主要面向经常切换不同 AI Gateway / 中转 API 的用户。
 1. 中转 API 服务不稳定，用户需要在不同中转 API 服务商之间频繁切换
 2. 当你同时使用多个编程工具、聊天客户端或脚本时，每次切换服务商都要重复修改配置
 
+当前版本还进一步解决第三类问题：
+
+3. 原生大模型上游并不总适合套进“单个激活 Provider”的模式，因此项目增加了独立的本地 Models Gateway，用来统一注册、暴露和管理这些模型来源
+
 Clash for AI 的做法是在你的工具前面放一个本地 Gateway。
 
 你的工具只需要统一接入本地地址一次，之后切换上游 Gateway 时，不再需要逐个修改工具配置，只需要在桌面应用里切换即可。
@@ -68,6 +115,101 @@ http://127.0.0.1:3456/v1
 1. 切换 Provider 时，不需要重新配置每个工具
 2. Provider 凭证统一在本地管理
 3. 可以直接在桌面界面查看健康状态和请求日志
+
+## 桌面端模块说明
+
+当前桌面应用主要分成五个模块。
+
+### 1. Providers
+
+`Providers` 页面用于管理主本地网关后面可以切换的上游服务。
+
+最容易理解的方式是：
+
+1. `Providers` 主要用于管理各种中转 API 服务
+2. 这些服务通常是远程聚合或代理平台
+3. 例如类似 `new-api`、`one-api`、`sub2api` 这类服务
+
+你可以在这里：
+
+1. 添加和编辑 Provider
+2. 切换当前激活的上游 Provider
+3. 运行 Provider health check
+4. 查看某个 Provider 实际暴露的模型
+5. 为 Claude Code 配置当前 Provider 的模型槽位映射
+
+所以如果用户主要目的是在多个远程中转服务之间切换，`Providers` 就是最核心的页面。
+
+### 2. Models
+
+`Models` 页面要解决的是另一类问题。
+
+它用于管理一个运行在本地的 Models Gateway。这个本地 gateway 会把原生模型上游来源统一整理出来，每一条 source 都可以指向：
+
+1. OpenAI-compatible 上游
+2. Anthropic-compatible 上游
+
+你可以在这里：
+
+1. 添加本地模型来源
+2. 自动探测或手动填写模型 ID
+3. 启用或禁用某个模型来源
+4. 把这些来源同步到内嵌的本地 gateway runtime
+
+这个模块存在的原因是：
+
+1. 很多原生大模型上游并不适合直接按“单个激活 Provider”去管理
+2. 不同原生上游会暴露不同的模型 ID 和模型列表
+3. 用户有时需要的是一个运行在本地的兼容网关，效果更像在本机跑一个小型的 `new-api` 或 `sub2api`
+4. 这样就可以把很多兼容 OpenAI-compatible 和 Anthropic-compatible 的原生大模型统一挂到这一层本地 gateway 下面
+
+所以 `Models` 页面引入的是一层独立的本地 Models Gateway。它不是用来切换远程聚合中转服务，而是让 Clash for AI 可以在本地维护一组原生模型来源，并通过一个本地兼容网关向外暴露。
+
+实际关系可以这样理解：
+
+1. `Providers` 负责管理远程中转服务，也负责展示这个本地运行的 Models Gateway
+2. `Models` 负责管理这个本地 Models Gateway 背后的 source 列表
+3. 这个本地 Models Gateway 会默认出现在 `Providers` 管理列表里，作为一个可选择的 Provider
+
+也就是说：
+
+1. `Models` 配置的是“本地 gateway 里面有哪些原生模型来源”
+2. 这个本地 gateway 会作为一个 Provider 出现在 `Providers` 页面
+3. `Providers` 页面最终负责让用户在“远程中转服务”和“本地 Models Gateway”之间切换
+
+### 3. Tools
+
+`Tools` 页面用于帮助客户端工具正确接入 Clash for AI。
+
+你可以在这里：
+
+1. 复制已经整理好的本地接入参数
+2. 对 Codex CLI、Claude Code 执行一键接入
+3. 查看 Cursor、Cherry Studio、SDK 脚本等工具的接入说明
+
+### 4. Logs
+
+`Logs` 页面用于查看经过本地网关的请求历史。
+
+你可以在这里：
+
+1. 查看最近请求
+2. 查看 Provider、Model、路径、延迟等信息
+3. 当上游异常时，直接读取失败记录
+
+### 5. Settings
+
+`Settings` 页面用于管理桌面应用本身的系统行为。
+
+你可以在这里：
+
+1. 查看运行时状态
+2. 修改本地端口
+3. 检查桌面应用更新
+4. 控制启动与托盘行为
+   - 开机自启
+   - 静默启动
+   - 关闭时最小化到托盘
 
 
 
