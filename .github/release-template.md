@@ -28,7 +28,7 @@ Choose the package that matches your desktop system:
 
 ### macOS
 
-This build is currently distributed without Apple notarization.
+This build is signed with Developer ID and intended to be distributed with Apple notarization.
 
 If macOS blocks the app on first launch:
 
