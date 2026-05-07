@@ -54,6 +54,7 @@ import {
 
 interface ModelsPageProps {
   apiBase?: string;
+  refreshToken?: number;
 }
 
 function normalizeModelSource(source: LocalGatewayModelSource): LocalGatewayModelSource {
@@ -102,7 +103,7 @@ const emptyCapabilities: LocalGatewayCapabilities = {
   supports_explicit_source_health: false
 };
 
-export function ModelsPage({ apiBase }: ModelsPageProps) {
+export function ModelsPage({ apiBase, refreshToken = 0 }: ModelsPageProps) {
   const { t } = useI18n();
   const [runtime, setRuntime] = useState<LocalGatewayRuntimeResponse>(emptyRuntime);
   const [capabilities, setCapabilities] = useState<LocalGatewayCapabilities>(emptyCapabilities);
@@ -213,7 +214,7 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
     return () => {
       cancelled = true;
     };
-  }, [apiBase, t]);
+  }, [apiBase, refreshToken, t]);
 
   const runtimeStateTone =
     runtime.runtime.healthy && runtime.runtime.running
@@ -837,7 +838,7 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
       </section>
 
       {formOpen ? (
-        <div className={modalBackdropClass} role="presentation" onClick={closeForm}>
+        <div className={modalBackdropClass} role="presentation">
           <div
             className={`${modalPanelClass} max-w-3xl`}
             role="dialog"
@@ -962,11 +963,7 @@ export function ModelsPage({ apiBase }: ModelsPageProps) {
                         ))}
                       </div>
                     </div>
-                  ) : (
-                    <div className={emptyStateClass}>
-                      <p>{t("models.form.fetchHint")}</p>
-                    </div>
-                  )}
+                  ) : null}
 
                   <div className="grid gap-3">
                     <label className={labelClass}>

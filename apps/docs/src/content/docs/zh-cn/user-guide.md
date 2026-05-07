@@ -117,4 +117,5 @@ Gemini 原生协议当前还不是一等上游协议。
 
 - 查看 [Providers](/zh-cn/providers/) 了解兼容性说明
 - 查看 [工具接入](/zh-cn/tool-integration/) 了解客户端接入方式
+- 查看 [Deep Link 导入](/zh-cn/deep-link-import/) 了解如何从网页唤起桌面应用并预填导入配置
 - 查看 [FAQ](/zh-cn/faq/) 了解模型和 fallback 相关问题

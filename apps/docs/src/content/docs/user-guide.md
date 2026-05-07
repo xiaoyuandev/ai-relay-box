@@ -117,4 +117,5 @@ Gemini native protocol is not currently supported as a first-class upstream prot
 
 - Read [Providers](/providers/) for compatibility notes.
 - Read [Tool Integration](/tool-integration/) for client setup patterns.
+- Read [Deep Link Import](/deep-link-import/) if you want websites to open the desktop app and prefill import data.
 - Read [FAQ](/faq/) for model and fallback behavior clarifications.

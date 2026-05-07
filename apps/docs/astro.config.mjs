@@ -7,7 +7,7 @@ const site = process.env.DOCS_SITE_URL ?? `https://xiaoyuandev.github.io/${repos
 const siteURL = new URL(site);
 const normalizedBase =
   siteURL.pathname && siteURL.pathname !== "/"
-    ? siteURL.pathname.replace(/\/$/, "")
+    ? `${siteURL.pathname.replace(/\/$/, "")}/`
     : undefined;
 
 export default defineConfig({

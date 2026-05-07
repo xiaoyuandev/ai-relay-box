@@ -51,6 +51,9 @@ type DesktopState = {
     apiPortSource: "default" | "config" | "env";
     localGatewayPort: number;
     localGatewayPortSource: "default" | "config" | "env";
+    launchAtLogin: boolean;
+    launchHidden: boolean;
+    closeToTray: boolean;
   };
   updates: UpdateState;
   core: {
@@ -71,10 +74,60 @@ interface SettingsPageProps {
   onCheckUpdates: () => Promise<void>;
   onDownloadUpdate: () => Promise<void>;
   onQuitAndInstallUpdate: () => Promise<void>;
-  onOpenReleasePage: () => Promise<void>;
   onCoreRestart: () => Promise<void>;
   onUpdateCorePort: (port: number) => Promise<void>;
   onUpdateLocalGatewayPort: (port: number) => Promise<void>;
+  onUpdateLaunchSettings: (settings: {
+    launchAtLogin?: boolean;
+    launchHidden?: boolean;
+    closeToTray?: boolean;
+  }) => Promise<void>;
+}
+
+function SettingsToggle({
+  checked,
+  label,
+  meta,
+  disabled,
+  onChange
+}: {
+  checked: boolean;
+  label: string;
+  meta: string;
+  disabled?: boolean;
+  onChange: () => void;
+}) {
+  return (
+    <div className={infoCardClass}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className={fieldLabelClass}>{label}</p>
+          <p className={`${metaClass} mt-2`}>{meta}</p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={checked}
+          aria-label={label}
+          disabled={disabled}
+          className={`inline-flex h-7 w-12 shrink-0 items-center rounded-full border px-1 transition ${
+            checked
+              ? "[border-color:var(--success-border)] [background:var(--success-soft)]"
+              : "[border-color:var(--border-soft)] [background:var(--panel-soft)]"
+          } disabled:cursor-not-allowed disabled:opacity-50`}
+          onClick={onChange}
+        >
+          <span
+            className={`h-5 w-5 rounded-full transition ${
+              checked
+                ? "translate-x-5 bg-[color:var(--accent-strong)]"
+                : "translate-x-0 bg-[color:var(--color-subtle)]"
+            }`}
+          />
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function StatCard({
@@ -105,15 +158,16 @@ export function SettingsPage({
   onCheckUpdates,
   onDownloadUpdate,
   onQuitAndInstallUpdate,
-  onOpenReleasePage,
   onCoreRestart,
   onUpdateCorePort,
-  onUpdateLocalGatewayPort
+  onUpdateLocalGatewayPort,
+  onUpdateLaunchSettings
 }: SettingsPageProps) {
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [updateBusy, setUpdateBusy] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
+  const [launchBusy, setLaunchBusy] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [feedbackTone, setFeedbackTone] = useState<"success" | "error">("success");
   const [portInput, setPortInput] = useState(String(desktopState?.config.apiPort ?? 3456));
@@ -228,6 +282,69 @@ export function SettingsPage({
     }
   }
 
+  async function handleToggleLaunchAtLogin() {
+    setLaunchBusy(true);
+    setFeedback(null);
+
+    try {
+      const nextValue = !desktopState?.config.launchAtLogin;
+      await onUpdateLaunchSettings({ launchAtLogin: nextValue });
+      setFeedbackTone("success");
+      setFeedback(
+        nextValue
+          ? t("settings.feedback.launchAtLoginEnabled")
+          : t("settings.feedback.launchAtLoginDisabled")
+      );
+    } catch (error) {
+      setFeedbackTone("error");
+      setFeedback(error instanceof Error ? error.message : t("settings.feedback.launchSettingsFailed"));
+    } finally {
+      setLaunchBusy(false);
+    }
+  }
+
+  async function handleToggleLaunchHidden() {
+    setLaunchBusy(true);
+    setFeedback(null);
+
+    try {
+      const nextValue = !desktopState?.config.launchHidden;
+      await onUpdateLaunchSettings({ launchHidden: nextValue });
+      setFeedbackTone("success");
+      setFeedback(
+        nextValue
+          ? t("settings.feedback.launchHiddenEnabled")
+          : t("settings.feedback.launchHiddenDisabled")
+      );
+    } catch (error) {
+      setFeedbackTone("error");
+      setFeedback(error instanceof Error ? error.message : t("settings.feedback.launchSettingsFailed"));
+    } finally {
+      setLaunchBusy(false);
+    }
+  }
+
+  async function handleToggleCloseToTray() {
+    setLaunchBusy(true);
+    setFeedback(null);
+
+    try {
+      const nextValue = !desktopState?.config.closeToTray;
+      await onUpdateLaunchSettings({ closeToTray: nextValue });
+      setFeedbackTone("success");
+      setFeedback(
+        nextValue
+          ? t("settings.feedback.closeToTrayEnabled")
+          : t("settings.feedback.closeToTrayDisabled")
+      );
+    } catch (error) {
+      setFeedbackTone("error");
+      setFeedback(error instanceof Error ? error.message : t("settings.feedback.launchSettingsFailed"));
+    } finally {
+      setLaunchBusy(false);
+    }
+  }
+
   async function handleDownloadUpdate() {
     setUpdateBusy(true);
     setFeedback(null);
@@ -237,22 +354,6 @@ export function SettingsPage({
     } catch (error) {
       setFeedbackTone("error");
       setFeedback(error instanceof Error ? error.message : t("settings.feedback.updateDownloadFailed"));
-    } finally {
-      setUpdateBusy(false);
-    }
-  }
-
-  async function handleOpenReleasePage() {
-    setUpdateBusy(true);
-    setFeedback(null);
-
-    try {
-      await onOpenReleasePage();
-    } catch (error) {
-      setFeedbackTone("error");
-      setFeedback(
-        error instanceof Error ? error.message : t("settings.feedback.updateOpenReleaseFailed")
-      );
     } finally {
       setUpdateBusy(false);
     }
@@ -275,7 +376,37 @@ export function SettingsPage({
 
   const portLocked = desktopState?.config.apiPortSource === "env";
   const localGatewayPortLocked = desktopState?.config.localGatewayPortSource === "env";
-  const isMacPlatform = desktopState?.platform === "darwin";
+  const updateStatusLabel =
+    desktopState?.updates.status === "checking"
+      ? t("updates.status.checking")
+      : desktopState?.updates.status === "available"
+        ? t("updates.status.available")
+        : desktopState?.updates.status === "downloading"
+          ? t("updates.status.downloading")
+          : desktopState?.updates.status === "downloaded"
+            ? t("updates.status.downloaded")
+            : desktopState?.updates.status === "error"
+              ? t("updates.status.error")
+              : desktopState?.updates.status === "unsupported"
+                ? t("updates.status.unsupported")
+                : t("updates.status.idle");
+  const updateStatusMeta =
+    desktopState?.updates.status === "available" && desktopState.updates.availableVersion
+      ? t("updates.card.availableVersion", { version: desktopState.updates.availableVersion })
+      : desktopState?.updates.status === "downloading"
+        ? t("updates.card.downloading", {
+            progress: Math.round(desktopState.updates.progressPercent ?? 0)
+          })
+        : desktopState?.updates.status === "downloaded"
+          ? t("updates.card.downloadedVersion", {
+              version:
+                desktopState.updates.downloadedVersion ?? desktopState.updates.availableVersion ?? "-"
+            })
+          : desktopState?.updates.status === "error"
+            ? desktopState.updates.message
+            : desktopState?.updates.status === "not-available"
+              ? t("updates.status.notAvailable")
+              : desktopState?.updates.message;
 
   return (
     <main className={pageShellClass}>
@@ -378,6 +509,40 @@ export function SettingsPage({
       <section className={sectionCardClass}>
         <div className={sectionHeadClass}>
           <div className="space-y-1">
+            <h2 className={sectionTitleClass}>{t("settings.section.launch")}</h2>
+            <p className={sectionMetaClass}>{t("settings.meta.launchBehavior")}</p>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <SettingsToggle
+            checked={Boolean(desktopState?.config.launchAtLogin)}
+            label={t("settings.launchAtLogin")}
+            meta={t("settings.meta.launchAtLogin")}
+            disabled={launchBusy}
+            onChange={() => void handleToggleLaunchAtLogin()}
+          />
+          <SettingsToggle
+            checked={Boolean(desktopState?.config.launchHidden)}
+            label={t("settings.launchHidden")}
+            meta={t("settings.meta.launchHidden")}
+            disabled={launchBusy}
+            onChange={() => void handleToggleLaunchHidden()}
+          />
+          <SettingsToggle
+            checked={Boolean(desktopState?.config.closeToTray)}
+            label={t("settings.closeToTray")}
+            meta={t("settings.meta.closeToTray")}
+            disabled={launchBusy}
+            onChange={() => void handleToggleCloseToTray()}
+          />
+        </div>
+        <p className={`${metaClass} mt-4`}>{t("settings.meta.trayHint")}</p>
+      </section>
+
+      <section className={sectionCardClass}>
+        <div className={sectionHeadClass}>
+          <div className="space-y-1">
             <h2 className={sectionTitleClass}>{t("settings.section.runtime")}</h2>
             <p className={sectionMetaClass}>{runtimeLabel}</p>
           </div>
@@ -449,8 +614,8 @@ export function SettingsPage({
           />
           <StatCard
             label={t("settings.updates.status")}
-            value={desktopState?.updates.status ?? "-"}
-            meta={desktopState?.updates.message}
+            value={updateStatusLabel}
+            meta={updateStatusMeta}
           />
           <StatCard
             label={t("settings.updates.availableVersion")}
@@ -476,36 +641,28 @@ export function SettingsPage({
           <button
             type="button"
             className={buttonClass("secondary")}
-            onClick={() => void (isMacPlatform ? handleOpenReleasePage() : handleDownloadUpdate())}
+            onClick={() => void handleDownloadUpdate()}
             disabled={
               updateBusy ||
               (desktopState?.updates.status !== "available" &&
-                desktopState?.updates.status !== "downloading" &&
-                desktopState?.updates.status !== "downloaded")
+                desktopState?.updates.status !== "downloading")
             }
           >
-            {isMacPlatform
-              ? t("settings.button.openReleasePage")
-              : desktopState?.updates.status === "downloading"
-                ? t("settings.button.downloading", {
-                    progress: Math.round(desktopState.updates.progressPercent ?? 0)
-                  })
-                : t("settings.button.downloadUpdate")}
+            {desktopState?.updates.status === "downloading"
+              ? t("settings.button.downloading", {
+                  progress: Math.round(desktopState.updates.progressPercent ?? 0)
+                })
+              : t("settings.button.downloadUpdate")}
           </button>
           <button
             type="button"
             className={buttonClass("primary")}
             onClick={() => void handleQuitAndInstallUpdate()}
-            disabled={
-              isMacPlatform || updateBusy || desktopState?.updates.status !== "downloaded"
-            }
+            disabled={updateBusy || desktopState?.updates.status !== "downloaded"}
           >
-            {isMacPlatform
-              ? t("settings.button.manualInstallOnly")
-              : t("settings.button.installUpdate")}
+            {t("settings.button.installUpdate")}
           </button>
         </div>
-        {isMacPlatform ? <p className={`${metaClass} mt-4`}>{t("settings.meta.macManualUpdate")}</p> : null}
       </section>
     </main>
   );

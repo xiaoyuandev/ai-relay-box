@@ -1,5 +1,9 @@
 # Clash for AI
 
+[English README](./README.md) | [中文 README](./README.zh-CN.md)
+
+[User Guide](./docs/user-guide.md) | [Public Docs](./apps/docs/src/content/docs/) | [Deep Link Import Guide](./apps/docs/src/content/docs/deep-link-import.md)
+
 Clash for AI is a local desktop gateway for people who switch between multiple AI gateways or API relay providers.
 
 Its role is:
@@ -8,15 +12,18 @@ Its role is:
 2. Switch different upstream gateways behind that local entry point
 3. Manage providers, health checks, and request logs from a desktop UI
 
-It is not primarily a manager for one specific AI tool. It is better understood as a local gateway plus a multi-provider control plane.
+It is not primarily a manager for one specific AI tool. It is better understood as:
 
-[中文 README](./README.zh-CN.md)
+1. a local relay gateway for tool traffic
+2. a multi-provider control plane
+3. a local native-model source manager for upstream models that need their own registry and routing layer
 
 It currently gives you:
 
 1. One stable local endpoint for your tools
 2. A desktop control plane for switching providers
-3. Local request logs and health checks for debugging provider issues
+3. A local model-source gateway for managing native upstream models
+4. Local request logs and health checks for debugging provider issues
 
 ## Core Idea
 
@@ -29,11 +36,13 @@ The model is simple:
 ## Screenshot
 
 <p align="center">
-  <img src="./docs/images/readme/quick-start-provider-form.png" style="width: 100%; height: auto;">
+  <img src="./docs/images/readme/quick-start-provider-form.png" style="width: 49%; height: auto;">
+  <img src="./docs/images/readme/connectatool.png" style="width: 49%; height: auto;">
 </p>
 
 <p align="center">
-  <img src="./docs/images/readme/connectatool.png" style="width: 100%; height: auto;">
+  <img src="./docs/images/readme/models-config.png" style="width: 49%; height: auto;">
+  <img src="./docs/images/readme/tools-config.png" style="width: 49%; height: auto;">
 </p>
 
 
@@ -45,6 +54,10 @@ It mainly addresses two problems:
 
 1. API relay providers can be unstable, so you may need to switch between different gateways frequently
 2. If you use multiple coding tools, chat clients, or SDK scripts, changing providers often means repeatedly updating configuration in each tool
+
+The current version also addresses a third problem:
+
+3. Native model upstreams are harder to manage consistently because they do not always fit the old “one active provider” switching model, so Clash for AI now includes a dedicated local Models Gateway to register and expose those sources in one place
 
 Clash for AI puts one local gateway in front of those tools.
 
@@ -69,6 +82,101 @@ This means:
 1. You do not need to reconfigure every tool when switching providers
 2. Provider credentials stay managed locally in one place
 3. You can inspect health status and request logs from the desktop UI
+
+## Desktop Modules
+
+The desktop app is organized into five main modules.
+
+### 1. Providers
+
+The `Providers` page is where you manage the upstream services that the main local gateway can route to.
+
+In the simplest mental model:
+
+1. `Providers` is for managing relay services
+2. these are usually remote aggregation or proxy platforms
+3. examples include services similar to `new-api`, `one-api`, or `sub2api`
+
+Use it to:
+
+1. Add or edit provider connections
+2. Switch the currently active upstream provider
+3. Run provider health checks
+4. Inspect the models a provider exposes
+5. Configure Claude Code model slot mapping for the active provider
+
+So if a user mainly wants to switch between different remote relay providers, `Providers` is the primary page.
+
+### 2. Models
+
+The `Models` page exists for a different problem.
+
+It manages a local gateway that runs on your own machine and exposes native model sources in a unified way. Each entry is a model source that can point to:
+
+1. an OpenAI-compatible upstream
+2. an Anthropic-compatible upstream
+
+Use it to:
+
+1. Add local gateway model sources
+2. Auto-detect or manually define model IDs
+3. Enable or disable model sources
+4. Sync those sources into the embedded local gateway runtime
+
+Why this module exists:
+
+1. Many native model upstreams are not best managed as one switched relay provider
+2. Different native upstreams expose different model ids and model lists
+3. Users may want a local service that behaves more like running a small `new-api` or `sub2api` style gateway on their own machine
+4. That local gateway can then expose many native upstream models through one controlled local layer
+
+So the `Models` page introduces a separate local Models Gateway layer. Instead of only switching one active Provider, Clash for AI can now maintain a set of native model sources locally and expose them through a local compatibility gateway.
+
+In practical terms:
+
+1. `Providers` manages remote relay services and also shows the local Models Gateway as one selectable provider
+2. `Models` manages the internal source list that powers that local Models Gateway
+3. the local Models Gateway is added into the Provider management list by default, so tools can still treat it as one provider option on the main gateway side
+
+This means the relationship is:
+
+1. `Models` configures the local gateway's native model sources
+2. that local gateway becomes one provider option inside `Providers`
+3. `Providers` remains the place where the user selects between remote relay services and the local Models Gateway
+
+### 3. Tools
+
+The `Tools` page helps client tools connect to Clash for AI correctly.
+
+Use it to:
+
+1. Copy ready-to-use local endpoint values
+2. Run one-click setup for supported tools such as Codex CLI and Claude Code
+3. Follow guided setup for tools like Cursor, Cherry Studio, and SDK scripts
+
+### 4. Logs
+
+The `Logs` page shows request history flowing through the local gateway.
+
+Use it to:
+
+1. Inspect recent requests
+2. See provider, model, path, and latency information
+3. Read failures when an upstream provider behaves incorrectly
+
+### 5. Settings
+
+The `Settings` page is the system control area for the desktop app itself.
+
+Use it to:
+
+1. View runtime status
+2. Adjust local ports
+3. Check for desktop updates
+4. Control launch and tray behavior
+   - Launch at login
+   - Launch hidden
+   - Close to tray
 
 
 
@@ -145,11 +253,8 @@ API Key: dummy
 Inside Clash for AI, open the `Tools` page to find the recommended connection values for supported tools.
 
 <p align="center">
-  <img src="./docs/images/readme/settings.png" style="width: 100%; height: auto;">
-</p>
-
-<p align="center">
-  <img src="./docs/images/readme/connectatool.png" style="width: 100%; height: auto;">
+  <img src="./docs/images/readme/settings.png" style="width: 49%; height: auto;">
+  <img src="./docs/images/readme/connectatool.png" style="width: 49%; height: auto;">
 </p>
 
 For tools like Cursor or Cherry Studio, if there is a provider type or protocol field, choose an OpenAI-compatible custom provider mode first, then paste the values above.
@@ -157,7 +262,7 @@ For tools like Cursor or Cherry Studio, if there is a provider type or protocol 
 In Cursor specifically, open its custom provider settings, choose an OpenAI-compatible provider mode, then fill in the local Base URL and `dummy` API key.
 
 <p align="center">
-  <img src="./docs/images/readme/corsor-config.png" style="width: 100%; height: auto;">
+  <img src="./docs/images/readme/corsor-config.png" style="width: 72%; height: auto;">
 </p>
 
 ### SDK Scripts And Local Apps
@@ -228,6 +333,42 @@ Common reasons include:
 3. Returned JSON payloads may vary
 
 So a provider can still be usable for request forwarding even if its model list is incomplete or unavailable.
+
+## FAQ
+
+### Why does macOS show “the developer cannot be verified” on first install?
+
+Current public macOS builds may still show a Gatekeeper warning on first install or first launch because the project is currently distributed with a free ad-hoc style signing path instead of a fully trusted paid Apple distribution chain for every released artifact.
+
+That is why users may see messages like:
+
+```text
+“Clash for AI” cannot be opened because the developer cannot be verified.
+```
+
+or:
+
+```text
+“Clash for AI” cannot be opened because Apple cannot verify it for malicious software.
+```
+
+If this happens, the user should do this:
+
+1. Move the app into `/Applications` if it is still inside a temporary download folder
+2. In Finder, right click `Clash for AI.app`
+3. Choose `Open`
+4. In the system confirmation dialog, choose `Open` again
+
+If the `Open` action still does not appear, use:
+
+1. `System Settings`
+2. `Privacy & Security`
+3. Scroll to the security warning area for Clash for AI
+4. Click `Open Anyway`
+
+After the first successful open, later launches normally stop showing the same warning.
+
+If a `.pkg` installer is attached to the release, prefer the `.pkg` build over dragging a raw `.app` bundle manually.
 
 ## Local Development
 
