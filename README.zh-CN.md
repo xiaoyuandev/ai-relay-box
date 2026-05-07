@@ -405,6 +405,16 @@ pnpm --filter desktop build:win
 pnpm --filter desktop build:linux
 ```
 
+如果 `ai-mini-gateway` 上游发布了新版本，打包前可以先同步内嵌运行时版本：
+
+```bash
+pnpm --filter desktop update:ai-mini-gateway-runtime
+pnpm --filter desktop update:ai-mini-gateway-runtime v0.1.1
+pnpm --filter desktop update:ai-mini-gateway-runtime v0.1.1 --prepare
+```
+
+默认命令会跟到 latest release，也可以传具体版本号固定到指定 tag。加上 `--prepare` 会顺手刷新本地内嵌的运行时二进制和版本元数据。
+
 ## 项目结构
 
 ```text

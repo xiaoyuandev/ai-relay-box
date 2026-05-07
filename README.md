@@ -404,6 +404,16 @@ pnpm --filter desktop build:win
 pnpm --filter desktop build:linux
 ```
 
+Sync the bundled `ai-mini-gateway` runtime version before packaging when a new upstream release is available:
+
+```bash
+pnpm --filter desktop update:ai-mini-gateway-runtime
+pnpm --filter desktop update:ai-mini-gateway-runtime v0.1.1
+pnpm --filter desktop update:ai-mini-gateway-runtime v0.1.1 --prepare
+```
+
+Use the default command to track the latest release, or pass an explicit version to pin a specific tag. Add `--prepare` to also refresh the local bundled runtime binary and version metadata.
+
 ## Project Structure
 
 ```text
