@@ -2,7 +2,7 @@
 
 [English README](./README.md) | [中文 README](./README.zh-CN.md)
 
-[User Guide](./docs/user-guide.md) | [Public Docs](./apps/docs/src/content/docs/) | [Deep Link Import Guide](./apps/docs/src/content/docs/deep-link-import.md)
+<a href="https://www.clashforai.com/" target="_blank" rel="noopener noreferrer">Public Docs</a> | <a href="https://www.clashforai.com/deep-link-import/" target="_blank" rel="noopener noreferrer">Deep Link Import Guide</a>
 
 Clash for AI is a local desktop gateway for people who switch between multiple AI gateways or API relay providers.
 
@@ -403,6 +403,16 @@ pnpm --filter desktop build:mac
 pnpm --filter desktop build:win
 pnpm --filter desktop build:linux
 ```
+
+Sync the bundled `ai-mini-gateway` runtime version before packaging when a new upstream release is available:
+
+```bash
+pnpm --filter desktop update:ai-mini-gateway-runtime
+pnpm --filter desktop update:ai-mini-gateway-runtime v0.1.1
+pnpm --filter desktop update:ai-mini-gateway-runtime v0.1.1 --prepare
+```
+
+Use the default command to track the latest release, or pass an explicit version to pin a specific tag. Add `--prepare` to also refresh the local bundled runtime binary and version metadata.
 
 ## Project Structure
 

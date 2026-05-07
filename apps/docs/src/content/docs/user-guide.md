@@ -50,7 +50,7 @@ https://api.example.com/v1
 
 If the provider documentation shows only a root domain, test both the documented value and the `/v1` form if model discovery fails.
 
-![Provider overview](/img/quick-start-provider-form.png)
+<img src="../img/quick-start-provider-form.png" alt="Provider overview" />
 
 ## Tool setup checklist
 
@@ -63,7 +63,7 @@ API Key: dummy
 
 Use the actual local port shown in the desktop app if it is not `3456`.
 
-![Connect a tool settings](/img/connectatool.png)
+<img src="../img/connectatool.png" alt="Connect a tool settings" />
 
 ## What the Models page actually does
 

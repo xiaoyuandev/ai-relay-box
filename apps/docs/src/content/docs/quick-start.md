@@ -24,7 +24,7 @@ http://127.0.0.1:3456/v1
 
 If the default port is occupied, the app may use another local port. Always use the `connected api base` shown in the app.
 
-![Clash for AI launch overview](/img/quick-start-launch.png)
+<img src="../img/quick-start-launch.png" alt="Clash for AI launch overview" />
 
 ## Step 2: Add a provider
 
@@ -36,7 +36,7 @@ Open the `Providers` page and fill in:
 
 For OpenAI-compatible relay services, the Base URL usually ends with `/v1`.
 
-![Provider form](/img/quick-start-provider-form.png)
+<img src="../img/quick-start-provider-form.png" alt="Provider form" />
 
 ## Step 3: Activate the provider
 
@@ -65,4 +65,4 @@ After your tool is connected:
 
 If the request fails, start with the provider health check and then inspect the request log details.
 
-![Request Log](/img/quick-start-request-log.png)
+<img src="../img/quick-start-request-log.png" alt="Request Log" />

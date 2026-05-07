@@ -2,7 +2,7 @@
 
 [English README](./README.md) | [中文 README](./README.zh-CN.md)
 
-[使用教程](./docs/user-guide.md) | [公开文档](./apps/docs/src/content/docs/) | [Deep Link 导入说明](./apps/docs/src/content/docs/zh-cn/deep-link-import.md)
+<a href="https://www.clashforai.com/" target="_blank" rel="noopener noreferrer">公开文档</a> | <a href="https://www.clashforai.com/deep-link-import/" target="_blank" rel="noopener noreferrer">Deep Link 导入说明</a>
 
 Clash for AI 是一个面向多 AI Gateway / 中转 API 使用场景的本地桌面网关工具。
 
@@ -404,6 +404,16 @@ pnpm --filter desktop build:mac
 pnpm --filter desktop build:win
 pnpm --filter desktop build:linux
 ```
+
+如果 `ai-mini-gateway` 上游发布了新版本，打包前可以先同步内嵌运行时版本：
+
+```bash
+pnpm --filter desktop update:ai-mini-gateway-runtime
+pnpm --filter desktop update:ai-mini-gateway-runtime v0.1.1
+pnpm --filter desktop update:ai-mini-gateway-runtime v0.1.1 --prepare
+```
+
+默认命令会跟到 latest release，也可以传具体版本号固定到指定 tag。加上 `--prepare` 会顺手刷新本地内嵌的运行时二进制和版本元数据。
 
 ## 项目结构
 

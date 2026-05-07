@@ -50,7 +50,7 @@ https://api.example.com/v1
 
 如果服务商文档只给了根域名，而模型列表获取失败，建议再尝试一次带 `/v1` 的写法。
 
-![Provider 概览](/img/quick-start-provider-form.png)
+<img src="../../img/quick-start-provider-form.png" alt="Provider 概览" />
 
 ## 工具接入检查清单
 
@@ -63,7 +63,7 @@ API Key: dummy
 
 如果应用里显示的实际端口不是 `3456`，请以桌面应用中的 `connected api base` 为准。
 
-![Connect a Tool 界面](/img/connectatool.png)
+<img src="../../img/connectatool.png" alt="Connect a Tool 界面" />
 
 ## Models 页面到底什么时候生效
 

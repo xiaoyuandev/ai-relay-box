@@ -12,6 +12,7 @@
     "typecheck": "pnpm typecheck:node && pnpm typecheck:web",
     "build:core": "node ./scripts/build-core.mjs",
     "prepare:ai-mini-gateway-runtime": "node ./scripts/prepare-ai-mini-gateway.mjs",
+    "update:ai-mini-gateway-runtime": "node ./scripts/update-ai-mini-gateway.mjs",
     "dev": "electron-vite dev",
     "start": "electron-vite preview",
     "build": "pnpm clean && pnpm typecheck && electron-vite build",
