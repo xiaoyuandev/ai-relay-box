@@ -4,40 +4,6 @@
 
 [User Guide](./docs/user-guide.md) | [Public Docs](./apps/docs/src/content/docs/) | [Deep Link Import Guide](./apps/docs/src/content/docs/deep-link-import.md)
 
-## macOS Install Note
-
-Current public macOS builds may still show a Gatekeeper warning on first install or first launch because the project is currently distributed with a free ad-hoc style signing path instead of a fully trusted paid Apple distribution chain for every released artifact.
-
-That is why users may see messages like:
-
-```text
-“Clash for AI” cannot be opened because the developer cannot be verified.
-```
-
-or:
-
-```text
-“Clash for AI” cannot be opened because Apple cannot verify it for malicious software.
-```
-
-If this happens, the user should do this:
-
-1. Move the app into `/Applications` if it is still inside a temporary download folder
-2. In Finder, right click `Clash for AI.app`
-3. Choose `Open`
-4. In the system confirmation dialog, choose `Open` again
-
-If the `Open` action still does not appear, use:
-
-1. `System Settings`
-2. `Privacy & Security`
-3. Scroll to the security warning area for Clash for AI
-4. Click `Open Anyway`
-
-After the first successful open, later launches normally stop showing the same warning.
-
-If a `.pkg` installer is attached to the release, prefer the `.pkg` build over dragging a raw `.app` bundle manually.
-
 Clash for AI is a local desktop gateway for people who switch between multiple AI gateways or API relay providers.
 
 Its role is:
@@ -70,11 +36,13 @@ The model is simple:
 ## Screenshot
 
 <p align="center">
-  <img src="./docs/images/readme/quick-start-provider-form.png" style="width: 100%; height: auto;">
+  <img src="./docs/images/readme/quick-start-provider-form.png" style="width: 49%; height: auto;">
+  <img src="./docs/images/readme/connectatool.png" style="width: 49%; height: auto;">
 </p>
 
 <p align="center">
-  <img src="./docs/images/readme/connectatool.png" style="width: 100%; height: auto;">
+  <img src="./docs/images/readme/models-config.png" style="width: 49%; height: auto;">
+  <img src="./docs/images/readme/tools-config.png" style="width: 49%; height: auto;">
 </p>
 
 
@@ -285,11 +253,8 @@ API Key: dummy
 Inside Clash for AI, open the `Tools` page to find the recommended connection values for supported tools.
 
 <p align="center">
-  <img src="./docs/images/readme/settings.png" style="width: 100%; height: auto;">
-</p>
-
-<p align="center">
-  <img src="./docs/images/readme/connectatool.png" style="width: 100%; height: auto;">
+  <img src="./docs/images/readme/settings.png" style="width: 49%; height: auto;">
+  <img src="./docs/images/readme/connectatool.png" style="width: 49%; height: auto;">
 </p>
 
 For tools like Cursor or Cherry Studio, if there is a provider type or protocol field, choose an OpenAI-compatible custom provider mode first, then paste the values above.
@@ -297,7 +262,7 @@ For tools like Cursor or Cherry Studio, if there is a provider type or protocol 
 In Cursor specifically, open its custom provider settings, choose an OpenAI-compatible provider mode, then fill in the local Base URL and `dummy` API key.
 
 <p align="center">
-  <img src="./docs/images/readme/corsor-config.png" style="width: 100%; height: auto;">
+  <img src="./docs/images/readme/corsor-config.png" style="width: 72%; height: auto;">
 </p>
 
 ### SDK Scripts And Local Apps
@@ -368,6 +333,42 @@ Common reasons include:
 3. Returned JSON payloads may vary
 
 So a provider can still be usable for request forwarding even if its model list is incomplete or unavailable.
+
+## FAQ
+
+### Why does macOS show “the developer cannot be verified” on first install?
+
+Current public macOS builds may still show a Gatekeeper warning on first install or first launch because the project is currently distributed with a free ad-hoc style signing path instead of a fully trusted paid Apple distribution chain for every released artifact.
+
+That is why users may see messages like:
+
+```text
+“Clash for AI” cannot be opened because the developer cannot be verified.
+```
+
+or:
+
+```text
+“Clash for AI” cannot be opened because Apple cannot verify it for malicious software.
+```
+
+If this happens, the user should do this:
+
+1. Move the app into `/Applications` if it is still inside a temporary download folder
+2. In Finder, right click `Clash for AI.app`
+3. Choose `Open`
+4. In the system confirmation dialog, choose `Open` again
+
+If the `Open` action still does not appear, use:
+
+1. `System Settings`
+2. `Privacy & Security`
+3. Scroll to the security warning area for Clash for AI
+4. Click `Open Anyway`
+
+After the first successful open, later launches normally stop showing the same warning.
+
+If a `.pkg` installer is attached to the release, prefer the `.pkg` build over dragging a raw `.app` bundle manually.
 
 ## Local Development
 
