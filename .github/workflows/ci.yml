@@ -50,8 +50,34 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build web UI
+        run: pnpm --filter web build
+
+      - name: Run core tests
+        working-directory: core
+        run: go test ./internal/api/... ./internal/localgateway/...
+
       - name: Typecheck desktop
         run: pnpm --filter desktop typecheck
 
       - name: Build desktop app
         run: pnpm build
+
+      - name: Build server core binary
+        env:
+          CORE_GOOS: linux
+          CORE_GOARCH: amd64
+        run: pnpm --filter desktop build:core
+
+      - name: Prepare ai-mini-gateway runtime
+        env:
+          AI_MINI_GATEWAY_GOOS: linux
+          AI_MINI_GATEWAY_GOARCH: amd64
+        run: pnpm --filter desktop prepare:ai-mini-gateway-runtime
+
+      - name: Package server release
+        env:
+          RELEASE_VERSION: v0.1.0
+          RELEASE_GOOS: linux
+          RELEASE_GOARCH: amd64
+        run: pnpm server:package
