@@ -1,0 +1,127 @@
+name: Release Server
+
+env:
+  PNPM_VERSION: 10.32.1
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: "Optional release version tag, for example v1.1.0. Leave empty to use the root package.json version."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  verify-release-source:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Verify tagged commit is on main
+        run: |
+          git fetch origin main --depth=1
+          if git merge-base --is-ancestor "$GITHUB_SHA" "origin/main"; then
+            echo "Tagged commit belongs to main."
+          else
+            echo "Release tags must point to a commit reachable from origin/main."
+            exit 1
+          fi
+
+  build-server-assets:
+    needs: verify-release-source
+    if: github.event_name == 'workflow_dispatch' || needs.verify-release-source.result == 'success'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - amd64
+          - arm64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Activate pnpm
+        run: corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: core/go.mod
+          cache-dependency-path: core/go.sum
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build web UI
+        run: pnpm --filter web build
+
+      - name: Build core binary
+        env:
+          CORE_GOOS: linux
+          CORE_GOARCH: ${{ matrix.arch }}
+        run: pnpm --filter desktop build:core
+
+      - name: Prepare ai-mini-gateway runtime
+        env:
+          AI_MINI_GATEWAY_GOOS: linux
+          AI_MINI_GATEWAY_GOARCH: ${{ matrix.arch }}
+        run: pnpm --filter desktop prepare:ai-mini-gateway-runtime
+
+      - name: Package server release
+        env:
+          RELEASE_VERSION: ${{ github.event_name == 'push' && github.ref_name || inputs.release_version }}
+          RELEASE_GOOS: linux
+          RELEASE_GOARCH: ${{ matrix.arch }}
+        run: node scripts/package-server-release.mjs
+
+      - name: Upload packaged archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-release-${{ matrix.arch }}
+          path: dist/server/*.tar.gz
+
+  publish-server-assets:
+    needs: build-server-assets
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - name: Download archives
+        uses: actions/download-artifact@v5
+        with:
+          path: dist/server
+          pattern: server-release-*
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: |
+          cd dist/server
+          VERSION="${GITHUB_REF_NAME}"
+          sha256sum *.tar.gz > "clash-for-ai-server_${VERSION}_SHA256SUMS.txt"
+
+      - name: Publish release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/server/*.tar.gz
+            dist/server/*SHA256SUMS.txt
+          append_body: true
+          generate_release_notes: true

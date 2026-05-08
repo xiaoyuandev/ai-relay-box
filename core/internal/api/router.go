@@ -4,7 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io/fs"
 	"net/http"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -13,6 +17,7 @@ import (
 	"github.com/xiaoyuandev/clash-for-ai/core/internal/localgateway"
 	"github.com/xiaoyuandev/clash-for-ai/core/internal/logging"
 	"github.com/xiaoyuandev/clash-for-ai/core/internal/provider"
+	"github.com/xiaoyuandev/clash-for-ai/core/internal/tooling"
 )
 
 type Router struct {
@@ -20,6 +25,9 @@ type Router struct {
 	health    *health.Service
 	logs      *logging.Service
 	local     *localgateway.Manager
+	tools     *tooling.Service
+	httpPort  int
+	webDir    string
 	gateway   http.Handler
 }
 
@@ -28,6 +36,9 @@ func NewRouter(
 	healthService *health.Service,
 	loggingService *logging.Service,
 	localGatewayManager *localgateway.Manager,
+	toolingService *tooling.Service,
+	httpPort int,
+	webAssetsDir string,
 	gatewayHandler *gateway.Handler,
 ) http.Handler {
 	router := &Router{
@@ -35,12 +46,19 @@ func NewRouter(
 		health:    healthService,
 		logs:      loggingService,
 		local:     localGatewayManager,
+		tools:     toolingService,
+		httpPort:  httpPort,
+		webDir:    webAssetsDir,
 		gateway:   gatewayHandler,
 	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", router.handleHealth)
 	mux.HandleFunc("/api/logs", router.handleLogs)
+	mux.HandleFunc("/api/release", router.handleRelease)
+	mux.HandleFunc("/api/runtime", router.handleRuntime)
+	mux.HandleFunc("/api/tools", router.handleTools)
+	mux.HandleFunc("/api/tools/", router.handleToolActions)
 	mux.HandleFunc("/api/local-gateway/runtime", router.handleLocalGatewayRuntime)
 	mux.HandleFunc("/api/local-gateway/capabilities", router.handleLocalGatewayCapabilities)
 	mux.HandleFunc("/api/local-gateway/source-capabilities", router.handleLocalGatewaySourceCapabilities)
@@ -52,6 +70,9 @@ func NewRouter(
 	mux.HandleFunc("/api/providers", router.handleProviders)
 	mux.HandleFunc("/api/providers/", router.handleProviderActions)
 	mux.Handle("/v1/", router.gateway)
+	if webAssetsDir != "" {
+		mux.Handle("/", router.webHandler())
+	}
 
 	return withCORS(mux)
 }
@@ -59,7 +80,90 @@ func NewRouter(
 func (r *Router) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{
 		"status":  "ok",
-		"version": "0.1.0",
+		"version": "1.1.0",
+	})
+}
+
+func (r *Router) handleRelease(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	type releaseMetadata struct {
+		ReleaseVersion string `json:"release_version"`
+		Platform       string `json:"platform"`
+		Arch           string `json:"arch"`
+		RuntimeKind    string `json:"runtime_kind"`
+		RuntimeVersion string `json:"runtime_version"`
+		RuntimeCommit  string `json:"runtime_commit"`
+		PackagedAt     string `json:"packaged_at"`
+	}
+
+	metadataPath := filepath.Join(r.webDir, "..", "release.json")
+	content, err := os.ReadFile(metadataPath)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			writeJSON(w, http.StatusOK, map[string]any{
+				"available": false,
+			})
+			return
+		}
+
+		http.Error(w, "failed to read release metadata", http.StatusInternalServerError)
+		return
+	}
+
+	var payload releaseMetadata
+	if err := json.Unmarshal(content, &payload); err != nil {
+		http.Error(w, "failed to decode release metadata", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"available": true,
+		"release":   payload,
+	})
+}
+
+func (r *Router) webHandler() http.Handler {
+	indexPath := filepath.Join(r.webDir, "index.html")
+	fileServer := http.FileServer(http.Dir(r.webDir))
+
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodGet && req.Method != http.MethodHead {
+			http.NotFound(w, req)
+			return
+		}
+
+		cleanPath := filepath.Clean(strings.TrimPrefix(req.URL.Path, "/"))
+		if cleanPath == "." {
+			cleanPath = "index.html"
+		}
+
+		targetPath := filepath.Join(r.webDir, cleanPath)
+		info, err := os.Stat(targetPath)
+		switch {
+		case err == nil && !info.IsDir():
+			fileServer.ServeHTTP(w, req)
+			return
+		case err == nil && info.IsDir():
+			indexInDir := filepath.Join(targetPath, "index.html")
+			if dirInfo, dirErr := os.Stat(indexInDir); dirErr == nil && !dirInfo.IsDir() {
+				req.URL.Path = strings.TrimSuffix(req.URL.Path, "/") + "/index.html"
+				fileServer.ServeHTTP(w, req)
+				return
+			}
+		case err != nil && !errors.Is(err, fs.ErrNotExist):
+			http.Error(w, "failed to read web assets", http.StatusInternalServerError)
+			return
+		}
+
+		if _, err := os.Stat(indexPath); err != nil {
+			http.NotFound(w, req)
+			return
+		}
+		http.ServeFile(w, req, indexPath)
 	})
 }
 
@@ -121,6 +225,79 @@ func (r *Router) handleLogs(w http.ResponseWriter, req *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, items)
+}
+
+func (r *Router) handleRuntime(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if r.tools == nil {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"os":       runtime.GOOS,
+			"arch":     runtime.GOARCH,
+			"is_wsl":   false,
+			"home_dir": "",
+		})
+		return
+	}
+	writeJSON(w, http.StatusOK, r.tools.Runtime())
+}
+
+func (r *Router) handleTools(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if r.tools == nil {
+		writeJSON(w, http.StatusOK, []tooling.ToolIntegrationState{})
+		return
+	}
+
+	items, err := r.tools.List(req.Context(), r.httpPort)
+	if err != nil {
+		http.Error(w, "failed to list tools", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, items)
+}
+
+func (r *Router) handleToolActions(w http.ResponseWriter, req *http.Request) {
+	if r.tools == nil {
+		http.Error(w, "tooling service unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
+	path := strings.TrimPrefix(req.URL.Path, "/api/tools/")
+	parts := strings.Split(path, "/")
+	if len(parts) != 2 {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	toolID := tooling.ToolIntegrationID(parts[0])
+	switch {
+	case parts[1] == "configure" && req.Method == http.MethodPost:
+		state, err := r.tools.Configure(req.Context(), toolID, r.httpPort)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, state)
+	case parts[1] == "restore" && req.Method == http.MethodPost:
+		state, err := r.tools.Restore(req.Context(), toolID, r.httpPort)
+		if err != nil {
+			if errors.Is(err, tooling.ErrNoBackupAvailable) {
+				http.Error(w, err.Error(), http.StatusNotFound)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, state)
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
 }
 
 func (r *Router) handleProviderActions(w http.ResponseWriter, req *http.Request) {

@@ -17,10 +17,15 @@ import (
 	"github.com/xiaoyuandev/clash-for-ai/core/internal/logging"
 	"github.com/xiaoyuandev/clash-for-ai/core/internal/provider"
 	"github.com/xiaoyuandev/clash-for-ai/core/internal/storage"
+	"github.com/xiaoyuandev/clash-for-ai/core/internal/tooling"
 )
 
 func Run() error {
 	cfg := config.Load()
+	log.Printf("[core] starting clash-for-ai-core on %s:%d", cfg.GatewayBind, cfg.HTTPPort)
+	log.Printf("[core] data dir: %s", cfg.DataDir)
+	log.Printf("[local-gateway] runtime kind: %s", cfg.LocalGatewayRuntimeKind)
+	log.Printf("[local-gateway] runtime host/port: %s:%d", cfg.LocalGatewayRuntimeHost, cfg.LocalGatewayRuntimePort)
 
 	sqliteStore, err := storage.NewSQLite(filepath.Join(cfg.DataDir, "clash-for-ai.db"))
 	if err != nil {
@@ -47,6 +52,7 @@ func Run() error {
 		DataDir:    cfg.LocalGatewayRuntimeDataDir,
 	})
 	healthService := health.NewService(providerService, credentialStore)
+	toolingService := tooling.NewService(providerService)
 	gatewayHandler := gateway.NewHandler(providerService, credentialStore, logService)
 
 	if _, err := providerService.EnsureManagedLocalGateway(
@@ -55,14 +61,37 @@ func Run() error {
 		localGatewayProviderBaseURL(cfg.LocalGatewayRuntimeHost, cfg.LocalGatewayRuntimePort),
 		"dummy",
 	); err != nil {
-		log.Printf("ensure managed local gateway provider: %v", err)
+		log.Printf("[local-gateway] ensure managed provider failed: %v", err)
 	}
 
-	if err := localGatewayManager.Bootstrap(context.Background()); err != nil {
-		log.Printf("bootstrap local gateway runtime: %v", err)
+	if cfg.LocalGatewayRuntimeExecutable == "" {
+		log.Printf("[local-gateway] runtime executable is not configured; core will start without auto-launching local gateway")
+	} else {
+		log.Printf("[local-gateway] runtime executable: %s", cfg.LocalGatewayRuntimeExecutable)
+		if err := localGatewayManager.Bootstrap(context.Background()); err != nil {
+			log.Printf("[local-gateway] bootstrap failed: %v", err)
+		} else {
+			status, statusErr := localGatewayManager.GetRuntimeStatus(context.Background())
+			if statusErr != nil {
+				log.Printf("[local-gateway] bootstrap finished but runtime status check failed: %v", statusErr)
+			} else if status.Running {
+				log.Printf("[local-gateway] started successfully on %s", status.APIBase)
+			} else {
+				log.Printf("[local-gateway] bootstrap completed but runtime is not running (state=%s, error=%s)", status.State, status.LastError)
+			}
+		}
 	}
 
-	handler := api.NewRouter(providerService, healthService, logService, localGatewayManager, gatewayHandler)
+	handler := api.NewRouter(
+		providerService,
+		healthService,
+		logService,
+		localGatewayManager,
+		toolingService,
+		cfg.HTTPPort,
+		cfg.WebAssetsDir,
+		gatewayHandler,
+	)
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", cfg.GatewayBind, cfg.HTTPPort),
@@ -72,6 +101,7 @@ func Run() error {
 		},
 	}
 
+	log.Printf("[core] http api listening on http://%s:%d", cfg.GatewayBind, cfg.HTTPPort)
 	return server.ListenAndServe()
 }
 

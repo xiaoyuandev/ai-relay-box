@@ -41,7 +41,7 @@
 
 也就是说：
 
-- 产品版本看 `apps/desktop/package.json`
+- 产品版本看根目录 `package.json`
 - runtime 版本看 `apps/desktop/resources/ai-mini-gateway/manifest.json`
 
 manifest 中至少维护：
@@ -53,7 +53,7 @@ manifest 中至少维护：
 
 推荐约束：
 
-1. `version` 必须直接对齐 `ai-mini-gateway` GitHub Release tag，例如 `v0.1.0`
+1. `version` 必须直接对齐 `ai-mini-gateway` GitHub Release tag，例如 `vX.Y.Z`
 2. `commit` 必须对齐该 release 实际对应的 commit short sha
 3. `contract_version` 用于判断 HTTP contract 兼容性，当前固定为 `v1`
 
@@ -298,7 +298,7 @@ resources/ai-mini-gateway/manifest.json
 
 ```text
 Bundled ai-mini-gateway runtime:
-- version: v0.1.0
+- version: vX.Y.Z
 - commit: 2c5df19
 - contract_version: v1
 ```

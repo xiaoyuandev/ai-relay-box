@@ -15,6 +15,7 @@ import (
 	"github.com/xiaoyuandev/clash-for-ai/core/internal/localgateway"
 	"github.com/xiaoyuandev/clash-for-ai/core/internal/provider"
 	"github.com/xiaoyuandev/clash-for-ai/core/internal/storage"
+	"github.com/xiaoyuandev/clash-for-ai/core/internal/tooling"
 )
 
 func TestLocalGatewayRuntimeEndpointWithoutExecutable(t *testing.T) {
@@ -46,6 +47,35 @@ func TestLocalGatewayRuntimeEndpointWithoutExecutable(t *testing.T) {
 	}
 	if payload.Runtime.LastError == "" {
 		t.Fatalf("expected runtime last error: %+v", payload.Runtime)
+	}
+}
+
+func TestReleaseEndpointWithoutMetadata(t *testing.T) {
+	t.Parallel()
+
+	handler := newTestRouter(t, nil, localgateway.RuntimeConfig{
+		Host:    "127.0.0.1",
+		Port:    3457,
+		DataDir: filepath.Join(t.TempDir(), "runtime"),
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/release", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d body=%s", rec.Code, rec.Body.String())
+	}
+
+	var payload struct {
+		Available bool `json:"available"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode release payload: %v", err)
+	}
+
+	if payload.Available {
+		t.Fatalf("expected unavailable release metadata")
 	}
 }
 
@@ -275,7 +305,7 @@ func TestManagedLocalGatewayProviderActivationRequiresHealthyRuntime(t *testing.
 		t.Fatalf("ensure managed local gateway: %v", err)
 	}
 
-	handler := NewRouter(providerService, healthService, nil, manager, gatewayHandler)
+	handler := NewRouter(providerService, healthService, nil, manager, tooling.NewService(providerService), 3456, "", gatewayHandler)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/providers/provider-local-gateway/activate", nil)
 	rec := httptest.NewRecorder()
@@ -349,7 +379,7 @@ func newTestRouter(t *testing.T, adapter localgateway.GatewayAdapter, runtime lo
 	}
 	manager := localgateway.NewManager(localService, adapter, runtime)
 
-	return NewRouter(providerService, healthService, nil, manager, gatewayHandler)
+	return NewRouter(providerService, healthService, nil, manager, tooling.NewService(providerService), 3456, "", gatewayHandler)
 }
 
 type localgatewaySpyAdapter struct {

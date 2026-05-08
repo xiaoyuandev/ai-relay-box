@@ -11,6 +11,7 @@ type AppConfig struct {
 	DataDir                       string
 	LogLevel                      string
 	GatewayBind                   string
+	WebAssetsDir                  string
 	LogRetentionDays              int
 	LogMaxRecords                 int
 	LocalGatewayRuntimeKind       string
@@ -69,6 +70,7 @@ func Load() AppConfig {
 		DataDir:                       dataDir,
 		LogLevel:                      "debug",
 		GatewayBind:                   "127.0.0.1",
+		WebAssetsDir:                  os.Getenv("WEB_ASSETS_DIR"),
 		LogRetentionDays:              logRetentionDays,
 		LogMaxRecords:                 logMaxRecords,
 		LocalGatewayRuntimeKind:       envOrDefault("LOCAL_GATEWAY_RUNTIME_KIND", "ai-mini-gateway"),
