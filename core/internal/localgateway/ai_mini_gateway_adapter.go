@@ -67,12 +67,12 @@ func (a *AIMiniGatewayAdapter) StartRuntime(ctx context.Context, input StartRunt
 		}
 	}
 
-	if isClashForAICoreExecutable(input.Executable) {
+	if isAIRelayBoxCoreExecutable(input.Executable) {
 		return RuntimeStatus{}, &AdapterError{
 			Code:        AdapterErrorInvalidConfig,
 			Operation:   "start_runtime",
 			RuntimeKind: a.RuntimeKind(),
-			Message:     "local gateway runtime executable points to clash-for-ai-core; set LOCAL_GATEWAY_RUNTIME_EXECUTABLE to ai-mini-gateway instead",
+			Message:     "local gateway runtime executable points to ai-relay-box-core; set LOCAL_GATEWAY_RUNTIME_EXECUTABLE to ai-mini-gateway instead",
 		}
 	}
 
@@ -150,9 +150,9 @@ func (a *AIMiniGatewayAdapter) StartRuntime(ctx context.Context, input StartRunt
 	return a.currentStatus(), nil
 }
 
-func isClashForAICoreExecutable(executable string) bool {
+func isAIRelayBoxCoreExecutable(executable string) bool {
 	base := filepath.Base(filepath.Clean(executable))
-	return base == "clash-for-ai-core" || base == "clash-for-ai-core.exe"
+	return base == "ai-relay-box-core" || base == "ai-relay-box-core.exe"
 }
 
 func (b *tailBuffer) Write(p []byte) (int, error) {

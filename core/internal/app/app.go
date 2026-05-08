@@ -22,12 +22,12 @@ import (
 
 func Run() error {
 	cfg := config.Load()
-	log.Printf("[core] starting clash-for-ai-core on %s:%d", cfg.GatewayBind, cfg.HTTPPort)
+	log.Printf("[core] starting ai-relay-box-core on %s:%d", cfg.GatewayBind, cfg.HTTPPort)
 	log.Printf("[core] data dir: %s", cfg.DataDir)
 	log.Printf("[local-gateway] runtime kind: %s", cfg.LocalGatewayRuntimeKind)
 	log.Printf("[local-gateway] runtime host/port: %s:%d", cfg.LocalGatewayRuntimeHost, cfg.LocalGatewayRuntimePort)
 
-	sqliteStore, err := storage.NewSQLite(filepath.Join(cfg.DataDir, "clash-for-ai.db"))
+	sqliteStore, err := storage.NewSQLite(filepath.Join(cfg.DataDir, "ai-relay-box.db"))
 	if err != nil {
 		return err
 	}

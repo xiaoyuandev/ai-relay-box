@@ -179,7 +179,7 @@ export async function startCoreProcess(
 
 function resolveCoreRuntimePaths() {
   const binaryName =
-    process.platform === "win32" ? "clash-for-ai-core.exe" : "clash-for-ai-core";
+    process.platform === "win32" ? "ai-relay-box-core.exe" : "ai-relay-box-core";
 
   if (app.isPackaged) {
     const coreDir = join(process.resourcesPath, "core");
@@ -324,9 +324,9 @@ async function spawnGoCore(
   const dataDir = resolveCoreRuntimePaths().dataDir;
   mkdirSync(dataDir, { recursive: true });
 
-  const command = `${goBinary} run cmd/clash-for-ai-core/main.go`;
+  const command = `${goBinary} run cmd/ai-relay-box-core/main.go`;
   console.info(`[core] starting via go run on port ${port}`);
-  const child = spawn(goBinary, ["run", "cmd/clash-for-ai-core/main.go"], {
+  const child = spawn(goBinary, ["run", "cmd/ai-relay-box-core/main.go"], {
     cwd: coreDir,
     stdio: "inherit",
     env: {
@@ -406,7 +406,7 @@ function buildCoreBinary(
 
   const result = spawnSync(
     goBinary,
-    ["build", "-o", binaryPath, "./cmd/clash-for-ai-core"],
+    ["build", "-o", binaryPath, "./cmd/ai-relay-box-core"],
     {
       cwd: coreDir,
       stdio: "inherit",
@@ -519,7 +519,7 @@ function resolveWorkspaceRoot(startDir: string): string {
   let current = startDir;
 
   for (let depth = 0; depth < 6; depth += 1) {
-    if (existsSync(join(current, "core", "cmd", "clash-for-ai-core", "main.go"))) {
+    if (existsSync(join(current, "core", "cmd", "ai-relay-box-core", "main.go"))) {
       return current;
     }
 

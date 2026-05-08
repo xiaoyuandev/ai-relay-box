@@ -4,22 +4,22 @@ set -euo pipefail
 
 REPO_URL="${CLASH_FOR_AI_REPO_URL:-https://github.com/xiaoyuandev/clash-for-ai.git}"
 BRANCH="${CLASH_FOR_AI_BRANCH:-main}"
-INSTALL_ROOT="${CLASH_FOR_AI_INSTALL_ROOT:-$HOME/.local/share/clash-for-ai}"
+INSTALL_ROOT="${CLASH_FOR_AI_INSTALL_ROOT:-$HOME/.local/share/ai-relay-box}"
 BIN_DIR="${CLASH_FOR_AI_BIN_DIR:-$HOME/.local/bin}"
-SERVICE_NAME="${CLASH_FOR_AI_SERVICE_NAME:-clash-for-ai}"
+SERVICE_NAME="${CLASH_FOR_AI_SERVICE_NAME:-ai-relay-box}"
 HTTP_PORT="${CLASH_FOR_AI_HTTP_PORT:-3456}"
 LOCAL_GATEWAY_PORT="${CLASH_FOR_AI_LOCAL_GATEWAY_PORT:-3457}"
-DATA_DIR="${CLASH_FOR_AI_DATA_DIR:-$HOME/.local/share/clash-for-ai/data}"
+DATA_DIR="${CLASH_FOR_AI_DATA_DIR:-$HOME/.local/share/ai-relay-box/data}"
 RUNTIME_DATA_DIR="${CLASH_FOR_AI_RUNTIME_DATA_DIR:-$DATA_DIR/local-gateway}"
 RUNTIME_KIND="${CLASH_FOR_AI_RUNTIME_KIND:-ai-mini-gateway}"
 SYSTEMD_USER_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 
 info() {
-  printf '[clash-for-ai] %s\n' "$*"
+  printf '[ai-relay-box] %s\n' "$*"
 }
 
 fail() {
-  printf '[clash-for-ai] error: %s\n' "$*" >&2
+  printf '[ai-relay-box] error: %s\n' "$*" >&2
   exit 1
 }
 
@@ -55,7 +55,7 @@ append_path_hint() {
 
   if ! grep -Fq "$BIN_DIR" "$profile"; then
     {
-      printf '\n# Added by Clash for AI installer\n'
+      printf '\n# Added by AI Relay Box installer\n'
       printf 'export PATH="%s:$PATH"\n' "$BIN_DIR"
     } >>"$profile"
     info "added $BIN_DIR to PATH in $profile"
@@ -70,7 +70,7 @@ has_systemd_user() {
 setup_wsl_lingering_hint() {
   if grep -qi microsoft /proc/version 2>/dev/null; then
     info "WSL detected. If systemd user services are disabled, start manually with:"
-    info "  $BIN_DIR/clash-for-ai run"
+    info "  $BIN_DIR/ai-relay-box run"
   fi
 }
 
@@ -82,11 +82,11 @@ mkdir -p "$INSTALL_ROOT" "$BIN_DIR" "$DATA_DIR" "$RUNTIME_DATA_DIR"
 
 SRC_DIR="$INSTALL_ROOT/src"
 WEB_DIST_DIR="$INSTALL_ROOT/web"
-CORE_BIN="$INSTALL_ROOT/bin/clash-for-ai-core"
+CORE_BIN="$INSTALL_ROOT/bin/ai-relay-box-core"
 GATEWAY_BIN="$INSTALL_ROOT/bin/ai-mini-gateway"
-ENV_FILE="$INSTALL_ROOT/clash-for-ai.env"
+ENV_FILE="$INSTALL_ROOT/ai-relay-box.env"
 SERVICE_FILE="$SYSTEMD_USER_DIR/${SERVICE_NAME}.service"
-LAUNCHER="$BIN_DIR/clash-for-ai"
+LAUNCHER="$BIN_DIR/ai-relay-box"
 
 if [ -d "$SRC_DIR/.git" ]; then
   info "updating source tree in $SRC_DIR"
@@ -109,7 +109,7 @@ info "building core binary"
 mkdir -p "$(dirname "$CORE_BIN")"
 (
   cd "$SRC_DIR/core"
-  go build -o "$CORE_BIN" ./cmd/clash-for-ai-core
+  go build -o "$CORE_BIN" ./cmd/ai-relay-box-core
 )
 
 info "preparing bundled ai-mini-gateway runtime"
@@ -176,7 +176,7 @@ case "\${1:-start}" in
     run_foreground
     ;;
   *)
-    echo "usage: clash-for-ai {start|stop|restart|status|logs|run}" >&2
+    echo "usage: ai-relay-box {start|stop|restart|status|logs|run}" >&2
     exit 1
     ;;
 esac
@@ -187,7 +187,7 @@ if has_systemd_user; then
   mkdir -p "$SYSTEMD_USER_DIR"
   cat >"$SERVICE_FILE" <<EOF
 [Unit]
-Description=Clash for AI core service
+Description=AI Relay Box core service
 After=network.target
 
 [Service]

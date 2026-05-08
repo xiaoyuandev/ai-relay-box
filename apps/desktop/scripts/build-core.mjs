@@ -9,7 +9,7 @@ const coreDir = join(workspaceRoot, "core");
 const goBinary = process.env.GO_BINARY || "go";
 const goos = process.env.CORE_GOOS || mapPlatform(process.platform);
 const goarch = process.env.CORE_GOARCH || mapArch(process.arch);
-const binaryName = goos === "windows" ? "clash-for-ai-core.exe" : "clash-for-ai-core";
+const binaryName = goos === "windows" ? "ai-relay-box-core.exe" : "ai-relay-box-core";
 const outputPath = join(coreDir, "bin", binaryName);
 const cacheDir = join(workspaceRoot, ".gocache");
 const modCacheDir = join(workspaceRoot, ".gomodcache");
@@ -32,7 +32,7 @@ console.log(`[build-core] building ${goos}/${goarch} -> ${outputPath}`);
 
 const result = spawnSync(
   goBinary,
-  ["build", "-o", outputPath, "./cmd/clash-for-ai-core"],
+  ["build", "-o", outputPath, "./cmd/ai-relay-box-core"],
   {
     cwd: coreDir,
     stdio: "inherit",
