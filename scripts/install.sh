@@ -119,6 +119,11 @@ ARCH="$(resolve_arch)"
 VERSION="$(resolve_version)"
 [ -n "$VERSION" ] || fail "failed to resolve release version from GitHub"
 
+case "$VERSION" in
+  v*) ;;
+  *) fail "release version must start with 'v', got: $VERSION" ;;
+esac
+
 ASSET_NAME="clash-for-ai-server_${VERSION}_linux_${ARCH}.tar.gz"
 CHECKSUM_NAME="clash-for-ai-server_${VERSION}_SHA256SUMS.txt"
 DOWNLOAD_BASE="https://github.com/$REPO/releases/download/$VERSION"
@@ -134,6 +139,12 @@ trap cleanup EXIT
 
 info "downloading $ASSET_NAME from release $VERSION"
 curl -fL "$DOWNLOAD_BASE/$ASSET_NAME" -o "$ARCHIVE_PATH"
+
+if [ -n "$REQUESTED_VERSION" ]; then
+  info "using pinned release version $VERSION"
+else
+  info "using latest release version $VERSION"
+fi
 
 if curl -fsSL "$DOWNLOAD_BASE/$CHECKSUM_NAME" -o "$CHECKSUM_PATH"; then
   verify_archive_checksum "$ARCHIVE_PATH" "$CHECKSUM_PATH"
