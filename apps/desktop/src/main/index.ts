@@ -93,7 +93,7 @@ let updateState: UpdateState = {
 function buildCherryStudioImportUrl(apiPort: number) {
   const payload = {
     id: "custom-provider",
-    name: "Clash for AI",
+    name: "AI Relay Box",
     type: "openai",
     apiKey: "dummy",
     baseUrl: `http://127.0.0.1:${apiPort}/v1`
@@ -146,7 +146,7 @@ function decodeBase64UrlJson(value: string) {
 function parseDeepLinkImportURL(input: string): DeepLinkEvent {
   try {
     const url = new URL(input);
-    if (url.protocol !== "clash-for-ai:") {
+    if (url.protocol !== "ai-relay-box:") {
       throw new Error("Unsupported deep link protocol.");
     }
 
@@ -190,7 +190,7 @@ function parseDeepLinkImportURL(input: string): DeepLinkEvent {
 }
 
 function findDeepLinkURL(argv: string[]) {
-  return argv.find((item) => item.startsWith("clash-for-ai://")) ?? null;
+  return argv.find((item) => item.startsWith("ai-relay-box://")) ?? null;
 }
 
 function dispatchDeepLinkEvent(event: DeepLinkEvent) {
@@ -205,21 +205,21 @@ function handleDeepLinkURL(url: string) {
 function registerProtocolClient() {
   if (process.defaultApp) {
     if (process.argv.length >= 2) {
-      app.setAsDefaultProtocolClient("clash-for-ai", process.execPath, [join(process.cwd(), process.argv[1])]);
+      app.setAsDefaultProtocolClient("ai-relay-box", process.execPath, [join(process.cwd(), process.argv[1])]);
     }
     return;
   }
 
-  app.setAsDefaultProtocolClient("clash-for-ai");
+  app.setAsDefaultProtocolClient("ai-relay-box");
 }
 
 function resolveReleaseURL() {
   const version = updateState.availableVersion ?? updateState.downloadedVersion;
   if (version) {
-    return `https://github.com/xiaoyuandev/clash-for-ai/releases/tag/v${version}`;
+    return `https://github.com/xiaoyuandev/ai-relay-box/releases/tag/v${version}`;
   }
 
-  return "https://github.com/xiaoyuandev/clash-for-ai/releases/latest";
+  return "https://github.com/xiaoyuandev/ai-relay-box/releases/latest";
 }
 
 function shouldStartHidden() {
@@ -271,7 +271,7 @@ function updateTrayMenu() {
   tray.setContextMenu(
     Menu.buildFromTemplate([
       {
-        label: "Show Clash for AI",
+        label: "Show AI Relay Box",
         click: () => showMainWindow()
       },
       {
@@ -300,7 +300,7 @@ function createTray() {
 
   const icon = nativeImage.createFromPath(resolveIconPath());
   tray = new Tray(icon);
-  tray.setToolTip("Clash for AI");
+  tray.setToolTip("AI Relay Box");
   tray.on("click", () => {
     if (mainWindow?.isVisible()) {
       mainWindow.hide();
@@ -495,7 +495,7 @@ function configureAutoUpdater() {
 }
 
 app.whenReady().then(() => {
-  electronApp.setAppUserModelId("com.xiaoyuandev.clash-for-ai");
+  electronApp.setAppUserModelId("com.xiaoyuandev.ai-relay-box");
   configureAutoUpdater();
   desktopConfig = loadDesktopConfig();
   launchHiddenOnStartup = shouldStartHidden();

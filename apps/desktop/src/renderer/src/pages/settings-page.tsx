@@ -414,7 +414,7 @@ export function SettingsPage({
       <section className={heroClass}>
         <div className="space-y-4">
           <div>
-            <p className={eyebrowClass}>Clash for AI</p>
+            <p className={eyebrowClass}>AI Relay Box</p>
             <h1 className={heroTitleClass}>{t("settings.title")}</h1>
           </div>
           <p className={heroCopyClass}>{t("settings.subtitle")}</p>
