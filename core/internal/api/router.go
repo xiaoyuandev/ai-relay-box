@@ -55,6 +55,7 @@ func NewRouter(
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", router.handleHealth)
 	mux.HandleFunc("/api/logs", router.handleLogs)
+	mux.HandleFunc("/api/release", router.handleRelease)
 	mux.HandleFunc("/api/runtime", router.handleRuntime)
 	mux.HandleFunc("/api/tools", router.handleTools)
 	mux.HandleFunc("/api/tools/", router.handleToolActions)
@@ -80,6 +81,48 @@ func (r *Router) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{
 		"status":  "ok",
 		"version": "0.1.0",
+	})
+}
+
+func (r *Router) handleRelease(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	type releaseMetadata struct {
+		ReleaseVersion string `json:"release_version"`
+		Platform       string `json:"platform"`
+		Arch           string `json:"arch"`
+		RuntimeKind    string `json:"runtime_kind"`
+		RuntimeVersion string `json:"runtime_version"`
+		RuntimeCommit  string `json:"runtime_commit"`
+		PackagedAt     string `json:"packaged_at"`
+	}
+
+	metadataPath := filepath.Join(r.webDir, "..", "release.json")
+	content, err := os.ReadFile(metadataPath)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			writeJSON(w, http.StatusOK, map[string]any{
+				"available": false,
+			})
+			return
+		}
+
+		http.Error(w, "failed to read release metadata", http.StatusInternalServerError)
+		return
+	}
+
+	var payload releaseMetadata
+	if err := json.Unmarshal(content, &payload); err != nil {
+		http.Error(w, "failed to decode release metadata", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"available": true,
+		"release":   payload,
 	})
 }
 

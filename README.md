@@ -205,6 +205,7 @@ Production installer:
 Full guide:
 
 - [WSL / Linux Server Deployment Guide](./docs/wsl-linux-server-guide.zh-CN.md)
+- [WSL / Linux Server Deployment Guide (English)](./docs/wsl-linux-server-guide.md)
 
 ### 1. Add a provider in Clash for AI
 
@@ -331,6 +332,7 @@ If you want fuller step-by-step guidance, tool-specific examples, and troublesho
 
 - [User Guide](./docs/user-guide.md)
 - [WSL / Linux Server Deployment Guide](./docs/wsl-linux-server-guide.zh-CN.md)
+- [WSL / Linux Server Deployment Guide (English)](./docs/wsl-linux-server-guide.md)
 - [中文 README](./README.zh-CN.md)
 
 If you are deploying on `WSL` or `Linux server`, prefer the server guide first. It also includes pinned release installation using `CLASH_FOR_AI_VERSION`.

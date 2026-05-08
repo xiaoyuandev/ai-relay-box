@@ -50,6 +50,35 @@ func TestLocalGatewayRuntimeEndpointWithoutExecutable(t *testing.T) {
 	}
 }
 
+func TestReleaseEndpointWithoutMetadata(t *testing.T) {
+	t.Parallel()
+
+	handler := newTestRouter(t, nil, localgateway.RuntimeConfig{
+		Host:    "127.0.0.1",
+		Port:    3457,
+		DataDir: filepath.Join(t.TempDir(), "runtime"),
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/release", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d body=%s", rec.Code, rec.Body.String())
+	}
+
+	var payload struct {
+		Available bool `json:"available"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode release payload: %v", err)
+	}
+
+	if payload.Available {
+		t.Fatalf("expected unavailable release metadata")
+	}
+}
+
 func TestLocalGatewaySourceAndSyncEndpoints(t *testing.T) {
 	t.Parallel()
 

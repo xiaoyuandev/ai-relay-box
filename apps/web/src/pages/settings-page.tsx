@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { useI18n } from "../i18n/i18n-provider";
+import { getReleaseMetadata, type RuntimeInfo } from "../services/api";
 import {
   eyebrowClass,
   heroClass,
@@ -16,6 +18,27 @@ import {
 
 export function SettingsPage() {
   const { t } = useI18n();
+  const [releaseMetadata, setReleaseMetadata] = useState<Awaited<ReturnType<typeof getReleaseMetadata>> | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void getReleaseMetadata()
+      .then((payload) => {
+        if (!cancelled) {
+          setReleaseMetadata(payload);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setReleaseMetadata({ available: false });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <main className={pageShellClass}>
@@ -53,6 +76,20 @@ export function SettingsPage() {
           <div className={infoCardClass}>
             <p className={sectionMetaClass}>Management mode</p>
             <p className={metricValueClass}>Supplementary web access</p>
+          </div>
+          <div className={infoCardClass}>
+            <p className={sectionMetaClass}>Release version</p>
+            <p className={metricValueClass}>
+              {releaseMetadata?.available ? releaseMetadata.release?.release_version : t("settings.value.unknown")}
+            </p>
+          </div>
+          <div className={infoCardClass}>
+            <p className={sectionMetaClass}>Runtime version</p>
+            <p className={metricValueClass}>
+              {releaseMetadata?.available
+                ? `${releaseMetadata.release?.runtime_version} (${releaseMetadata.release?.runtime_commit})`
+                : t("settings.value.unknown")}
+            </p>
           </div>
         </div>
       </section>

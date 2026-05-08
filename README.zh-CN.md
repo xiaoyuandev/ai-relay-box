@@ -204,6 +204,7 @@ curl -fsSL https://raw.githubusercontent.com/xiaoyuandev/clash-for-ai/main/scrip
 完整说明见：
 
 - [WSL / Linux Server 部署与使用说明](./docs/wsl-linux-server-guide.zh-CN.md)
+- [WSL / Linux Server Deployment Guide (English)](./docs/wsl-linux-server-guide.md)
 
 ### 1. 在 Clash for AI 里添加 Provider
 
@@ -330,6 +331,7 @@ curl http://127.0.0.1:3456/v1/chat/completions \
 
 - [使用教程](./docs/user-guide.md)
 - [WSL / Linux Server 部署与使用说明](./docs/wsl-linux-server-guide.zh-CN.md)
+- [WSL / Linux Server Deployment Guide (English)](./docs/wsl-linux-server-guide.md)
 - [English README](./README.md)
 
 如果你是 `WSL` 或 `Linux server` 用户，建议优先阅读 server 部署文档，其中包含 `CLASH_FOR_AI_VERSION` 固定版本安装与回滚说明。

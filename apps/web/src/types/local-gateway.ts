@@ -112,3 +112,16 @@ export interface SyncLocalGatewayResponse {
 }
 
 export type LocalGatewaySelectedModel = SelectedModel;
+
+export interface ReleaseMetadata {
+  available: boolean;
+  release?: {
+    release_version: string;
+    platform: string;
+    arch: string;
+    runtime_kind: string;
+    runtime_version: string;
+    runtime_commit: string;
+    packaged_at: string;
+  };
+}

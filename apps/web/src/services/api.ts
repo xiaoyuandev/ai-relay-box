@@ -6,6 +6,7 @@ import type {
   CreateLocalGatewayModelSourceInput,
   LocalGatewayCapabilities,
   LocalGatewayModelSource,
+  ReleaseMetadata,
   LocalGatewaySourceModel,
   LocalGatewaySourceCapability,
   LocalGatewaySourceHealthcheck,
@@ -124,6 +125,14 @@ export async function getRuntime(apiBase?: string): Promise<RuntimeInfo> {
     `${getApiBase(apiBase)}/api/runtime`,
     {},
     "Runtime request failed"
+  );
+}
+
+export async function getReleaseMetadata(apiBase?: string): Promise<ReleaseMetadata> {
+  return fetchJson<ReleaseMetadata>(
+    `${getApiBase(apiBase)}/api/release`,
+    {},
+    "Release metadata request failed"
   );
 }
 
