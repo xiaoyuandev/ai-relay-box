@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/xiaoyuandev/clash-for-ai/core/internal/credential"
-	"github.com/xiaoyuandev/clash-for-ai/core/internal/storage"
+	"github.com/xiaoyuandev/ai-relay-box/core/internal/credential"
+	"github.com/xiaoyuandev/ai-relay-box/core/internal/storage"
 )
 
 func TestEnsureManagedLocalGatewayCreatesSystemProvider(t *testing.T) {

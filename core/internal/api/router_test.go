@@ -9,13 +9,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/xiaoyuandev/clash-for-ai/core/internal/credential"
-	"github.com/xiaoyuandev/clash-for-ai/core/internal/gateway"
-	"github.com/xiaoyuandev/clash-for-ai/core/internal/health"
-	"github.com/xiaoyuandev/clash-for-ai/core/internal/localgateway"
-	"github.com/xiaoyuandev/clash-for-ai/core/internal/provider"
-	"github.com/xiaoyuandev/clash-for-ai/core/internal/storage"
-	"github.com/xiaoyuandev/clash-for-ai/core/internal/tooling"
+	"github.com/xiaoyuandev/ai-relay-box/core/internal/credential"
+	"github.com/xiaoyuandev/ai-relay-box/core/internal/gateway"
+	"github.com/xiaoyuandev/ai-relay-box/core/internal/health"
+	"github.com/xiaoyuandev/ai-relay-box/core/internal/localgateway"
+	"github.com/xiaoyuandev/ai-relay-box/core/internal/provider"
+	"github.com/xiaoyuandev/ai-relay-box/core/internal/storage"
+	"github.com/xiaoyuandev/ai-relay-box/core/internal/tooling"
 )
 
 func TestLocalGatewayRuntimeEndpointWithoutExecutable(t *testing.T) {

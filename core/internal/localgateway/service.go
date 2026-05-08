@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/xiaoyuandev/clash-for-ai/core/internal/credential"
-	upstreamprovider "github.com/xiaoyuandev/clash-for-ai/core/internal/provider"
+	"github.com/xiaoyuandev/ai-relay-box/core/internal/credential"
+	upstreamprovider "github.com/xiaoyuandev/ai-relay-box/core/internal/provider"
 )
 
 type CreateModelSourceInput struct {
