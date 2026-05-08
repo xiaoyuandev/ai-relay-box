@@ -2,16 +2,16 @@
 
 set -euo pipefail
 
-REPO_URL="${CLASH_FOR_AI_REPO_URL:-https://github.com/xiaoyuandev/clash-for-ai.git}"
-BRANCH="${CLASH_FOR_AI_BRANCH:-main}"
-INSTALL_ROOT="${CLASH_FOR_AI_INSTALL_ROOT:-$HOME/.local/share/ai-relay-box}"
-BIN_DIR="${CLASH_FOR_AI_BIN_DIR:-$HOME/.local/bin}"
-SERVICE_NAME="${CLASH_FOR_AI_SERVICE_NAME:-ai-relay-box}"
-HTTP_PORT="${CLASH_FOR_AI_HTTP_PORT:-3456}"
-LOCAL_GATEWAY_PORT="${CLASH_FOR_AI_LOCAL_GATEWAY_PORT:-3457}"
-DATA_DIR="${CLASH_FOR_AI_DATA_DIR:-$HOME/.local/share/ai-relay-box/data}"
-RUNTIME_DATA_DIR="${CLASH_FOR_AI_RUNTIME_DATA_DIR:-$DATA_DIR/local-gateway}"
-RUNTIME_KIND="${CLASH_FOR_AI_RUNTIME_KIND:-ai-mini-gateway}"
+REPO_URL="${AI_RELAY_BOX_REPO_URL:-https://github.com/xiaoyuandev/ai-relay-box.git}"
+BRANCH="${AI_RELAY_BOX_BRANCH:-main}"
+INSTALL_ROOT="${AI_RELAY_BOX_INSTALL_ROOT:-$HOME/.local/share/ai-relay-box}"
+BIN_DIR="${AI_RELAY_BOX_BIN_DIR:-$HOME/.local/bin}"
+SERVICE_NAME="${AI_RELAY_BOX_SERVICE_NAME:-ai-relay-box}"
+HTTP_PORT="${AI_RELAY_BOX_HTTP_PORT:-3456}"
+LOCAL_GATEWAY_PORT="${AI_RELAY_BOX_LOCAL_GATEWAY_PORT:-3457}"
+DATA_DIR="${AI_RELAY_BOX_DATA_DIR:-$HOME/.local/share/ai-relay-box/data}"
+RUNTIME_DATA_DIR="${AI_RELAY_BOX_RUNTIME_DATA_DIR:-$DATA_DIR/local-gateway}"
+RUNTIME_KIND="${AI_RELAY_BOX_RUNTIME_KIND:-ai-mini-gateway}"
 SYSTEMD_USER_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 
 info() {

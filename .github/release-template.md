@@ -1,4 +1,4 @@
-# Clash for AI v{{VERSION}}
+# AI Relay Box v{{VERSION}}
 
 ## Downloads
 
@@ -11,30 +11,30 @@ Use the packaged desktop app if you want the full Electron experience on macOS, 
 ### macOS
 
 1. Apple Silicon:
-   - `Clash-for-AI-{{VERSION}}-arm64.pkg`
-   - `Clash-for-AI-{{VERSION}}-arm64.dmg`
-   - `Clash-for-AI-{{VERSION}}-mac-arm64.zip`
+   - `AI-Relay-Box-{{VERSION}}-arm64.pkg`
+   - `AI-Relay-Box-{{VERSION}}-arm64.dmg`
+   - `AI-Relay-Box-{{VERSION}}-mac-arm64.zip`
 2. Intel Mac:
    - use the matching `x64` artifact when that build is attached
 
 ### Windows
 
 1. Installer:
-   - `Clash-for-AI-{{VERSION}}-x64-setup.exe`
+   - `AI-Relay-Box-{{VERSION}}-x64-setup.exe`
 2. If an `arm64` installer is attached, prefer that on Windows on ARM devices
 
 ### Linux
 
-1. `Clash-for-AI-{{VERSION}}-x64.AppImage`
-2. `Clash-for-AI-{{VERSION}}-linux-x64.tar.gz`
+1. `AI-Relay-Box-{{VERSION}}-x64.AppImage`
+2. `AI-Relay-Box-{{VERSION}}-linux-x64.tar.gz`
 
 ### WSL / Linux Server
 
 Use the server package if you want browser-based management on `WSL` or a plain `Linux server`.
 
-1. `clash-for-ai-server_{{VERSION}}_linux_amd64.tar.gz`
-2. `clash-for-ai-server_{{VERSION}}_linux_arm64.tar.gz`
-3. `clash-for-ai-server_{{VERSION}}_SHA256SUMS.txt`
+1. `ai-relay-box-server_{{VERSION}}_linux_amd64.tar.gz`
+2. `ai-relay-box-server_{{VERSION}}_linux_arm64.tar.gz`
+3. `ai-relay-box-server_{{VERSION}}_SHA256SUMS.txt`
 
 ## Install Paths
 
@@ -53,7 +53,7 @@ curl -fsSL https://raw.githubusercontent.com/xiaoyuandev/ai-relay-box/main/scrip
 Pinned release:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/xiaoyuandev/ai-relay-box/main/scripts/install.sh | CLASH_FOR_AI_VERSION=vX.Y.Z bash
+curl -fsSL https://raw.githubusercontent.com/xiaoyuandev/ai-relay-box/main/scripts/install.sh | AI_RELAY_BOX_VERSION=vX.Y.Z bash
 ```
 
 Development-only source install:
@@ -88,13 +88,13 @@ If SmartScreen warns that the publisher is unknown:
 For AppImage:
 
 ```bash
-chmod +x "Clash-for-AI-{{VERSION}}-x64.AppImage"
-./Clash-for-AI-{{VERSION}}-x64.AppImage
+chmod +x "AI-Relay-Box-{{VERSION}}-x64.AppImage"
+./AI-Relay-Box-{{VERSION}}-x64.AppImage
 ```
 
 ## Notes
 
-1. The desktop app includes the local `clash-for-ai-core` binary. Users do not need to install Go.
+1. The desktop app includes the local `ai-relay-box-core` binary. Users do not need to install Go.
 2. Automatic updates are only available in packaged builds.
 3. Provider credentials remain local to the device.
 4. The production server installer uses GitHub Release assets by default.
