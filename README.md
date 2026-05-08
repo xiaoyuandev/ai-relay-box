@@ -184,6 +184,23 @@ Use it to:
 
 If you do not want to read the full guide yet, use one of these quick setup patterns.
 
+## WSL / Linux Server
+
+If you want to deploy Clash for AI on `WSL` or a plain `Linux server` instead of using the desktop app:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/xiaoyuandev/clash-for-ai/main/scripts/install.sh | bash
+```
+
+After installation, the default endpoints are:
+
+1. Web management UI: `http://127.0.0.1:3456`
+2. OpenAI-compatible local endpoint: `http://127.0.0.1:3456/v1`
+
+Full guide:
+
+- [WSL / Linux Server Deployment Guide](./docs/wsl-linux-server-guide.zh-CN.md)
+
 ### 1. Add a provider in Clash for AI
 
 Open the `Providers` page in the desktop app and fill in:
@@ -308,6 +325,7 @@ The actual model that responds still depends on the model name your script sends
 If you want fuller step-by-step guidance, tool-specific examples, and troubleshooting notes, continue with:
 
 - [User Guide](./docs/user-guide.md)
+- [WSL / Linux Server Deployment Guide](./docs/wsl-linux-server-guide.zh-CN.md)
 - [中文 README](./README.zh-CN.md)
 
 ## How To Read Protocol Support Today

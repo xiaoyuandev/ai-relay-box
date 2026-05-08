@@ -183,6 +183,23 @@ http://127.0.0.1:3456/v1
 
 如果你暂时不想先看完整使用手册，可以先按下面方式快速接入。
 
+## WSL / Linux Server
+
+如果你不使用桌面端，而是希望直接部署在 `WSL` 或 `Linux server`：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/xiaoyuandev/clash-for-ai/main/scripts/install.sh | bash
+```
+
+安装完成后默认提供：
+
+1. Web 管理界面：`http://127.0.0.1:3456`
+2. OpenAI-compatible 本地入口：`http://127.0.0.1:3456/v1`
+
+完整说明见：
+
+- [WSL / Linux Server 部署与使用说明](./docs/wsl-linux-server-guide.zh-CN.md)
+
 ### 1. 在 Clash for AI 里添加 Provider
 
 打开桌面应用中的 `Providers` 页面，填写：
@@ -307,6 +324,7 @@ curl http://127.0.0.1:3456/v1/chat/completions \
 如果你想看更完整的分步说明、工具接入示例和排障说明，请继续阅读：
 
 - [使用教程](./docs/user-guide.md)
+- [WSL / Linux Server 部署与使用说明](./docs/wsl-linux-server-guide.zh-CN.md)
 - [English README](./README.md)
 
 ## 当前更适合怎样理解协议支持

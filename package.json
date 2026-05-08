@@ -8,6 +8,7 @@
     "web:dev": "pnpm --filter web dev",
     "web:build": "pnpm --filter web build",
     "web:preview": "pnpm --filter web preview",
+    "server:package": "node scripts/package-server-release.mjs",
     "build": "pnpm --filter desktop build",
     "docs:dev": "pnpm --filter docs dev",
     "docs:build": "pnpm --filter docs build",

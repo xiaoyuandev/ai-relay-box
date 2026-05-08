@@ -4,7 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io/fs"
 	"net/http"
+	"os"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -24,6 +27,7 @@ type Router struct {
 	local     *localgateway.Manager
 	tools     *tooling.Service
 	httpPort  int
+	webDir    string
 	gateway   http.Handler
 }
 
@@ -34,6 +38,7 @@ func NewRouter(
 	localGatewayManager *localgateway.Manager,
 	toolingService *tooling.Service,
 	httpPort int,
+	webAssetsDir string,
 	gatewayHandler *gateway.Handler,
 ) http.Handler {
 	router := &Router{
@@ -43,6 +48,7 @@ func NewRouter(
 		local:     localGatewayManager,
 		tools:     toolingService,
 		httpPort:  httpPort,
+		webDir:    webAssetsDir,
 		gateway:   gatewayHandler,
 	}
 
@@ -63,6 +69,9 @@ func NewRouter(
 	mux.HandleFunc("/api/providers", router.handleProviders)
 	mux.HandleFunc("/api/providers/", router.handleProviderActions)
 	mux.Handle("/v1/", router.gateway)
+	if webAssetsDir != "" {
+		mux.Handle("/", router.webHandler())
+	}
 
 	return withCORS(mux)
 }
@@ -71,6 +80,47 @@ func (r *Router) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{
 		"status":  "ok",
 		"version": "0.1.0",
+	})
+}
+
+func (r *Router) webHandler() http.Handler {
+	indexPath := filepath.Join(r.webDir, "index.html")
+	fileServer := http.FileServer(http.Dir(r.webDir))
+
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodGet && req.Method != http.MethodHead {
+			http.NotFound(w, req)
+			return
+		}
+
+		cleanPath := filepath.Clean(strings.TrimPrefix(req.URL.Path, "/"))
+		if cleanPath == "." {
+			cleanPath = "index.html"
+		}
+
+		targetPath := filepath.Join(r.webDir, cleanPath)
+		info, err := os.Stat(targetPath)
+		switch {
+		case err == nil && !info.IsDir():
+			fileServer.ServeHTTP(w, req)
+			return
+		case err == nil && info.IsDir():
+			indexInDir := filepath.Join(targetPath, "index.html")
+			if dirInfo, dirErr := os.Stat(indexInDir); dirErr == nil && !dirInfo.IsDir() {
+				req.URL.Path = strings.TrimSuffix(req.URL.Path, "/") + "/index.html"
+				fileServer.ServeHTTP(w, req)
+				return
+			}
+		case err != nil && !errors.Is(err, fs.ErrNotExist):
+			http.Error(w, "failed to read web assets", http.StatusInternalServerError)
+			return
+		}
+
+		if _, err := os.Stat(indexPath); err != nil {
+			http.NotFound(w, req)
+			return
+		}
+		http.ServeFile(w, req, indexPath)
 	})
 }
 

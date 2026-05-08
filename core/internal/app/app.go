@@ -89,6 +89,7 @@ func Run() error {
 		localGatewayManager,
 		toolingService,
 		cfg.HTTPPort,
+		cfg.WebAssetsDir,
 		gatewayHandler,
 	)
 
