@@ -77,7 +77,6 @@ jobs:
 
       - name: Package server release
         env:
-          RELEASE_VERSION: v0.1.0
           RELEASE_GOOS: linux
           RELEASE_GOARCH: amd64
         run: pnpm server:package

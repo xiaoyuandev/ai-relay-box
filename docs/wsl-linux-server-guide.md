@@ -41,7 +41,7 @@ curl -fsSL https://raw.githubusercontent.com/xiaoyuandev/clash-for-ai/main/scrip
 Pinned release:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/xiaoyuandev/clash-for-ai/main/scripts/install.sh | CLASH_FOR_AI_VERSION=v0.1.0 bash
+curl -fsSL https://raw.githubusercontent.com/xiaoyuandev/clash-for-ai/main/scripts/install.sh | CLASH_FOR_AI_VERSION=vX.Y.Z bash
 ```
 
 Development-only source install:
@@ -60,7 +60,7 @@ Notes:
 The production installer supports:
 
 ```bash
-CLASH_FOR_AI_VERSION=v0.1.0
+CLASH_FOR_AI_VERSION=vX.Y.Z
 CLASH_FOR_AI_HTTP_PORT=3456
 CLASH_FOR_AI_LOCAL_GATEWAY_PORT=3457
 CLASH_FOR_AI_INSTALL_ROOT="$HOME/.local/share/clash-for-ai"
@@ -123,7 +123,7 @@ After startup:
 To roll back to an older stable release, reinstall with a pinned tag:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/xiaoyuandev/clash-for-ai/main/scripts/install.sh | CLASH_FOR_AI_VERSION=v0.1.0 bash
+curl -fsSL https://raw.githubusercontent.com/xiaoyuandev/clash-for-ai/main/scripts/install.sh | CLASH_FOR_AI_VERSION=vX.Y.Z bash
 ```
 
 ## 9. Troubleshooting

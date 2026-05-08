@@ -71,7 +71,7 @@ http://127.0.0.1:3456
 安装脚本支持以下变量：
 
 ```bash
-CLASH_FOR_AI_VERSION=v1.0.0
+CLASH_FOR_AI_VERSION=vX.Y.Z
 CLASH_FOR_AI_HTTP_PORT=3456
 CLASH_FOR_AI_LOCAL_GATEWAY_PORT=3457
 CLASH_FOR_AI_INSTALL_ROOT="$HOME/.local/share/clash-for-ai"
@@ -93,7 +93,7 @@ http://127.0.0.1:8080/v1
 如果你需要固定到某个已发布版本或执行回滚，可以显式指定：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/xiaoyuandev/clash-for-ai/main/scripts/install.sh | CLASH_FOR_AI_VERSION=v0.1.0 bash
+curl -fsSL https://raw.githubusercontent.com/xiaoyuandev/clash-for-ai/main/scripts/install.sh | CLASH_FOR_AI_VERSION=vX.Y.Z bash
 ```
 
 回滚时同样使用这个方式，把 `CLASH_FOR_AI_VERSION` 改成目标 release tag 即可。
@@ -247,7 +247,7 @@ curl http://127.0.0.1:3456/health
 预期返回：
 
 ```json
-{"status":"ok","version":"0.1.0"}
+{"status":"ok","version":"1.1.0"}
 ```
 
 ### 11.3 检查 web UI 文件是否存在

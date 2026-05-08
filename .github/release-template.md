@@ -53,7 +53,7 @@ curl -fsSL https://raw.githubusercontent.com/xiaoyuandev/clash-for-ai/main/scrip
 Pinned release:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/xiaoyuandev/clash-for-ai/main/scripts/install.sh | CLASH_FOR_AI_VERSION={{VERSION}} bash
+curl -fsSL https://raw.githubusercontent.com/xiaoyuandev/clash-for-ai/main/scripts/install.sh | CLASH_FOR_AI_VERSION=vX.Y.Z bash
 ```
 
 Development-only source install:

@@ -2,7 +2,6 @@ name: Release Server
 
 env:
   PNPM_VERSION: 10.32.1
-  RELEASE_VERSION: v0.1.0
 
 on:
   push:
@@ -11,9 +10,9 @@ on:
   workflow_dispatch:
     inputs:
       release_version:
-        description: "Release version tag, for example v0.1.0"
+        description: "Optional release version tag, for example v1.1.0. Leave empty to use the root package.json version."
         required: false
-        default: "v0.1.0"
+        default: ""
 
 permissions:
   contents: write
@@ -89,7 +88,7 @@ jobs:
 
       - name: Package server release
         env:
-          RELEASE_VERSION: ${{ github.event_name == 'push' && github.ref_name || inputs.release_version || env.RELEASE_VERSION }}
+          RELEASE_VERSION: ${{ github.event_name == 'push' && github.ref_name || inputs.release_version }}
           RELEASE_GOOS: linux
           RELEASE_GOARCH: ${{ matrix.arch }}
         run: node scripts/package-server-release.mjs
