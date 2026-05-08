@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       release_version:
-        description: "Optional release version tag, for example v1.1.0. Leave empty to use the root package.json version."
+        description: "Optional release version tag, for example v1.0.0. Leave empty to use the root package.json version."
         required: false
         default: ""
 

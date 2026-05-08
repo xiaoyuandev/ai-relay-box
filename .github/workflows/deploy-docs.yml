@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - docs/project-usage
   workflow_dispatch:
 
 permissions:
