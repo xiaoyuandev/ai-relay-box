@@ -3,6 +3,7 @@ import { useI18n } from "../i18n/i18n-provider";
 import {
   configureTool as configureToolRequest,
   getHealth,
+  getLocalGatewayRuntime,
   getTools,
   type ToolIntegrationState,
   restoreTool as restoreToolRequest
@@ -29,44 +30,6 @@ import {
   statusPillClass
 } from "../ui";
 
-type DesktopState = {
-  ok: boolean;
-  runtime: string;
-  platform: string;
-  apiBase: string;
-  config: {
-    apiPort: number;
-    apiPortSource: "default" | "config" | "env";
-  };
-  updates: {
-    currentVersion: string;
-    status:
-      | "idle"
-      | "checking"
-      | "available"
-      | "not-available"
-      | "downloading"
-      | "downloaded"
-      | "error"
-      | "unsupported";
-    availableVersion?: string;
-    downloadedVersion?: string;
-    progressPercent?: number;
-    message?: string;
-  };
-  core: {
-    managed: boolean;
-    running: boolean;
-    apiBase: string;
-    port: number;
-    pid?: number;
-    logRetentionDays: number;
-    logMaxRecords: number;
-    lastError?: string;
-    command?: string;
-  };
-} | null;
-
 type ToolPreset =
   | "codex-cli"
   | "claude-code"
@@ -79,11 +42,10 @@ type ConnectMode = "command" | "manual";
 type ToolCategory = "cli" | "desktop" | "sdk";
 
 interface ToolsPageProps {
-  desktopState: DesktopState;
   onCopyText: (text: string) => Promise<void>;
 }
 
-export function ToolsPage({ desktopState, onCopyText }: ToolsPageProps) {
+export function ToolsPage({ onCopyText }: ToolsPageProps) {
   const { t } = useI18n();
   const [toolPreset, setToolPreset] = useState<ToolPreset>("codex-cli");
   const [platformPreset, setPlatformPreset] = useState<PlatformPreset>("unix");
@@ -98,6 +60,11 @@ export function ToolsPage({ desktopState, onCopyText }: ToolsPageProps) {
   const [cherryBusy, setCherryBusy] = useState(false);
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
   const [coreAvailable, setCoreAvailable] = useState<boolean | null>(null);
+  const [localGatewayState, setLocalGatewayState] = useState<{
+    running: boolean;
+    healthy: boolean;
+    state?: string;
+  } | null>(null);
 
   const toolCatalog = useMemo(
     () =>
@@ -165,15 +132,25 @@ export function ToolsPage({ desktopState, onCopyText }: ToolsPageProps) {
 
     async function syncToolStates() {
       try {
-        const [health, states] = await Promise.all([
-          getHealth(desktopState?.apiBase),
-          getTools(desktopState?.apiBase)
+        const [health, states, localGateway] = await Promise.all([
+          getHealth(),
+          getTools(),
+          getLocalGatewayRuntime().catch(() => null)
         ]);
         if (cancelled) {
           return;
         }
 
         setCoreAvailable(health.status === "ok");
+        setLocalGatewayState(
+          localGateway
+            ? {
+                running: localGateway.runtime.running,
+                healthy: localGateway.runtime.healthy,
+                state: localGateway.runtime.state
+              }
+            : null
+        );
         setToolStates(
           states.reduce(
             (accumulator, item) => {
@@ -188,6 +165,7 @@ export function ToolsPage({ desktopState, onCopyText }: ToolsPageProps) {
           return;
         }
         setCoreAvailable(false);
+        setLocalGatewayState(null);
       }
     }
 
@@ -200,13 +178,21 @@ export function ToolsPage({ desktopState, onCopyText }: ToolsPageProps) {
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [desktopState?.apiBase]);
+  }, []);
 
   const selectedTool = toolCatalog.find((tool) => tool.id === toolPreset) ?? toolCatalog[0];
   const selectedState = toolStates[toolPreset];
-  const port = desktopState?.core.port ?? desktopState?.config.apiPort ?? 3456;
+  const port = 3456;
   const openAIBase = `http://127.0.0.1:${port}/v1`;
   const anthropicBase = `http://127.0.0.1:${port}`;
+  const localGatewayTone =
+    localGatewayState == null
+      ? "warning"
+      : localGatewayState.running && localGatewayState.healthy
+        ? "success"
+        : localGatewayState.state === "starting"
+          ? "warning"
+          : "danger";
 
   const platformLabel =
     platformPreset === "unix"
@@ -347,7 +333,7 @@ export function ToolsPage({ desktopState, onCopyText }: ToolsPageProps) {
     setActionFeedback(null);
 
     try {
-      const nextState = await configureToolRequest(toolId, desktopState?.apiBase);
+      const nextState = await configureToolRequest(toolId);
       setToolStates((current) => ({ ...current, [toolId]: nextState }));
       setActionFeedback(nextState.message ?? t("tools.action.configured"));
     } catch (error) {
@@ -362,7 +348,7 @@ export function ToolsPage({ desktopState, onCopyText }: ToolsPageProps) {
     setActionFeedback(null);
 
     try {
-      const nextState = await restoreToolRequest(toolId, desktopState?.apiBase);
+      const nextState = await restoreToolRequest(toolId);
       setToolStates((current) => ({ ...current, [toolId]: nextState }));
       setActionFeedback(nextState.message ?? t("tools.action.restored"));
     } catch (error) {
@@ -447,16 +433,17 @@ export function ToolsPage({ desktopState, onCopyText }: ToolsPageProps) {
           <p className={heroCopyClass}>{t("tools.subtitle")}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <span
-            className={statusPillClass(
-              coreAvailable == null ? "warning" : coreAvailable ? "success" : "danger"
-            )}
-          >
-            {coreAvailable == null
-              ? t("common.loading")
-              : coreAvailable
-                ? t("app.coreRunning")
-                : t("app.coreStopped")}
+          <span className={statusPillClass(coreAvailable == null ? "warning" : coreAvailable ? "success" : "danger")}>
+            {coreAvailable == null ? "Core loading" : coreAvailable ? "Core ready" : "Core unavailable"}
+          </span>
+          <span className={statusPillClass(localGatewayTone)}>
+            {localGatewayState == null
+              ? "Gateway loading"
+              : localGatewayState.running && localGatewayState.healthy
+                ? "Gateway ready"
+                : localGatewayState.state === "starting"
+                  ? "Gateway starting"
+                  : "Gateway unavailable"}
           </span>
           <button
             type="button"

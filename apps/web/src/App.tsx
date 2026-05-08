@@ -1,5 +1,5 @@
 import { Route, Routes, useLocation, useNavigate } from "react-router-dom";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "./i18n/i18n-provider";
 import { useTheme } from "./theme/theme-provider";
 import { ProvidersPage } from "./pages/providers-page";
@@ -7,6 +7,12 @@ import { ModelsPage } from "./pages/models-page";
 import { LogsPage } from "./pages/logs-page";
 import { SettingsPage } from "./pages/settings-page";
 import { ToolsPage } from "./pages/tools-page";
+import {
+  getHealth,
+  getLocalGatewayRuntime,
+  getRuntime,
+  type WebRuntimeOverview
+} from "./services/api";
 import {
   appBackdropClass,
   appShellClass,
@@ -16,34 +22,123 @@ import {
   metaClass,
   navButtonClass,
   pageShellClass,
+  statusDotClass,
   statusPillClass
 } from "./ui";
-
-const navIDs = ["providers", "models", "logs", "settings", "tools"] as const;
 
 export default function App() {
   const { locale, localeLabels, setLocale, t } = useI18n();
   const { resolvedTheme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [runtimeOverview, setRuntimeOverview] = useState<WebRuntimeOverview>({
+    core: {
+      available: false
+    },
+    environment: null,
+    localGateway: {
+      configured: false,
+      running: false,
+      healthy: false
+    }
+  });
 
   const navItems = useMemo(
     () => [
       { id: "providers", path: "/providers", label: t("app.nav.providers") },
       { id: "models", path: "/models", label: t("app.nav.models") },
+      { id: "tools", path: "/tools", label: t("app.nav.tools") },
       { id: "logs", path: "/logs", label: t("app.nav.logs") },
       { id: "settings", path: "/settings", label: t("app.nav.settings") },
-      { id: "tools", path: "/tools", label: t("app.nav.tools") }
     ],
     [t]
   );
+
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function syncRuntimeOverview() {
+      try {
+        const [health, environment, localGateway] = await Promise.all([
+          getHealth().catch(() => null),
+          getRuntime().catch(() => null),
+          getLocalGatewayRuntime().catch(() => null)
+        ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        setRuntimeOverview({
+          core: {
+            available: health?.status === "ok",
+            version: health?.version
+          },
+          environment,
+          localGateway: {
+            configured: Boolean(localGateway?.runtime.runtime_kind),
+            running: localGateway?.runtime.running ?? false,
+            healthy: localGateway?.runtime.healthy ?? false,
+            state: localGateway?.runtime.state,
+            api_base: localGateway?.runtime.api_base,
+            last_error: localGateway?.runtime.last_error
+          }
+        });
+      } catch {
+        if (cancelled) {
+          return;
+        }
+      }
+    }
+
+    void syncRuntimeOverview();
+    const intervalId = window.setInterval(() => {
+      void syncRuntimeOverview();
+    }, 4000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, []);
+
+  const localGatewayTone =
+    runtimeOverview.localGateway.running && runtimeOverview.localGateway.healthy
+      ? "success"
+      : runtimeOverview.localGateway.last_error
+        ? "danger"
+        : "warning";
 
   return (
     <div className={appShellClass}>
       <div className={appBackdropClass} />
       <div className="relative mx-auto h-full min-h-0 w-full max-w-[1600px] px-3 py-3 sm:px-4 sm:py-4 xl:px-6">
+        <div className={`${glassPanelClass} mb-4 flex items-center justify-between gap-3 px-4 py-3 xl:hidden`}>
+          <div className="min-w-0">
+            <p className={fieldLabelClass}>Clash for AI</p>
+            <p className="text-base font-semibold text-[color:var(--color-heading)]">Clash for AI Web</p>
+          </div>
+          <button
+            type="button"
+            className={buttonClass("secondary")}
+            onClick={() => setMobileNavOpen((current) => !current)}
+            aria-label={mobileNavOpen ? "Close navigation" : "Open navigation"}
+            title={mobileNavOpen ? "Close navigation" : "Open navigation"}
+          >
+            {mobileNavOpen ? "Close" : "Menu"}
+          </button>
+        </div>
         <div className="grid h-full min-h-0 gap-4 xl:grid-cols-[240px_minmax(0,1fr)]">
-          <aside className={`${glassPanelClass} flex min-h-0 flex-col gap-4 overflow-y-auto p-4`}>
+          <aside
+            className={`${glassPanelClass} ${
+              mobileNavOpen ? "flex" : "hidden"
+            } min-h-0 flex-col gap-4 overflow-y-auto p-4 xl:flex`}
+          >
             <div className="space-y-2">
               <p className={fieldLabelClass}>Clash for AI</p>
               <h1 className="text-2xl font-semibold tracking-[-0.04em] text-[color:var(--color-heading)]">
@@ -114,6 +209,36 @@ export default function App() {
                   </div>
                 </div>
               </div>
+
+              <div className="grid gap-2 rounded-[16px] border [border-color:var(--border-soft)] [background:var(--panel-solid)] p-3">
+                <div>
+                  <p className={fieldLabelClass}>Runtime</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="inline-flex items-center gap-2 text-sm text-[color:var(--color-text)]">
+                    <span className={statusDotClass(runtimeOverview.core.available ? "success" : "danger")} />
+                    Core
+                  </span>
+                  <span className="inline-flex items-center gap-2 text-sm text-[color:var(--color-text)]">
+                    <span className={statusDotClass(localGatewayTone === "success" ? "success" : "danger")} />
+                    Gateway
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  <p className={metaClass}>
+                    {runtimeOverview.environment
+                      ? `${runtimeOverview.environment.os} / ${runtimeOverview.environment.arch}${
+                        runtimeOverview.environment.is_wsl ? " / WSL" : ""
+                      }`
+                      : "Runtime information unavailable"}
+                  </p>
+                  {runtimeOverview.localGateway.last_error ? (
+                    <p className="text-sm text-[color:var(--danger-text)]">
+                      {runtimeOverview.localGateway.last_error}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
             </div>
           </aside>
 
@@ -121,18 +246,18 @@ export default function App() {
             <Routes>
               <Route
                 path="/"
-                element={<ProvidersPage desktopState={null} selectedProviderId={null} onSelectedProviderChange={() => {}} />}
+                element={<ProvidersPage selectedProviderId={null} onSelectedProviderChange={() => {}} />}
               />
               <Route
                 path="/providers"
-                element={<ProvidersPage desktopState={null} selectedProviderId={null} onSelectedProviderChange={() => {}} />}
+                element={<ProvidersPage selectedProviderId={null} onSelectedProviderChange={() => {}} />}
               />
               <Route path="/models" element={<ModelsPage />} />
               <Route path="/logs" element={<LogsPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route
                 path="/tools"
-                element={<ToolsPage desktopState={null} onCopyText={(text) => navigator.clipboard.writeText(text)} />}
+                element={<ToolsPage onCopyText={(text) => navigator.clipboard.writeText(text)} />}
               />
             </Routes>
           </main>
