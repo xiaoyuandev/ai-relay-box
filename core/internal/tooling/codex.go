@@ -70,7 +70,7 @@ func applyCodexIntegration(apiPort int) (ToolIntegrationState, error) {
 		return ToolIntegrationState{}, err
 	}
 	state.BackupPath = backupPath
-	state.Message = "Configured Codex CLI to use the local Clash for AI gateway."
+	state.Message = "Configured Codex CLI to use the local AI Relay Box gateway."
 	return state, nil
 }
 
@@ -276,7 +276,7 @@ func readTopLevelTomlValue(content string, key string) string {
 
 func codexMessage(configured bool) string {
 	if configured {
-		return "Codex CLI is already pointed at the local Clash for AI gateway."
+		return "Codex CLI is already pointed at the local AI Relay Box gateway."
 	}
 	return "Codex CLI can be configured by updating ~/.codex/config.toml and ~/.codex/auth.json."
 }

@@ -1,10 +1,10 @@
-# Clash for AI
+# AI Relay Box
 
 [English README](./README.md) | [中文 README](./README.zh-CN.md)
 
-<a href="https://www.clashforai.com/" target="_blank" rel="noopener noreferrer">Public Docs</a> | <a href="https://www.clashforai.com/deep-link-import/" target="_blank" rel="noopener noreferrer">Deep Link Import Guide</a>
+<a href="https://www.airelaybox.com/" target="_blank" rel="noopener noreferrer">Public Docs</a> | <a href="https://www.airelaybox.com/deep-link-import/" target="_blank" rel="noopener noreferrer">Deep Link Import Guide</a>
 
-Clash for AI is a local desktop gateway for people who switch between multiple AI gateways or API relay providers.
+AI Relay Box is a local desktop gateway for people who switch between multiple AI gateways or API relay providers.
 
 Its role is:
 
@@ -48,7 +48,7 @@ The model is simple:
 
 ## What Problem It Solves
 
-Clash for AI is designed for people who depend on multiple AI gateways in daily use.
+AI Relay Box is designed for people who depend on multiple AI gateways in daily use.
 
 It mainly addresses two problems:
 
@@ -57,15 +57,15 @@ It mainly addresses two problems:
 
 The current version also addresses a third problem:
 
-3. Native model upstreams are harder to manage consistently because they do not always fit the old “one active provider” switching model, so Clash for AI now includes a dedicated local Models Gateway to register and expose those sources in one place
+3. Native model upstreams are harder to manage consistently because they do not always fit the old “one active provider” switching model, so AI Relay Box now includes a dedicated local Models Gateway to register and expose those sources in one place
 
-Clash for AI puts one local gateway in front of those tools.
+AI Relay Box puts one local gateway in front of those tools.
 
 You configure a single local endpoint once, then switch the upstream relay provider from the desktop app.
 
 ## What It Does
 
-Clash for AI runs a local API gateway on your machine.
+AI Relay Box runs a local API gateway on your machine.
 
 Most editors, chat clients, CLI tools, or custom scripts connect to the local endpoint:
 
@@ -73,7 +73,7 @@ Most editors, chat clients, CLI tools, or custom scripts connect to the local en
 http://127.0.0.1:3456/v1
 ```
 
-Then Clash for AI forwards requests to the currently active provider you configured in the desktop app.
+Then AI Relay Box forwards requests to the currently active provider you configured in the desktop app.
 
 In the current version, the local access path is most mature around an OpenAI-compatible local entry point. Anthropic-compatible upstream handling and some Claude-style tool integrations are present, but that part of the stack is still being refined.
 
@@ -130,7 +130,7 @@ Why this module exists:
 3. Users may want a local service that behaves more like running a small `new-api` or `sub2api` style gateway on their own machine
 4. That local gateway can then expose many native upstream models through one controlled local layer
 
-So the `Models` page introduces a separate local Models Gateway layer. Instead of only switching one active Provider, Clash for AI can now maintain a set of native model sources locally and expose them through a local compatibility gateway.
+So the `Models` page introduces a separate local Models Gateway layer. Instead of only switching one active Provider, AI Relay Box can now maintain a set of native model sources locally and expose them through a local compatibility gateway.
 
 In practical terms:
 
@@ -146,7 +146,7 @@ This means the relationship is:
 
 ### 3. Tools
 
-The `Tools` page helps client tools connect to Clash for AI correctly.
+The `Tools` page helps client tools connect to AI Relay Box correctly.
 
 Use it to:
 
@@ -186,10 +186,10 @@ If you do not want to read the full guide yet, use one of these quick setup patt
 
 ## WSL / Linux Server
 
-If you want to deploy Clash for AI on `WSL` or a plain `Linux server` instead of using the desktop app:
+If you want to deploy AI Relay Box on `WSL` or a plain `Linux server` instead of using the desktop app:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/xiaoyuandev/clash-for-ai/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/xiaoyuandev/ai-relay-box/main/scripts/install.sh | bash
 ```
 
 After installation, the default endpoints are:
@@ -207,7 +207,7 @@ Full guide:
 - [WSL / Linux Server Deployment Guide](./docs/wsl-linux-server-guide.zh-CN.md)
 - [WSL / Linux Server Deployment Guide (English)](./docs/wsl-linux-server-guide.md)
 
-### 1. Add a provider in Clash for AI
+### 1. Add a provider in AI Relay Box
 
 Open the `Providers` page in the desktop app and fill in:
 
@@ -217,7 +217,7 @@ Open the `Providers` page in the desktop app and fill in:
 
 For OpenAI-compatible relay providers, the Base URL usually ends with `/v1`.
 
-For other compatible APIs, whether `/v1` should be included depends on the upstream implementation. At the moment, OpenAI-compatible upstreams are the clearest and most mature path in Clash for AI.
+For other compatible APIs, whether `/v1` should be included depends on the upstream implementation. At the moment, OpenAI-compatible upstreams are the clearest and most mature path in AI Relay Box.
 
 <p align="center">
   <img src="./docs/images/readme/quick-start-provider-form.png" style="width: 100%; height: auto;">
@@ -253,14 +253,14 @@ export OPENAI_API_KEY="dummy"
 
 Then start the CLI from the same terminal session.
 
-For Claude Code style tools, Clash for AI currently provides an Anthropic-style environment variable setup flow:
+For Claude Code style tools, AI Relay Box currently provides an Anthropic-style environment variable setup flow:
 
 ```bash
 export ANTHROPIC_BASE_URL="http://127.0.0.1:3456"
 export ANTHROPIC_AUTH_TOKEN="dummy"
 ```
 
-Inside Clash for AI, you can also open the `Tools` page and use the built-in one-click setup flow for supported CLIs.
+Inside AI Relay Box, you can also open the `Tools` page and use the built-in one-click setup flow for supported CLIs.
 
 One clarification: the most stable local access path in the current release is still the OpenAI-compatible one. Anthropic-style local access and upstream compatibility are still being improved. If your tool also supports a custom OpenAI-compatible endpoint, prefer `http://127.0.0.1:3456/v1`.
 
@@ -273,7 +273,7 @@ Base URL: http://127.0.0.1:3456/v1
 API Key: dummy
 ```
 
-Inside Clash for AI, open the `Tools` page to find the recommended connection values for supported tools.
+Inside AI Relay Box, open the `Tools` page to find the recommended connection values for supported tools.
 
 <p align="center">
   <img src="./docs/images/readme/settings.png" style="width: 49%; height: auto;">
@@ -290,7 +290,7 @@ In Cursor specifically, open its custom provider settings, choose an OpenAI-comp
 
 ### SDK Scripts And Local Apps
 
-If you want to interact with the currently active model provider from your own scripts, point your SDK or HTTP client to the local Clash for AI gateway instead of the upstream relay directly.
+If you want to interact with the currently active model provider from your own scripts, point your SDK or HTTP client to the local AI Relay Box gateway instead of the upstream relay directly.
 
 Example with the OpenAI SDK:
 
@@ -304,7 +304,7 @@ const client = new OpenAI({
 
 const response = await client.responses.create({
   model: "gpt-4.1",
-  input: "Say hello from Clash for AI."
+  input: "Say hello from AI Relay Box."
 });
 
 console.log(response.output_text);
@@ -319,7 +319,7 @@ curl http://127.0.0.1:3456/v1/chat/completions \
   -d '{
     "model": "gpt-4.1",
     "messages": [
-      { "role": "user", "content": "Say hello from Clash for AI." }
+      { "role": "user", "content": "Say hello from AI Relay Box." }
     ]
   }'
 ```
@@ -335,13 +335,13 @@ If you want fuller step-by-step guidance, tool-specific examples, and troublesho
 - [WSL / Linux Server Deployment Guide (English)](./docs/wsl-linux-server-guide.md)
 - [中文 README](./README.zh-CN.md)
 
-If you are deploying on `WSL` or `Linux server`, prefer the server guide first. It also includes pinned release installation using `CLASH_FOR_AI_VERSION`.
+If you are deploying on `WSL` or `Linux server`, prefer the server guide first. It also includes pinned release installation using `AI_RELAY_BOX_VERSION`.
 
 ## How To Read Protocol Support Today
 
 In practice, many upstream gateways expose both OpenAI-compatible and Anthropic-compatible APIs.
 
-Clash for AI is designed around those two compatibility families, but the current implementation is not equally mature in both directions:
+AI Relay Box is designed around those two compatibility families, but the current implementation is not equally mature in both directions:
 
 1. OpenAI-compatible local access is the clearest and most stable primary path
 2. Anthropic-compatible upstream auth handling and some tool integrations are already covered
@@ -370,19 +370,19 @@ Current public macOS builds may still show a Gatekeeper warning on first install
 That is why users may see messages like:
 
 ```text
-“Clash for AI” cannot be opened because the developer cannot be verified.
+“AI Relay Box” cannot be opened because the developer cannot be verified.
 ```
 
 or:
 
 ```text
-“Clash for AI” cannot be opened because Apple cannot verify it for malicious software.
+“AI Relay Box” cannot be opened because Apple cannot verify it for malicious software.
 ```
 
 If this happens, the user should do this:
 
 1. Move the app into `/Applications` if it is still inside a temporary download folder
-2. In Finder, right click `Clash for AI.app`
+2. In Finder, right click `AI Relay Box.app`
 3. Choose `Open`
 4. In the system confirmation dialog, choose `Open` again
 
@@ -390,7 +390,7 @@ If the `Open` action still does not appear, use:
 
 1. `System Settings`
 2. `Privacy & Security`
-3. Scroll to the security warning area for Clash for AI
+3. Scroll to the security warning area for AI Relay Box
 4. Click `Open Anyway`
 
 After the first successful open, later launches normally stop showing the same warning.
@@ -463,7 +463,7 @@ The source code in this repository is licensed under AGPL-3.0-only.
 
 However:
 
-1. The project name `Clash for AI`
+1. The project name `AI Relay Box`
 2. Logos
 3. Icons
 4. Other brand assets

@@ -1,4 +1,4 @@
-# Contributing to Clash for AI
+# Contributing to AI Relay Box
 
 Thanks for contributing.
 
