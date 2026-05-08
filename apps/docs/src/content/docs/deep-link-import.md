@@ -1,17 +1,17 @@
 ---
 title: Deep Link Import
-description: How third-party websites can open Clash for AI and pass provider or model source import data.
+description: How third-party websites can open AI Relay Box and pass provider or model source import data.
 slug: deep-link-import
 ---
 
 ## What this is
 
-Clash for AI supports a desktop deep link import flow.
+AI Relay Box supports a desktop deep link import flow.
 
 Third-party websites can open the desktop app with a URL like:
 
 ```text
-clash-for-ai://v1/import?resource=provider&payload=BASE64URL_JSON
+ai-relay-box://v1/import?resource=provider&payload=BASE64URL_JSON
 ```
 
 The desktop app will:
@@ -35,7 +35,7 @@ If you want a ready-to-use generator page, open:
 Use this structure:
 
 ```text
-clash-for-ai://v1/import?resource=<provider|model>&payload=<base64url-json>
+ai-relay-box://v1/import?resource=<provider|model>&payload=<base64url-json>
 ```
 
 Rules:
@@ -50,7 +50,7 @@ If you want to verify this flow on your own machine, use a packaged desktop buil
 
 Why:
 
-1. browsers ask the operating system to open `clash-for-ai://...`
+1. browsers ask the operating system to open `ai-relay-box://...`
 2. the operating system needs a registered handler for that scheme
 3. the packaged app declares that handler reliably
 4. a dev process alone is often not enough to make the browser recognize the scheme
@@ -61,7 +61,7 @@ Recommended verification steps:
 2. launch the packaged app at least once
 3. open <a href="../deeplink.html" target="_blank" rel="noreferrer">/deeplink.html</a>
 4. click `Open Deep Link`
-5. confirm that Clash for AI opens and shows the import confirmation dialog
+5. confirm that AI Relay Box opens and shows the import confirmation dialog
 
 If the browser reports that the scheme has no registered handler, the most common reason is that the packaged app has not been installed or launched yet.
 
@@ -82,12 +82,12 @@ Notes:
 1. `name`, `baseUrl`, and `apiKey` are required
 2. this public payload is intentionally aligned with the current desktop add form
 3. third-party integrators do not need to provide an auth mode field for the minimum import flow
-4. Clash for AI currently treats imported Provider links with the default bearer-style behavior used by the existing add form
+4. AI Relay Box currently treats imported Provider links with the default bearer-style behavior used by the existing add form
 
 Example deep link:
 
 ```text
-clash-for-ai://v1/import?resource=provider&payload=eyJuYW1lIjoiT3BlblJvdXRlciIsImJhc2VVcmwiOiJodHRwczovL29wZW5yb3V0ZXIuYWkvYXBpL3YxIiwiYXBpS2V5Ijoic2stb3ItZXhhbXBsZSJ9
+ai-relay-box://v1/import?resource=provider&payload=eyJuYW1lIjoiT3BlblJvdXRlciIsImJhc2VVcmwiOiJodHRwczovL29wZW5yb3V0ZXIuYWkvYXBpL3YxIiwiYXBpS2V5Ijoic2stb3ItZXhhbXBsZSJ9
 ```
 
 ## Model payload
@@ -111,13 +111,13 @@ Notes:
 3. supported `providerType` values are:
    `openai-compatible`
    `anthropic-compatible`
-4. if `providerType` is omitted, Clash for AI defaults to `openai-compatible`
+4. if `providerType` is omitted, AI Relay Box defaults to `openai-compatible`
 5. the first model in `modelIds` becomes the default model id
 
 Example deep link:
 
 ```text
-clash-for-ai://v1/import?resource=model&payload=eyJuYW1lIjoiUmVsYXkgTW9kZWxzIiwiYmFzZVVybCI6Imh0dHBzOi8vcmVsYXkuZXhhbXBsZS5jb20vdjEiLCJhcGlLZXkiOiJzay1tb2RlbC1leGFtcGxlIiwicHJvdmlkZXJUeXBlIjoib3BlbmFpLWNvbXBhdGlibGUiLCJtb2RlbElkcyI6WyJncHQtNG8tbWluaSIsImNsYXVkZS0zLTctc29ubmV0Il19
+ai-relay-box://v1/import?resource=model&payload=eyJuYW1lIjoiUmVsYXkgTW9kZWxzIiwiYmFzZVVybCI6Imh0dHBzOi8vcmVsYXkuZXhhbXBsZS5jb20vdjEiLCJhcGlLZXkiOiJzay1tb2RlbC1leGFtcGxlIiwicHJvdmlkZXJUeXBlIjoib3BlbmFpLWNvbXBhdGlibGUiLCJtb2RlbElkcyI6WyJncHQtNG8tbWluaSIsImNsYXVkZS0zLTctc29ubmV0Il19
 ```
 
 ## How to build the payload
@@ -150,15 +150,15 @@ const payload = toBase64Url({
   apiKey: "sk-or-example"
 });
 
-const url = `clash-for-ai://v1/import?resource=provider&payload=${payload}`;
+const url = `ai-relay-box://v1/import?resource=provider&payload=${payload}`;
 ```
 
 ## User experience
 
 When a user clicks the deep link:
 
-1. the system asks whether to open Clash for AI,
-2. Clash for AI opens,
+1. the system asks whether to open AI Relay Box,
+2. AI Relay Box opens,
 3. the app shows an import confirmation dialog,
 4. the user confirms or cancels,
 5. the app imports the configuration only after confirmation.

@@ -1,12 +1,12 @@
 ---
 title: 使用手册
-description: 一份更完整的 Clash for AI 实际使用说明。
+description: 一份更完整的 AI Relay Box 实际使用说明。
 slug: zh-cn/user-guide
 ---
 
 ## 这份手册适合什么时候看
 
-这页是 Clash for AI 的正式使用说明。
+这页是 AI Relay Box 的正式使用说明。
 
 当你希望系统地了解下面这些问题时，优先看这一页：
 
@@ -18,14 +18,14 @@ slug: zh-cn/user-guide
 
 ## 整体流量路径
 
-Clash for AI 位于客户端工具和上游中转 Provider 之间。
+AI Relay Box 位于客户端工具和上游中转 Provider 之间。
 
 一次正常请求的路径通常是：
 
-1. 你的工具先把请求发给本地 Clash for AI 地址
-2. Clash for AI 读取当前激活的 Provider
-3. Clash for AI 注入上游密钥
-4. Clash for AI 把请求转发给上游 Provider
+1. 你的工具先把请求发给本地 AI Relay Box 地址
+2. AI Relay Box 读取当前激活的 Provider
+3. AI Relay Box 注入上游密钥
+4. AI Relay Box 把请求转发给上游 Provider
 5. 上游响应再回到你的工具
 6. 请求过程被记录到本地日志里
 
@@ -33,7 +33,7 @@ Clash for AI 位于客户端工具和上游中转 Provider 之间。
 
 ## 桌面端与 Web 端的关系
 
-Clash for AI 现在有两类管理入口：
+AI Relay Box 现在有两类管理入口：
 
 1. `Electron` 桌面端
 2. `Web / PWA` 补充入口
@@ -63,7 +63,7 @@ Web / PWA 主要负责：
 
 如果你主要在 `WSL` 里运行 `Codex CLI`、`Claude Code` 或其他命令行工具，推荐这样使用：
 
-1. 在 `WSL` 内启动 `clash-for-ai-core`
+1. 在 `WSL` 内启动 `ai-relay-box-core`
 2. 让浏览器访问这个 WSL 实例暴露的地址
 3. 在 Web 页面中管理 `Providers`、`Models`、`Logs`、`Tools`
 
@@ -75,9 +75,9 @@ Web / PWA 主要负责：
 
 ## Linux server 使用方式
 
-如果你把 Clash for AI 跑在 Linux server、云主机、家庭服务器或 NAS 上，推荐这样使用：
+如果你把 AI Relay Box 跑在 Linux server、云主机、家庭服务器或 NAS 上，推荐这样使用：
 
-1. 在目标 Linux 环境中启动 `clash-for-ai-core`
+1. 在目标 Linux 环境中启动 `ai-relay-box-core`
 2. 通过浏览器访问该实例暴露的地址
 3. 在 Web 页面中完成 `Providers`、`Models`、`Logs`、`Tools` 管理
 
@@ -158,14 +158,14 @@ API Key: dummy
 
 真正决定请求哪个模型的，仍然是客户端工具本身。
 
-Clash for AI 里的已选模型排序，只会在这些条件下生效：
+AI Relay Box 里的已选模型排序，只会在这些条件下生效：
 
 1. 当前请求是 JSON 格式的 `POST`
 2. 请求体里本身已经有 `model` 字段
-3. 这个模型已经命中 Clash for AI 的已选模型列表
+3. 这个模型已经命中 AI Relay Box 的已选模型列表
 4. 上游请求失败，且错误属于可重试条件，比如 `429`、`5xx` 或网络错误
 
-如果请求模型不在已选列表中，Clash for AI 不会自动切换到其他备用模型。
+如果请求模型不在已选列表中，AI Relay Box 不会自动切换到其他备用模型。
 
 ## 关于模型列表获取的说明
 
@@ -193,7 +193,7 @@ Clash for AI 里的已选模型排序，只会在这些条件下生效：
 
 ## 当前协议范围
 
-Clash for AI 当前主要面向：
+AI Relay Box 当前主要面向：
 
 1. OpenAI 兼容上游
 2. Anthropic 兼容上游

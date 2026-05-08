@@ -1,10 +1,10 @@
 ---
 title: Introduction
-description: What Clash for AI is and who it is for.
+description: What AI Relay Box is and who it is for.
 slug: introduction
 ---
 
-Clash for AI is a local desktop gateway for people who switch between multiple AI gateways or API relay providers.
+AI Relay Box is a local desktop gateway for people who switch between multiple AI gateways or API relay providers.
 
 It is designed for a simple workflow:
 
@@ -14,7 +14,7 @@ It is designed for a simple workflow:
 
 ## What it solves
 
-Clash for AI mainly addresses two problems:
+AI Relay Box mainly addresses two problems:
 
 1. Relay providers can be unstable, so you may need to switch between different gateways frequently.
 2. If you use multiple coding tools, chat clients, or SDK scripts, changing providers often means repeatedly updating configuration in each tool.

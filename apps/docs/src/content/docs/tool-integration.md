@@ -30,7 +30,7 @@ export OPENAI_API_KEY="dummy"
 
 Then launch Codex CLI from the same shell session.
 
-This is the most stable pattern when you want Codex CLI to keep using one local endpoint while Clash for AI switches the upstream provider behind it.
+This is the most stable pattern when you want Codex CLI to keep using one local endpoint while AI Relay Box switches the upstream provider behind it.
 
 ### OpenAI-compatible CLI tools
 
@@ -41,11 +41,11 @@ export OPENAI_BASE_URL="http://127.0.0.1:3456/v1"
 export OPENAI_API_KEY="dummy"
 ```
 
-If the tool reads standard OpenAI environment variables, it can usually reuse Clash for AI directly.
+If the tool reads standard OpenAI environment variables, it can usually reuse AI Relay Box directly.
 
 ## Claude Code
 
-Claude Code style tools often use Anthropic-style settings. In Clash for AI, the local root URL without `/v1` is used for Anthropic-compatible flows.
+Claude Code style tools often use Anthropic-style settings. In AI Relay Box, the local root URL without `/v1` is used for Anthropic-compatible flows.
 
 If your upstream provider is OpenAI-compatible only, use tools that allow an OpenAI-style custom endpoint instead.
 
@@ -105,7 +105,7 @@ If Cherry Studio can fetch the model list from the active relay provider, you ca
 If you are configuring another IDE or plugin, use this checklist:
 
 1. Look for a setting named `Base URL`, `API Base`, `Endpoint`, or `OpenAI Base URL`
-2. Enter the Clash for AI local endpoint with `/v1`
+2. Enter the AI Relay Box local endpoint with `/v1`
 3. Use `dummy` as the API key unless the tool requires another non-empty placeholder
 4. Choose a model that the active provider actually supports
 
@@ -122,8 +122,8 @@ const client = new OpenAI({
 
 ## Important limitation
 
-Clash for AI is a local gateway and provider switcher. The client tool still chooses the requested model name.
+AI Relay Box is a local gateway and provider switcher. The client tool still chooses the requested model name.
 
-The ordered models configured in Clash for AI only act as a fallback chain when the requested model is already inside that selected list and the upstream request fails with a retryable condition.
+The ordered models configured in AI Relay Box only act as a fallback chain when the requested model is already inside that selected list and the upstream request fails with a retryable condition.
 
 <img src="../img/connectatool.png" alt="IDE or plugin connection fields" />

@@ -1,6 +1,6 @@
 {
-  "name": "Clash for AI Web",
-  "short_name": "Clash for AI",
+  "name": "AI Relay Box Web",
+  "short_name": "AI Relay Box",
   "description": "Supplementary web management UI for WSL and Linux server.",
   "display": "standalone",
   "start_url": "/",

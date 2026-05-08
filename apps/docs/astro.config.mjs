@@ -2,7 +2,7 @@ import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import tailwindcss from "@tailwindcss/vite";
 
-const repository = process.env.GITHUB_REPOSITORY?.split("/")[1] ?? "clash-for-ai";
+const repository = process.env.GITHUB_REPOSITORY?.split("/")[1] ?? "ai-relay-box";
 const site = process.env.DOCS_SITE_URL ?? `https://xiaoyuandev.github.io/${repository}`;
 const siteURL = new URL(site);
 const normalizedBase =
@@ -18,8 +18,8 @@ export default defineConfig({
   },
   integrations: [
     starlight({
-      title: "Clash for AI Docs",
-      description: "Documentation for Clash for AI, a local desktop gateway for switching AI relay providers behind one stable endpoint.",
+      title: "AI Relay Box Docs",
+      description: "Documentation for AI Relay Box, a local desktop gateway for switching AI relay providers behind one stable endpoint.",
       customCss: ["/src/styles/site.css"],
       defaultLocale: "root",
       locales: {
@@ -36,7 +36,7 @@ export default defineConfig({
         {
           icon: "github",
           label: "GitHub",
-          href: "https://github.com/xiaoyuandev/clash-for-ai"
+          href: "https://github.com/xiaoyuandev/ai-relay-box"
         }
       ],
       sidebar: [

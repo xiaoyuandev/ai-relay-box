@@ -427,7 +427,7 @@ export function ToolsPage({ onCopyText }: ToolsPageProps) {
       <section className={heroClass}>
         <div className="space-y-4">
           <div>
-            <p className={fieldLabelClass}>Clash for AI</p>
+            <p className={fieldLabelClass}>AI Relay Box</p>
             <h1 className={heroTitleClass}>{t("tools.title")}</h1>
           </div>
           <p className={heroCopyClass}>{t("tools.subtitle")}</p>

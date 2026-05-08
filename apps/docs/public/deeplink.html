@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Clash for AI Deep Link Generator</title>
+    <title>AI Relay Box Deep Link Generator</title>
     <style>
       :root {
         color-scheme: dark;
@@ -277,12 +277,12 @@
   <body>
     <main class="shell">
       <div class="topbar">
-        <p class="eyebrow">Clash for AI</p>
+        <p class="eyebrow">AI Relay Box</p>
         <a class="back-link" href="./">Back to Docs Home</a>
       </div>
       <h1>Deep Link Generator</h1>
       <p class="lead">
-        Use this page to generate a `clash-for-ai://v1/import?...` link for Provider or Models
+        Use this page to generate a `ai-relay-box://v1/import?...` link for Provider or Models
         import. The desktop app will still show a confirmation dialog before saving anything.
       </p>
 
@@ -439,7 +439,7 @@ claude-3-7-sonnet</textarea>
       function updateOutput() {
         const { resource, payload } = getCurrentPayload();
         const encoded = toBase64Url(payload);
-        const url = `clash-for-ai://v1/import?resource=${resource}&payload=${encoded}`;
+        const url = `ai-relay-box://v1/import?resource=${resource}&payload=${encoded}`;
         payloadJson.textContent = JSON.stringify(payload, null, 2);
         deepLinkUrl.textContent = url;
         openLink.href = url;
@@ -469,7 +469,7 @@ claude-3-7-sonnet</textarea>
         window.location.href = href;
         launchReminderTimer = window.setTimeout(() => {
           showLaunchStatus(
-            "If nothing opened, Clash for AI may not be installed yet, or the packaged app has not registered the `clash-for-ai://` handler on this machine."
+            "If nothing opened, AI Relay Box may not be installed yet, or the packaged app has not registered the `ai-relay-box://` handler on this machine."
           );
           launchReminderTimer = null;
         }, 1400);
