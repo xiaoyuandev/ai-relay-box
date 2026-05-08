@@ -197,6 +197,11 @@ After installation, the default endpoints are:
 1. Web management UI: `http://127.0.0.1:3456`
 2. OpenAI-compatible local endpoint: `http://127.0.0.1:3456/v1`
 
+Production installer:
+
+1. `scripts/install.sh` downloads the latest stable GitHub Release assets.
+2. `scripts/install-from-source.sh` is only for development, local validation, or unreleased branches.
+
 Full guide:
 
 - [WSL / Linux Server Deployment Guide](./docs/wsl-linux-server-guide.zh-CN.md)
@@ -327,6 +332,8 @@ If you want fuller step-by-step guidance, tool-specific examples, and troublesho
 - [User Guide](./docs/user-guide.md)
 - [WSL / Linux Server Deployment Guide](./docs/wsl-linux-server-guide.zh-CN.md)
 - [中文 README](./README.zh-CN.md)
+
+If you are deploying on `WSL` or `Linux server`, prefer the server guide first. It also includes pinned release installation using `CLASH_FOR_AI_VERSION`.
 
 ## How To Read Protocol Support Today
 

@@ -2,7 +2,11 @@
 
 ## Downloads
 
-Choose the package that matches your desktop system:
+Choose the delivery path that matches your environment.
+
+### Desktop
+
+Use the packaged desktop app if you want the full Electron experience on macOS, Windows, or Linux desktop systems.
 
 ### macOS
 
@@ -23,6 +27,40 @@ Choose the package that matches your desktop system:
 
 1. `Clash-for-AI-{{VERSION}}-x64.AppImage`
 2. `Clash-for-AI-{{VERSION}}-linux-x64.tar.gz`
+
+### WSL / Linux Server
+
+Use the server package if you want browser-based management on `WSL` or a plain `Linux server`.
+
+1. `clash-for-ai-server_{{VERSION}}_linux_amd64.tar.gz`
+2. `clash-for-ai-server_{{VERSION}}_linux_arm64.tar.gz`
+3. `clash-for-ai-server_{{VERSION}}_SHA256SUMS.txt`
+
+## Install Paths
+
+### Desktop install
+
+Download the desktop package that matches your OS and launch it normally.
+
+### Server install
+
+Latest release:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/xiaoyuandev/clash-for-ai/main/scripts/install.sh | bash
+```
+
+Pinned release:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/xiaoyuandev/clash-for-ai/main/scripts/install.sh | CLASH_FOR_AI_VERSION={{VERSION}} bash
+```
+
+Development-only source install:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/xiaoyuandev/clash-for-ai/main/scripts/install-from-source.sh | bash
+```
 
 ## Install Notes
 
@@ -59,13 +97,16 @@ chmod +x "Clash-for-AI-{{VERSION}}-x64.AppImage"
 1. The desktop app includes the local `clash-for-ai-core` binary. Users do not need to install Go.
 2. Automatic updates are only available in packaged builds.
 3. Provider credentials remain local to the device.
+4. The production server installer uses GitHub Release assets by default.
+5. `scripts/install-from-source.sh` is intended for development and validation, not for production deployment.
 
 ## Verification Checklist
 
-1. App launches successfully
-2. `core` status becomes running
-3. Local API base is shown in the app
-4. Provider health checks succeed
+1. Desktop users can identify the correct package for their OS.
+2. Server users can identify the correct release asset or installer command.
+3. `core` status becomes running after launch or install.
+4. Local API base is shown in the app or Web UI.
+5. Provider health checks succeed.
 
 ## Changelog
 

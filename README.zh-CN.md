@@ -196,6 +196,11 @@ curl -fsSL https://raw.githubusercontent.com/xiaoyuandev/clash-for-ai/main/scrip
 1. Web 管理界面：`http://127.0.0.1:3456`
 2. OpenAI-compatible 本地入口：`http://127.0.0.1:3456/v1`
 
+安装脚本说明：
+
+1. `scripts/install.sh` 会默认下载最新稳定 GitHub Release 资产，适合作为生产安装入口
+2. `scripts/install-from-source.sh` 仅用于开发联调、本地验证或未发布分支，不建议作为生产入口
+
 完整说明见：
 
 - [WSL / Linux Server 部署与使用说明](./docs/wsl-linux-server-guide.zh-CN.md)
@@ -326,6 +331,8 @@ curl http://127.0.0.1:3456/v1/chat/completions \
 - [使用教程](./docs/user-guide.md)
 - [WSL / Linux Server 部署与使用说明](./docs/wsl-linux-server-guide.zh-CN.md)
 - [English README](./README.md)
+
+如果你是 `WSL` 或 `Linux server` 用户，建议优先阅读 server 部署文档，其中包含 `CLASH_FOR_AI_VERSION` 固定版本安装与回滚说明。
 
 ## 当前更适合怎样理解协议支持
 

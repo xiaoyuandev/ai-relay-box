@@ -51,6 +51,11 @@ curl -fsSL https://raw.githubusercontent.com/xiaoyuandev/clash-for-ai/main/scrip
 3. 生成 `systemd --user` 服务
 4. 自动启动 Clash for AI
 
+说明：
+
+1. `scripts/install.sh` 是生产默认安装脚本
+2. `scripts/install-from-source.sh` 是开发安装脚本，只适合源码联调和未发布分支验证
+
 安装完成后，访问：
 
 ```text
@@ -84,6 +89,14 @@ curl -fsSL https://raw.githubusercontent.com/xiaoyuandev/clash-for-ai/main/scrip
 ```text
 http://127.0.0.1:8080/v1
 ```
+
+如果你需要固定到某个已发布版本或执行回滚，可以显式指定：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/xiaoyuandev/clash-for-ai/main/scripts/install.sh | CLASH_FOR_AI_VERSION=v0.1.0 bash
+```
+
+回滚时同样使用这个方式，把 `CLASH_FOR_AI_VERSION` 改成目标 release tag 即可。
 
 ## 5. 服务管理
 
