@@ -4,34 +4,199 @@
 
 <a href="https://www.airelaybox.com/" target="_blank" rel="noopener noreferrer">Public Docs</a> | <a href="https://www.airelaybox.com/deep-link-import/" target="_blank" rel="noopener noreferrer">Deep Link Import Guide</a>
 
-AI Relay Box is a local desktop gateway for people who switch between multiple AI gateways or API relay providers.
+AI Relay Box brings multiple AI relay APIs, native model sources, and local AI tools behind one local endpoint.
 
-Its role is:
+If you switch between models or provider configuration across Cursor, Kiro, Cherry Studio, Codex, Claude Code, OpenClaw, Hermes Agent, or your own scripts, AI Relay Box lets you configure one local address once and switch upstreams from a single UI.
 
-1. Provide one local API entry point
-2. Switch different upstream gateways behind that local entry point
-3. Manage providers, health checks, and request logs from a desktop UI
+## Table of Contents
 
-It is not primarily a manager for one specific AI tool. It is better understood as:
+- [Why AI Relay Box](#why-ai-relay-box)
+- [What You Can Do](#what-you-can-do)
+- [Installation & Quick Start](#installation--quick-start)
+- [Desktop Modules](#desktop-modules)
+- [Usage Guide](#usage-guide)
+- [Documentation](#documentation)
+- [FAQ](#faq)
+- [Local Development](#local-development)
+- [Project Structure](#project-structure)
 
-1. a local relay gateway for tool traffic
-2. a multi-provider control plane
-3. a local native-model source manager for upstream models that need their own registry and routing layer
+## Why AI Relay Box
 
-It currently gives you:
+The hard part for many AI users is not finding a model. It is keeping many providers and tools usable day to day:
 
-1. One stable local endpoint for your tools
-2. A desktop control plane for switching providers
-3. A local model-source gateway for managing native upstream models
-4. Local request logs and health checks for debugging provider issues
+1. Relay API providers can be unstable, run out of quota, or go offline, so you need to switch quickly when one provider fails
+2. Multiple coding tools, desktop clients, and SDK scripts often mean repeated configuration changes whenever you change provider
+3. Some users do not want to edit config files frequently, but still need access to multiple model sources
 
-## Core Idea
+AI Relay Box puts a local gateway in front of your tools.
 
-The model is simple:
+Your tools connect once:
 
-1. Your tools all point to one local gateway
-2. Upstream gateway switching happens in the desktop app
-3. Real provider credentials, health status, and request logs stay managed locally
+```text
+http://127.0.0.1:3456/v1
+```
+
+After that, switching models, relay providers, or local model sources happens inside AI Relay Box instead of inside every Cursor, Kiro, Cherry Studio, Codex, Claude Code, or script config.
+
+## What You Can Do
+
+1. Manage multiple relay API services, with each service exposing multiple models, including providers built on `new-api`, `one-api`, `sub2api`, or similar stacks
+2. Run a local Models Gateway for native model sources that you want to access directly
+3. Expose one local endpoint at `http://127.0.0.1:3456` for CLI tools, desktop clients, coding tools, and scripts
+4. Manage providers, models, health checks, and request logs from a visual UI instead of editing config files by hand
+5. Import Provider or Model configuration from the web with Deep Link, starting from the [Deep Link demo](https://www.airelaybox.com/deeplink.html)
+
+## Installation & Quick Start
+
+### 1. Pick the right runtime
+
+**1.1 macOS, Windows, and Ubuntu Desktop users**
+
+The desktop app is recommended. Download the latest build for your platform from the [Release page](https://github.com/xiaoyuandev/ai-relay-box/releases).
+
+macOS users may see a warning on first install or first launch:
+
+```text
+“AI Relay Box” cannot be opened because the developer cannot be verified.
+```
+
+or:
+
+```text
+“AI Relay Box” cannot be opened because Apple cannot verify it for malicious software.
+```
+
+This happens because the current public macOS distribution uses a free ad-hoc style signing path instead of a full paid Apple Developer trusted distribution chain.
+
+If this happens, do this:
+
+1. Move the app into `/Applications` if it is still inside a temporary download folder
+2. In Finder, right click `AI Relay Box.app`
+3. Choose `Open`
+4. In the system confirmation dialog, choose `Open` again
+
+If right-click Open still does not work, continue with:
+
+1. Open `System Settings`
+2. Go to `Privacy & Security`
+3. Find the security warning for AI Relay Box
+4. Click `Open Anyway`
+
+If you are comfortable with the command line and have confirmed the app came from the official release page, you can also remove the macOS quarantine attribute with `xattr`:
+
+```bash
+sudo xattr -rd com.apple.quarantine "/Applications/AI Relay Box.app"
+```
+
+After that, launch `AI Relay Box.app` from Finder or Launchpad.
+
+After the first successful open, later launches normally stop showing the same warning.
+
+If a `.pkg` installer is attached to the release, prefer the `.pkg` build over dragging a raw `.app` bundle manually.
+
+**1.2 WSL or Linux Server users**
+
+Use the command-line installer:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/xiaoyuandev/ai-relay-box/main/scripts/install.sh | bash
+```
+
+After installation, the default endpoints are:
+
+1. Web management UI: `http://127.0.0.1:3456`
+2. OpenAI-compatible local endpoint: `http://127.0.0.1:3456/v1`
+
+**Service management**
+
+The installer creates a `systemd --user` service by default:
+
+```bash
+systemctl --user status ai-relay-box
+systemctl --user restart ai-relay-box
+journalctl --user -u ai-relay-box -n 200 -f
+```
+
+It also creates a helper command:
+
+```bash
+ai-relay-box start
+ai-relay-box stop
+ai-relay-box restart
+ai-relay-box status
+ai-relay-box logs
+ai-relay-box run
+```
+
+Notes:
+
+1. `start / stop / restart / status / logs` prefer `systemd --user`
+2. `run` starts the core process in the foreground, which is useful for debugging
+
+**Remote server access**
+
+If you deploy AI Relay Box on a remote Linux server, there are usually two access patterns:
+
+Option 1: SSH port forwarding
+
+Run this locally:
+
+```bash
+ssh -L 3456:127.0.0.1:3456 your-server
+```
+
+Then open this in your local browser:
+
+```text
+http://127.0.0.1:3456
+```
+
+Option 2: reverse proxy
+
+Forward your reverse proxy to:
+
+```text
+http://127.0.0.1:3456
+```
+
+Notes:
+
+1. The core process binds to `127.0.0.1` by default
+2. The safer approach is to keep that local binding and let Nginx or Caddy handle public access
+
+Full guide:
+
+- [WSL / Linux Server Deployment Guide](./docs/wsl-linux-server-guide.zh-CN.md)
+- [WSL / Linux Server Deployment Guide (English)](./docs/wsl-linux-server-guide.md)
+
+### 2. Add a Provider or Model source
+
+Use the `Providers` page to add your relay API provider with `Name`, `Base URL`, and `API Key`.
+
+If you want to connect native model upstreams directly, use the `Models` page to add local model sources and sync them into the local Models Gateway.
+
+### 3. Point your tools to the local endpoint
+
+Most OpenAI-compatible tools can use:
+
+```text
+Base URL: http://127.0.0.1:3456/v1
+API Key: dummy
+```
+
+After that, your tools keep using the same local address even when you switch upstream providers or the local Models Gateway. No tool-side config changes are needed.
+
+### 4. Import config from the web
+
+AI Relay Box supports importing Provider or Model configuration from a web page through Deep Link.
+
+Relay API providers are welcome to integrate with this flow. See the guide: https://www.airelaybox.com/deep-link-import/
+
+Try it here:
+
+```text
+https://www.airelaybox.com/deeplink.html
+```
 
 ## Screenshot
 
@@ -44,44 +209,6 @@ The model is simple:
   <img src="./docs/images/readme/models-config.png" style="width: 49%; height: auto;">
   <img src="./docs/images/readme/tools-config.png" style="width: 49%; height: auto;">
 </p>
-
-
-## What Problem It Solves
-
-AI Relay Box is designed for people who depend on multiple AI gateways in daily use.
-
-It mainly addresses two problems:
-
-1. API relay providers can be unstable, so you may need to switch between different gateways frequently
-2. If you use multiple coding tools, chat clients, or SDK scripts, changing providers often means repeatedly updating configuration in each tool
-
-The current version also addresses a third problem:
-
-3. Native model upstreams are harder to manage consistently because they do not always fit the old “one active provider” switching model, so AI Relay Box now includes a dedicated local Models Gateway to register and expose those sources in one place
-
-AI Relay Box puts one local gateway in front of those tools.
-
-You configure a single local endpoint once, then switch the upstream relay provider from the desktop app.
-
-## What It Does
-
-AI Relay Box runs a local API gateway on your machine.
-
-Most editors, chat clients, CLI tools, or custom scripts connect to the local endpoint:
-
-```text
-http://127.0.0.1:3456/v1
-```
-
-Then AI Relay Box forwards requests to the currently active provider you configured in the desktop app.
-
-In the current version, the local access path is most mature around an OpenAI-compatible local entry point. Anthropic-compatible upstream handling and some Claude-style tool integrations are present, but that part of the stack is still being refined.
-
-This means:
-
-1. You do not need to reconfigure every tool when switching providers
-2. Provider credentials stay managed locally in one place
-3. You can inspect health status and request logs from the desktop UI
 
 ## Desktop Modules
 
@@ -153,6 +280,7 @@ Use it to:
 1. Copy ready-to-use local endpoint values
 2. Run one-click setup for supported tools such as Codex CLI and Claude Code
 3. Follow guided setup for tools like Cursor, Cherry Studio, and SDK scripts
+4. Drag supported models into Claude Code model slots, then switch between them in Claude Code with the `/model` command
 
 ### 4. Logs
 
@@ -178,34 +306,9 @@ Use it to:
    - Launch hidden
    - Close to tray
 
+## Usage Guide
 
-
-## Quick Start
-
-If you do not want to read the full guide yet, use one of these quick setup patterns.
-
-## WSL / Linux Server
-
-If you want to deploy AI Relay Box on `WSL` or a plain `Linux server` instead of using the desktop app:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/xiaoyuandev/ai-relay-box/main/scripts/install.sh | bash
-```
-
-After installation, the default endpoints are:
-
-1. Web management UI: `http://127.0.0.1:3456`
-2. OpenAI-compatible local endpoint: `http://127.0.0.1:3456/v1`
-
-Production installer:
-
-1. `scripts/install.sh` downloads the latest stable GitHub Release assets.
-2. `scripts/install-from-source.sh` is only for development, local validation, or unreleased branches.
-
-Full guide:
-
-- [WSL / Linux Server Deployment Guide](./docs/wsl-linux-server-guide.zh-CN.md)
-- [WSL / Linux Server Deployment Guide (English)](./docs/wsl-linux-server-guide.md)
+Here is the basic flow for connecting tools through AI Relay Box.
 
 ### 1. Add a provider in AI Relay Box
 
@@ -241,6 +344,7 @@ The `Tools` page provides:
 1. Copy-ready connection values
 2. One-click setup for Codex CLI and Claude Code
 3. Setup guidance for tools such as Cursor, Cherry Studio, and SDK scripts
+4. Drag-and-drop model mapping for Claude Code model slots, so you can switch mapped models in Claude Code with the `/model` command
 
 ### CLI Tools
 
@@ -392,6 +496,14 @@ If the `Open` action still does not appear, use:
 2. `Privacy & Security`
 3. Scroll to the security warning area for AI Relay Box
 4. Click `Open Anyway`
+
+If you are comfortable with the command line and have confirmed the app came from the official release page, you can also remove the macOS quarantine attribute with `xattr`:
+
+```bash
+sudo xattr -rd com.apple.quarantine "/Applications/AI Relay Box.app"
+```
+
+After that, launch `AI Relay Box.app` from Finder or Launchpad.
 
 After the first successful open, later launches normally stop showing the same warning.
 
