@@ -67,7 +67,7 @@ export const messages = {
     "importDeepLink.modal.notice":
       "Import data came from an external deep link. Confirm the values before saving.",
     "importDeepLink.fields.resource": "Resource",
-    "importDeepLink.fields.apiKeyMasked": "Hidden for safety",
+    "importDeepLink.fields.apiKeyMasked": "Masked API Key",
     "importDeepLink.resource.provider": "Provider",
     "importDeepLink.resource.model": "Models",
     "importDeepLink.actions.import": "Import",
@@ -514,7 +514,7 @@ export const messages = {
     "importDeepLink.modal.modelSubtitle": "请先确认这份 Models 配置，再导入到 AI Relay Box。",
     "importDeepLink.modal.notice": "这份配置来自外部 deep link，请确认内容无误后再保存。",
     "importDeepLink.fields.resource": "资源类型",
-    "importDeepLink.fields.apiKeyMasked": "已隐藏敏感内容",
+    "importDeepLink.fields.apiKeyMasked": "脱敏 API Key",
     "importDeepLink.resource.provider": "Provider",
     "importDeepLink.resource.model": "Models",
     "importDeepLink.actions.import": "导入",
