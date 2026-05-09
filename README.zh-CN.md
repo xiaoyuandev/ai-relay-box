@@ -418,6 +418,27 @@ pnpm install
 pnpm dev
 ```
 
+启动 Web 端本地联调模式：
+
+```bash
+pnpm dev:web
+```
+
+`pnpm dev:web` 会同时启动 core 服务和 Web dev server，适合只调试 Web 管理界面时使用。默认端口为：
+
+1. core API：`3456`
+2. local gateway runtime：`3457`
+
+如果本机端口被其他程序占用，或需要接入本地开发版 `ai-mini-gateway`，可以在仓库根目录的 `.env.local` 中覆盖：
+
+```bash
+HTTP_PORT=3456
+LOCAL_GATEWAY_RUNTIME_PORT=3457
+LOCAL_GATEWAY_RUNTIME_EXECUTABLE=/path/to/ai-mini-gateway/bin/ai-mini-gateway
+```
+
+这些配置都是本地联调辅助配置；不配置时会使用默认端口。`pnpm dev:web` 启动前会释放上述端口上的旧监听进程，确保 core 和 local gateway 使用最新代码重新启动。
+
 构建桌面应用：
 
 ```bash

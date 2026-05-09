@@ -417,6 +417,27 @@ Run the desktop app in development mode:
 pnpm dev
 ```
 
+Run the Web UI development mode:
+
+```bash
+pnpm dev:web
+```
+
+`pnpm dev:web` starts both the core service and the Web dev server. It is intended for local Web UI debugging. The default ports are:
+
+1. core API: `3456`
+2. local gateway runtime: `3457`
+
+If those ports conflict with other local programs, or if you want to use a locally built `ai-mini-gateway`, override them in the repository root `.env.local`:
+
+```bash
+HTTP_PORT=3456
+LOCAL_GATEWAY_RUNTIME_PORT=3457
+LOCAL_GATEWAY_RUNTIME_EXECUTABLE=/path/to/ai-mini-gateway/bin/ai-mini-gateway
+```
+
+These values are only local development helpers. If they are omitted, the default ports are used. Before starting, `pnpm dev:web` releases old listeners on those ports so core and local gateway restart with the latest local code.
+
 Build the desktop app:
 
 ```bash
