@@ -34,6 +34,7 @@ interface Props {
 
 const props = Astro.props as Props;
 import logo from "../assets/logo.svg";
+import rootPackage from "../../../../package.json";
 import "../styles/site.css";
 const withBase = (path: string) => {
   const base = (import.meta.env.BASE_URL || "/").replace(/\/?$/, "/");
@@ -41,6 +42,82 @@ const withBase = (path: string) => {
   return `${base}${relative}`;
 };
 const isNewTabLink = (path: string) => path === "/deeplink.html";
+const siteUrl = new URL(Astro.url.pathname, Astro.site ?? Astro.url.origin);
+const canonicalUrl = siteUrl.toString();
+const releaseVersion = rootPackage.version;
+const releaseTag = `v${releaseVersion}`;
+const releaseBase = `https://github.com/xiaoyuandev/ai-relay-box/releases/download/${releaseTag}`;
+const latestReleaseHref = "https://github.com/xiaoyuandev/ai-relay-box/releases/latest";
+const installCommand = "curl -fsSL https://raw.githubusercontent.com/xiaoyuandev/ai-relay-box/main/scripts/install.sh | bash";
+const downloadLinks = [
+  {
+    label: props.lang === "zh-CN" ? "macOS Apple Silicon" : "macOS Apple Silicon",
+    meta: props.lang === "zh-CN" ? "DMG, arm64" : "DMG, arm64",
+    href: `${releaseBase}/AI-Relay-Box-${releaseVersion}-arm64.dmg`
+  },
+  {
+    label: props.lang === "zh-CN" ? "macOS Intel" : "macOS Intel",
+    meta: props.lang === "zh-CN" ? "DMG, x64" : "DMG, x64",
+    href: `${releaseBase}/AI-Relay-Box-${releaseVersion}-x64.dmg`
+  },
+  {
+    label: props.lang === "zh-CN" ? "Windows" : "Windows",
+    meta: props.lang === "zh-CN" ? "安装程序, x64" : "Installer, x64",
+    href: `${releaseBase}/AI-Relay-Box-${releaseVersion}-x64-setup.exe`
+  },
+  {
+    label: props.lang === "zh-CN" ? "Linux Desktop" : "Linux Desktop",
+    meta: props.lang === "zh-CN" ? "AppImage, x64" : "AppImage, x64",
+    href: `${releaseBase}/AI-Relay-Box-${releaseVersion}-x64.AppImage`
+  }
+];
+const seoMeta =
+  props.lang === "zh-CN"
+    ? {
+        title: "AI Relay Box - 本地 OpenAI 兼容 AI 网关",
+        description:
+          "AI Relay Box 让 Cursor、Claude Code、Codex、Cherry Studio 和脚本共用一个本地 OpenAI 兼容端点，并通过桌面 UI 管理多个 AI 服务商和模型来源。",
+        keywords:
+          "AI Relay Box, 本地 AI 网关, OpenAI 兼容网关, Cursor 中转配置, Claude Code OpenAI, Codex 本地网关, new-api, one-api",
+        downloadTitle: "下载并开始使用",
+        downloadLead:
+          "从 GitHub Release 下载桌面端，或在 WSL / Linux Server 上使用一键安装命令启动本地网关。",
+        githubCta: "前往 GitHub 下载",
+        releaseCta: "查看全部 Release",
+        serverTitle: "WSL / Linux Server 一键安装",
+        serverHint: "安装后默认 Web 管理界面和 OpenAI 兼容入口都运行在 http://127.0.0.1:3456。",
+      }
+    : {
+        title: "AI Relay Box - Local AI Gateway for OpenAI-Compatible Tools",
+        description:
+          "AI Relay Box gives Cursor, Claude Code, Codex, Cherry Studio, and scripts one local OpenAI-compatible endpoint, with provider and model switching from a desktop UI.",
+        keywords:
+          "AI Relay Box, local AI gateway, OpenAI compatible gateway, Cursor OpenAI proxy, Claude Code OpenAI compatible, Codex local gateway, new-api, one-api",
+        downloadTitle: "Download and start using AI Relay Box",
+        downloadLead:
+          "Download the desktop app from GitHub Releases, or run the one-line installer for WSL and Linux Server.",
+        githubCta: "Download from GitHub",
+        releaseCta: "View all releases",
+        serverTitle: "WSL / Linux Server one-line install",
+        serverHint: "After installation, the Web UI and OpenAI-compatible endpoint run on http://127.0.0.1:3456 by default.",
+      };
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "AI Relay Box",
+  applicationCategory: "DeveloperApplication",
+  operatingSystem: ["macOS", "Windows", "Linux"],
+  description: seoMeta.description,
+  url: canonicalUrl,
+  downloadUrl: latestReleaseHref,
+  softwareVersion: releaseVersion,
+  codeRepository: "https://github.com/xiaoyuandev/ai-relay-box",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD"
+  }
+};
 
 const previewMeta =
   props.lang === "zh-CN"
@@ -63,8 +140,21 @@ const previewMeta =
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Relay Box Docs</title>
-    <meta name="description" content={props.description} />
+    <title>{seoMeta.title}</title>
+    <meta name="description" content={seoMeta.description} />
+    <meta name="keywords" content={seoMeta.keywords} />
+    <link rel="canonical" href={canonicalUrl} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="AI Relay Box" />
+    <meta property="og:title" content={seoMeta.title} />
+    <meta property="og:description" content={seoMeta.description} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:image" content={new URL(withBase("/img/home-preview.png"), canonicalUrl).toString()} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={seoMeta.title} />
+    <meta name="twitter:description" content={seoMeta.description} />
+    <meta name="twitter:image" content={new URL(withBase("/img/home-preview.png"), canonicalUrl).toString()} />
+    <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
   </head>
   <body
     class="min-h-screen text-slate-100 antialiased"
@@ -106,15 +196,15 @@ const previewMeta =
           <div class="mt-6 flex flex-wrap gap-2.5">
             <a
               class="inline-flex min-h-10 items-center justify-center rounded-full bg-teal-500 px-4 text-[13px] font-semibold tracking-[0.01em] text-slate-950 transition hover:bg-teal-400"
-              href={withBase(props.quickStartHref)}
+              href="#download"
             >
-              {props.primaryCta}
+              {seoMeta.githubCta}
             </a>
             <a
               class="inline-flex min-h-10 items-center justify-center rounded-full border border-slate-400/20 bg-slate-950/30 px-4 text-[13px] font-semibold tracking-[0.01em] text-slate-100 transition hover:border-slate-300/30 hover:bg-slate-900/45"
-              href={withBase(props.introHref)}
+              href={props.githubHref}
             >
-              {props.secondaryCta}
+              GitHub
             </a>
           </div>
         </article>
@@ -152,6 +242,46 @@ const previewMeta =
               </span>
             ))}
           </div>
+        </aside>
+      </section>
+
+      <section id="download" class="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.72fr)]">
+        <article class="content-panel rounded-[1.45rem] border border-teal-400/20 bg-[linear-gradient(145deg,rgba(20,184,166,0.16),rgba(15,23,42,0.54))] p-5 shadow-[0_18px_52px_rgba(0,0,0,0.22)] backdrop-blur-xl">
+          <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <h2 class="m-0 text-[1.35rem] font-semibold tracking-[-0.03em] text-slate-50">{seoMeta.downloadTitle}</h2>
+              <p class="mt-2 max-w-[68ch] text-[14px] leading-6 text-slate-300">{seoMeta.downloadLead}</p>
+            </div>
+            <a
+              class="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full bg-slate-50 px-4 text-[13px] font-semibold text-slate-950 transition hover:bg-teal-100"
+              href={latestReleaseHref}
+            >
+              {seoMeta.releaseCta}
+            </a>
+          </div>
+
+          <div class="mt-4 grid grid-cols-1 gap-2.5 md:grid-cols-2">
+            {downloadLinks.map((item) => (
+              <a
+                class="group flex min-h-[4.5rem] items-center justify-between gap-3 rounded-2xl border border-slate-400/15 bg-slate-950/34 px-4 py-3 transition hover:border-teal-300/45 hover:bg-slate-900/52"
+                href={item.href}
+              >
+                <span>
+                  <span class="block text-[14px] font-semibold text-slate-50">{item.label}</span>
+                  <span class="mt-1 block text-[12px] text-slate-400">{item.meta}</span>
+                </span>
+                <span class="text-[18px] leading-none text-teal-300 transition group-hover:translate-x-0.5">-&gt;</span>
+              </a>
+            ))}
+          </div>
+        </article>
+
+        <aside class="content-panel rounded-[1.45rem] border border-slate-500/20 bg-[linear-gradient(145deg,rgba(15,23,42,0.62),rgba(15,23,42,0.42))] p-5 shadow-[0_18px_52px_rgba(0,0,0,0.2)] backdrop-blur-xl">
+          <h2 class="m-0 text-[1.05rem] font-semibold tracking-[-0.02em] text-slate-50">{seoMeta.serverTitle}</h2>
+          <div class="mt-3 overflow-x-auto rounded-2xl border border-slate-400/15 bg-slate-950/72 p-3">
+            <code class="whitespace-nowrap text-[12px] leading-6 text-teal-100">{installCommand}</code>
+          </div>
+          <p class="mt-3 text-[13px] leading-6 text-slate-400">{seoMeta.serverHint}</p>
         </aside>
       </section>
 
