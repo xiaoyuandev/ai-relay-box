@@ -1,7 +1,6 @@
 ---
 title: Deep Link Import
 description: How third-party websites can open AI Relay Box and pass provider or model source import data.
-slug: deep-link-import
 ---
 
 ## What this is
@@ -29,6 +28,61 @@ The current minimum scope supports:
 If you want a ready-to-use generator page, open:
 
 <a href="../deeplink.html" target="_blank" rel="noreferrer">/deeplink.html</a>
+
+## Quick integration function
+
+If your relay website only wants to add a Provider import button, use this function.
+
+Required inputs:
+
+1. `name`
+2. `baseUrl`
+3. `apiKey`
+
+```js
+function createAiRelayBoxProviderImportUrl({ name, baseUrl, apiKey }) {
+  const payload = { name, baseUrl, apiKey };
+  const json = JSON.stringify(payload);
+  const bytes = new TextEncoder().encode(json);
+  let binary = "";
+
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+
+  const encodedPayload = btoa(binary)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+
+  return `ai-relay-box://v1/import?resource=provider&payload=${encodedPayload}`;
+}
+
+// Example usage in a button click handler:
+const url = createAiRelayBoxProviderImportUrl({
+  name: "OpenRouter",
+  baseUrl: "https://openrouter.ai/api/v1",
+  apiKey: "sk-or-example"
+});
+
+window.location.href = url;
+```
+
+For a third-party relay website, a practical integration usually looks like this:
+
+```html
+<button id="import-to-ai-relay-box">Import to AI Relay Box</button>
+
+<script>
+  document.getElementById("import-to-ai-relay-box").addEventListener("click", () => {
+    window.location.href = createAiRelayBoxProviderImportUrl({
+      name: "Your Relay Name",
+      baseUrl: "https://relay.example.com/v1",
+      apiKey: "USER_VISIBLE_OR_USER_GENERATED_API_KEY"
+    });
+  });
+</script>
+```
 
 ## URL format
 

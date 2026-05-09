@@ -41,7 +41,6 @@ const withBase = (path: string) => {
   const relative = path.replace(/^\//, "");
   return `${base}${relative}`;
 };
-const isNewTabLink = (path: string) => path === "/deeplink.html";
 const siteUrl = new URL(Astro.url.pathname, Astro.site ?? Astro.url.origin);
 const canonicalUrl = siteUrl.toString();
 const releaseVersion = rootPackage.version;
@@ -82,10 +81,27 @@ const seoMeta =
         downloadTitle: "下载并开始使用",
         downloadLead:
           "从 GitHub Release 下载桌面端，或在 WSL / Linux Server 上使用一键安装命令启动本地网关。",
-        githubCta: "前往 GitHub 下载",
+        githubCta: "获取 AI Relay Box",
         releaseCta: "查看全部 Release",
         serverTitle: "WSL / Linux Server 一键安装",
         serverHint: "安装后默认 Web 管理界面和 OpenAI 兼容入口都运行在 http://127.0.0.1:3456。",
+        installSectionTitle: "安装和使用",
+        installSectionLead: "选择桌面端直接下载，或在 WSL / Linux Server 上使用一键安装脚本。安装完成后，把你的工具统一指向本地 OpenAI 兼容入口。",
+        desktopTitle: "桌面端下载",
+        docsTitle: "需要完整接入步骤？",
+        docsLead: "详细文档包含 Provider 配置、工具接入、Deep Link 导入和常见问题。",
+        docsCta: "查看详细文档",
+        endpointLabel: "本地端点",
+        galleryLabel: "产品预览",
+        galleryTitle: "在一个桌面界面里管理 Provider、模型来源和请求日志",
+        galleryLead: "查看核心界面截图。后续继续添加截图时只需要扩展图片列表。",
+        previousSlide: "上一张截图",
+        nextSlide: "下一张截图",
+        heroPoints: [
+          "为 Cursor、Claude Code、Codex、Cherry Studio 和脚本提供一个本地 OpenAI 兼容入口",
+          "在桌面 UI 中统一管理多个大模型中转 API、模型来源、健康检查和请求日志",
+          "切换上游服务时不需要反复修改每个工具的 Base URL 和模型配置"
+        ],
       }
     : {
         title: "AI Relay Box - Local AI Gateway for OpenAI-Compatible Tools",
@@ -96,10 +112,27 @@ const seoMeta =
         downloadTitle: "Download and start using AI Relay Box",
         downloadLead:
           "Download the desktop app from GitHub Releases, or run the one-line installer for WSL and Linux Server.",
-        githubCta: "Download from GitHub",
+        githubCta: "Get AI Relay Box",
         releaseCta: "View all releases",
         serverTitle: "WSL / Linux Server one-line install",
         serverHint: "After installation, the Web UI and OpenAI-compatible endpoint run on http://127.0.0.1:3456 by default.",
+        installSectionTitle: "Install and use",
+        installSectionLead: "Download the desktop app, or run the one-line installer on WSL and Linux Server. After installation, point your tools to one local OpenAI-compatible endpoint.",
+        desktopTitle: "Desktop downloads",
+        docsTitle: "Need the full setup flow?",
+        docsLead: "The docs cover provider configuration, tool integration, Deep Link import, and common setup questions.",
+        docsCta: "Read the detailed docs",
+        endpointLabel: "Local endpoint",
+        galleryLabel: "Product Preview",
+        galleryTitle: "Manage providers, model sources, and request logs from one desktop UI",
+        galleryLead: "Browse the core interface screenshots. Add more screenshots later by extending the image list.",
+        previousSlide: "Previous screenshot",
+        nextSlide: "Next screenshot",
+        heroPoints: [
+          "Give Cursor, Claude Code, Codex, Cherry Studio, and scripts one local OpenAI-compatible endpoint",
+          "Manage multiple LLM relay APIs, model sources, health checks, and request logs from a desktop UI",
+          "Switch upstream services without editing every tool's Base URL and model configuration"
+        ],
       };
 const structuredData = {
   "@context": "https://schema.org",
@@ -119,20 +152,28 @@ const structuredData = {
   }
 };
 
-const previewMeta =
-  props.lang === "zh-CN"
-    ? {
-        label: "界面预览",
-        title: "桌面端控制面板与本地网关入口",
-        body: "后续这里可以替换成真实的应用截图。当前先保留一个与产品视觉一致的预览占位区，用来承接产品信息密度。",
-        pills: ["Provider 切换", "请求日志", "Health Check"]
-      }
-    : {
-        label: "Interface Preview",
-        title: "Desktop control plane and stable local gateway entry point",
-        body: "This area is ready to be replaced with real application screenshots. For now it acts as a visual preview block that matches the product tone.",
-        pills: ["Provider Switch", "Request Logs", "Health Check"]
-      };
+const galleryImages = [
+  {
+    src: "/img/home-preview.png",
+    alt: props.lang === "zh-CN" ? "AI Relay Box 首页概览" : "AI Relay Box home overview"
+  },
+  {
+    src: "/img/quick-start-provider-form.png",
+    alt: props.lang === "zh-CN" ? "AI Relay Box Provider 配置表单" : "AI Relay Box provider configuration form"
+  },
+  {
+    src: "/img/quick-start-request-log.png",
+    alt: props.lang === "zh-CN" ? "AI Relay Box 请求日志页面" : "AI Relay Box request logs"
+  },
+  {
+    src: "/img/connectatool.png",
+    alt: props.lang === "zh-CN" ? "AI Relay Box 工具接入配置" : "AI Relay Box tool integration setup"
+  },
+  {
+    src: "/img/settings.png",
+    alt: props.lang === "zh-CN" ? "AI Relay Box 设置页面" : "AI Relay Box settings page"
+  }
+];
 ---
 
 <!doctype html>
@@ -164,7 +205,7 @@ const previewMeta =
       radial-gradient(circle at bottom, rgba(15, 23, 42, 0.42), transparent 0, transparent 32%),
       linear-gradient(180deg, #020617 0%, #06101d 44%, #020617 100%);"
   >
-    <main class="mx-auto w-[min(1040px,calc(100vw-40px))] px-0 pb-14 pt-6">
+    <main class="mx-auto w-[min(1120px,calc(100vw-40px))] px-0 pb-14 pt-6">
       <header class="mb-9 flex flex-col items-start justify-between gap-3 md:flex-row md:items-center">
         <a
           class="inline-flex items-center gap-3 text-[12px] font-semibold uppercase tracking-[0.18em] text-slate-100"
@@ -177,7 +218,7 @@ const previewMeta =
           />
           <span>AI Relay Box Docs</span>
         </a>
-        <nav class="flex flex-wrap gap-4 text-[13px] text-slate-400">
+        <nav class="flex flex-wrap gap-5 text-[14px] font-semibold text-slate-300">
           <a class="transition hover:text-slate-100" href={withBase(props.introHref)}>{props.nav.intro}</a>
           <a class="transition hover:text-slate-100" href={withBase(props.quickStartHref)}>{props.nav.quickStart}</a>
           <a class="transition hover:text-slate-100" href={withBase(props.integrationHref)}>{props.nav.integration}</a>
@@ -186,124 +227,265 @@ const previewMeta =
         </nav>
       </header>
 
-      <section class="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.08fr)_minmax(280px,0.82fr)]">
-        <article class="content-panel rounded-[1.75rem] border border-slate-500/20 bg-[linear-gradient(145deg,rgba(15,23,42,0.78),rgba(15,23,42,0.52))] p-8 shadow-[0_22px_70px_rgba(0,0,0,0.3)] backdrop-blur-xl">
+      <section>
+        <article class="content-panel rounded-[1.75rem] border border-slate-500/20 bg-[linear-gradient(145deg,rgba(15,23,42,0.78),rgba(15,23,42,0.52))] p-7 shadow-[0_22px_70px_rgba(0,0,0,0.3)] backdrop-blur-xl md:p-9">
           <p class="mb-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-teal-300">{props.eyebrow}</p>
-          <h1 class="max-w-[13ch] text-[clamp(2.5rem,5vw,4.25rem)] font-semibold leading-[0.96] tracking-[-0.05em] text-slate-50">
+          <h1 class="max-w-[20ch] text-[clamp(2rem,4vw,3.25rem)] font-semibold leading-[1.03] tracking-[-0.04em] text-slate-50">
             {props.title}
           </h1>
-          <p class="mt-4 max-w-[54ch] text-[15px] leading-7 text-slate-300">{props.description}</p>
-          <div class="mt-6 flex flex-wrap gap-2.5">
+          <div class="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.48fr)] lg:items-start">
+            <ul class="m-0 grid max-w-[68ch] list-none gap-3 p-0">
+              {seoMeta.heroPoints.map((item) => (
+                <li class="flex gap-3 text-[15px] leading-7 text-slate-300">
+                  <span class="mt-2 h-2 w-2 shrink-0 rounded-full bg-teal-300 shadow-[0_0_20px_rgba(45,212,191,0.45)]"></span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+            <div class="rounded-2xl border border-slate-400/15 bg-slate-950/42 p-4">
+              <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{seoMeta.endpointLabel}</p>
+              <code class="mt-2 block overflow-x-auto whitespace-nowrap text-[14px] font-semibold text-teal-200">http://127.0.0.1:3456/v1</code>
+            </div>
+          </div>
+          <div class="mt-7 flex flex-wrap gap-2.5">
             <a
-              class="inline-flex min-h-10 items-center justify-center rounded-full bg-teal-500 px-4 text-[13px] font-semibold tracking-[0.01em] text-slate-950 transition hover:bg-teal-400"
-              href="#download"
+              class="inline-flex min-h-11 items-center justify-center rounded-full bg-teal-500 px-5 text-[13px] font-semibold tracking-[0.01em] text-slate-950 transition hover:bg-teal-400"
+              href="#install"
             >
               {seoMeta.githubCta}
             </a>
             <a
-              class="inline-flex min-h-10 items-center justify-center rounded-full border border-slate-400/20 bg-slate-950/30 px-4 text-[13px] font-semibold tracking-[0.01em] text-slate-100 transition hover:border-slate-300/30 hover:bg-slate-900/45"
-              href={props.githubHref}
+              class="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-400/20 bg-slate-950/30 px-5 text-[13px] font-semibold tracking-[0.01em] text-slate-100 transition hover:border-slate-300/30 hover:bg-slate-900/45"
+              href={withBase(props.quickStartHref)}
             >
-              GitHub
+              {seoMeta.docsCta}
             </a>
           </div>
         </article>
-
-        <aside class="content-panel overflow-hidden rounded-[1.6rem] border border-slate-500/20 bg-[linear-gradient(145deg,rgba(15,23,42,0.66),rgba(15,23,42,0.44))] p-4 shadow-[0_20px_56px_rgba(0,0,0,0.24)] backdrop-blur-xl">
-          <div class="mb-4 flex items-start justify-between gap-3">
-            <div>
-              <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-teal-300">{previewMeta.label}</p>
-              <h2 class="mt-2 text-[15px] font-semibold leading-6 text-slate-50">{previewMeta.title}</h2>
-            </div>
-          </div>
-
-          <div class="rounded-[1.1rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(45,212,191,0.18),transparent_24%),linear-gradient(180deg,rgba(15,23,42,0.94),rgba(2,6,23,0.98))] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-            <div class="mb-3 flex items-center gap-1.5">
-              <span class="h-2.5 w-2.5 rounded-full bg-rose-400/80"></span>
-              <span class="h-2.5 w-2.5 rounded-full bg-amber-300/80"></span>
-              <span class="h-2.5 w-2.5 rounded-full bg-emerald-400/80"></span>
-            </div>
-
-            <div class="overflow-hidden rounded-[0.95rem] border border-slate-400/10 bg-slate-950/60">
-              <img
-                src={withBase("/img/home-preview.png")}
-                alt="AI Relay Box preview"
-                class="block aspect-[16/10] w-full object-cover opacity-90"
-              />
-            </div>
-          </div>
-
-          <p class="mt-4 text-[13px] leading-6 text-slate-400">{previewMeta.body}</p>
-
-          <div class="mt-4 flex flex-wrap gap-2">
-            {previewMeta.pills.map((pill) => (
-              <span class="inline-flex rounded-full border border-teal-400/15 bg-teal-400/8 px-3 py-1 text-[12px] font-medium text-teal-200">
-                {pill}
-              </span>
-            ))}
-          </div>
-        </aside>
       </section>
 
-      <section id="download" class="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.72fr)]">
-        <article class="content-panel rounded-[1.45rem] border border-teal-400/20 bg-[linear-gradient(145deg,rgba(20,184,166,0.16),rgba(15,23,42,0.54))] p-5 shadow-[0_18px_52px_rgba(0,0,0,0.22)] backdrop-blur-xl">
-          <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-            <div>
-              <h2 class="m-0 text-[1.35rem] font-semibold tracking-[-0.03em] text-slate-50">{seoMeta.downloadTitle}</h2>
-              <p class="mt-2 max-w-[68ch] text-[14px] leading-6 text-slate-300">{seoMeta.downloadLead}</p>
-            </div>
-            <a
-              class="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full bg-slate-50 px-4 text-[13px] font-semibold text-slate-950 transition hover:bg-teal-100"
-              href={latestReleaseHref}
-            >
-              {seoMeta.releaseCta}
-            </a>
+      <section class="mt-5 overflow-hidden rounded-[1.75rem] border border-slate-500/20 bg-[linear-gradient(145deg,rgba(15,23,42,0.7),rgba(15,23,42,0.45))] p-4 shadow-[0_22px_70px_rgba(0,0,0,0.26)] backdrop-blur-xl md:p-5">
+        <div class="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-teal-300">{seoMeta.galleryLabel}</p>
+            <h2 class="mt-2 max-w-[20ch] text-[1.65rem] font-semibold leading-tight tracking-[-0.04em] text-slate-50 md:max-w-none">
+              {seoMeta.galleryTitle}
+            </h2>
           </div>
+          <p class="max-w-[42ch] text-[13px] leading-6 text-slate-400">{seoMeta.galleryLead}</p>
+        </div>
 
-          <div class="mt-4 grid grid-cols-1 gap-2.5 md:grid-cols-2">
-            {downloadLinks.map((item) => (
-              <a
-                class="group flex min-h-[4.5rem] items-center justify-between gap-3 rounded-2xl border border-slate-400/15 bg-slate-950/34 px-4 py-3 transition hover:border-teal-300/45 hover:bg-slate-900/52"
-                href={item.href}
+        <div class="gallery-carousel rounded-[1.25rem] border border-white/10 bg-slate-950/60 p-3" data-gallery>
+          <div class="mb-3 flex items-center gap-1.5">
+            <span class="h-2.5 w-2.5 rounded-full bg-rose-400/80"></span>
+            <span class="h-2.5 w-2.5 rounded-full bg-amber-300/80"></span>
+            <span class="h-2.5 w-2.5 rounded-full bg-emerald-400/80"></span>
+          </div>
+          <div class="relative overflow-hidden rounded-[1rem] border border-slate-400/10 bg-slate-950/70">
+            {galleryImages.map((image, index) => (
+              <figure
+                class:list={[
+                  "gallery-slide m-0",
+                  index === 0 ? "is-active" : ""
+                ]}
+                data-gallery-slide
               >
-                <span>
-                  <span class="block text-[14px] font-semibold text-slate-50">{item.label}</span>
-                  <span class="mt-1 block text-[12px] text-slate-400">{item.meta}</span>
-                </span>
-                <span class="text-[18px] leading-none text-teal-300 transition group-hover:translate-x-0.5">-&gt;</span>
-              </a>
+                <img
+                  src={withBase(image.src)}
+                  alt={image.alt}
+                  class="block aspect-[16/9] w-full object-cover"
+                  loading={index === 0 ? "eager" : "lazy"}
+                />
+              </figure>
+            ))}
+
+            <button
+              class="gallery-button left-3"
+              type="button"
+              aria-label={seoMeta.previousSlide}
+              data-gallery-prev
+            >
+              &lt;
+            </button>
+            <button
+              class="gallery-button right-3"
+              type="button"
+              aria-label={seoMeta.nextSlide}
+              data-gallery-next
+            >
+              &gt;
+            </button>
+          </div>
+
+          <div class="mt-3 flex justify-center gap-2">
+            {galleryImages.map((image, index) => (
+              <button
+                class:list={[
+                  "gallery-dot",
+                  index === 0 ? "is-active" : ""
+                ]}
+                type="button"
+                aria-label={image.alt}
+                data-gallery-dot
+                data-gallery-index={index}
+              ></button>
             ))}
           </div>
-        </article>
+        </div>
+      </section>
 
-        <aside class="content-panel rounded-[1.45rem] border border-slate-500/20 bg-[linear-gradient(145deg,rgba(15,23,42,0.62),rgba(15,23,42,0.42))] p-5 shadow-[0_18px_52px_rgba(0,0,0,0.2)] backdrop-blur-xl">
-          <h2 class="m-0 text-[1.05rem] font-semibold tracking-[-0.02em] text-slate-50">{seoMeta.serverTitle}</h2>
-          <div class="mt-3 overflow-x-auto rounded-2xl border border-slate-400/15 bg-slate-950/72 p-3">
-            <code class="whitespace-nowrap text-[12px] leading-6 text-teal-100">{installCommand}</code>
+      <section id="install" class="mt-5 rounded-[1.75rem] border border-teal-400/20 bg-[linear-gradient(145deg,rgba(20,184,166,0.16),rgba(15,23,42,0.56))] p-5 shadow-[0_20px_62px_rgba(0,0,0,0.24)] backdrop-blur-xl md:p-6">
+        <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h2 class="m-0 text-[1.65rem] font-semibold tracking-[-0.04em] text-slate-50">{seoMeta.installSectionTitle}</h2>
+            <p class="mt-2 max-w-[72ch] text-[14px] leading-7 text-slate-300">{seoMeta.installSectionLead}</p>
           </div>
-          <p class="mt-3 text-[13px] leading-6 text-slate-400">{seoMeta.serverHint}</p>
-        </aside>
-      </section>
+          <a
+            class="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full bg-slate-50 px-4 text-[13px] font-semibold text-slate-950 transition hover:bg-teal-100"
+            href={latestReleaseHref}
+          >
+            {seoMeta.releaseCta}
+          </a>
+        </div>
 
-      <h2 class="mt-9 text-[1.65rem] font-semibold tracking-[-0.04em] text-slate-50">{props.sectionTitle}</h2>
-      <p class="mt-2.5 max-w-[64ch] text-[15px] leading-7 text-slate-400">{props.sectionLead}</p>
-
-      <section class="mt-5 grid grid-cols-1 gap-3.5 lg:grid-cols-2 xl:grid-cols-3">
-        {props.cards.map((card) => (
-          <article class="content-panel rounded-[1.35rem] border border-slate-500/15 bg-[linear-gradient(145deg,rgba(15,23,42,0.54),rgba(15,23,42,0.4))] p-5 shadow-[0_16px_36px_rgba(0,0,0,0.22)] backdrop-blur-xl">
-            <h3 class="m-0 text-[1.05rem] font-semibold tracking-[-0.02em] text-slate-50">{card.title}</h3>
-            <p class="mt-2.5 text-[14px] leading-6 text-slate-300">{card.body}</p>
-            <a
-              class="mt-4 inline-flex text-[13px] font-semibold text-teal-300 transition hover:text-teal-200"
-              href={withBase(card.href)}
-              target={isNewTabLink(card.href) ? "_blank" : undefined}
-              rel={isNewTabLink(card.href) ? "noreferrer" : undefined}
-            >
-              {card.cta}
-            </a>
+        <div class="mt-5 grid grid-cols-1 gap-4">
+          <article class="rounded-[1.3rem] border border-slate-400/15 bg-slate-950/32 p-4">
+            <h3 class="m-0 text-[1.05rem] font-semibold tracking-[-0.02em] text-slate-50">{seoMeta.desktopTitle}</h3>
+            <div class="mt-3 grid grid-cols-1 gap-2.5 md:grid-cols-2 xl:grid-cols-4">
+              {downloadLinks.map((item) => (
+                <a
+                  class="group flex min-h-[4.5rem] items-center justify-between gap-3 rounded-2xl border border-slate-400/15 bg-slate-950/40 px-4 py-3 transition hover:border-teal-300/45 hover:bg-slate-900/58"
+                  href={item.href}
+                >
+                  <span>
+                    <span class="block text-[14px] font-semibold text-slate-50">{item.label}</span>
+                    <span class="mt-1 block text-[12px] text-slate-400">{item.meta}</span>
+                  </span>
+                  <span class="text-[18px] leading-none text-teal-300 transition group-hover:translate-x-0.5">-&gt;</span>
+                </a>
+              ))}
+            </div>
           </article>
-        ))}
+
+          <article class="rounded-[1.3rem] border border-slate-400/15 bg-slate-950/32 p-4">
+            <h3 class="m-0 text-[1.05rem] font-semibold tracking-[-0.02em] text-slate-50">{seoMeta.serverTitle}</h3>
+            <div class="mt-3 rounded-2xl border border-slate-400/15 bg-slate-950/72 p-3">
+              <code class="block break-all text-[12px] leading-6 text-teal-100">{installCommand}</code>
+            </div>
+            <p class="mt-3 text-[13px] leading-6 text-slate-400">{seoMeta.serverHint}</p>
+          </article>
+        </div>
       </section>
+
+      <section class="mt-5 rounded-[1.45rem] border border-slate-500/18 bg-[linear-gradient(145deg,rgba(15,23,42,0.58),rgba(15,23,42,0.38))] p-5 shadow-[0_18px_52px_rgba(0,0,0,0.18)] backdrop-blur-xl md:flex md:items-center md:justify-between md:gap-5">
+        <div>
+          <h2 class="m-0 text-[1.25rem] font-semibold tracking-[-0.03em] text-slate-50">{seoMeta.docsTitle}</h2>
+          <p class="mt-2 max-w-[62ch] text-[14px] leading-6 text-slate-400">{seoMeta.docsLead}</p>
+        </div>
+        <a
+          class="mt-4 inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border border-teal-300/30 bg-teal-400/10 px-4 text-[13px] font-semibold text-teal-200 transition hover:border-teal-200/50 hover:bg-teal-400/16 md:mt-0"
+          href={withBase(props.quickStartHref)}
+        >
+          {seoMeta.docsCta}
+        </a>
+      </section>
+
+      <style>
+        .gallery-carousel {
+          overflow: hidden;
+        }
+
+        .gallery-slide {
+          display: none;
+        }
+
+        .gallery-slide.is-active {
+          display: block;
+        }
+
+        .gallery-button {
+          position: absolute;
+          top: 50%;
+          display: inline-flex;
+          height: 2.5rem;
+          width: 2.5rem;
+          transform: translateY(-50%);
+          align-items: center;
+          justify-content: center;
+          border-radius: 9999px;
+          border: 1px solid rgba(148, 163, 184, 0.24);
+          background: rgba(2, 6, 23, 0.72);
+          color: rgb(204, 251, 241);
+          font-size: 1.125rem;
+          font-weight: 700;
+          transition:
+            background-color 180ms ease,
+            border-color 180ms ease,
+            color 180ms ease;
+        }
+
+        .gallery-button:hover {
+          border-color: rgba(94, 234, 212, 0.5);
+          background: rgba(15, 23, 42, 0.86);
+          color: rgb(240, 253, 250);
+        }
+
+        .gallery-button:focus-visible,
+        .gallery-dot:focus-visible {
+          outline: 2px solid rgb(45, 212, 191);
+          outline-offset: 3px;
+        }
+
+        .gallery-dot {
+          height: 0.5rem;
+          width: 0.5rem;
+          border-radius: 9999px;
+          background: rgba(148, 163, 184, 0.42);
+          transition:
+            background-color 180ms ease,
+            width 180ms ease;
+        }
+
+        .gallery-dot.is-active {
+          width: 1.5rem;
+          background: rgb(45, 212, 191);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .gallery-button,
+          .gallery-dot {
+            transition: none;
+          }
+        }
+      </style>
+      <script>
+        for (const gallery of document.querySelectorAll("[data-gallery]")) {
+          const slides = Array.from(gallery.querySelectorAll("[data-gallery-slide]"));
+          const dots = Array.from(gallery.querySelectorAll("[data-gallery-dot]"));
+          const previous = gallery.querySelector("[data-gallery-prev]");
+          const next = gallery.querySelector("[data-gallery-next]");
+          let activeIndex = 0;
+
+          const showSlide = (nextIndex) => {
+            activeIndex = (nextIndex + slides.length) % slides.length;
+            slides.forEach((slide, index) => {
+              slide.classList.toggle("is-active", index === activeIndex);
+            });
+            dots.forEach((dot, index) => {
+              dot.classList.toggle("is-active", index === activeIndex);
+            });
+          };
+
+          previous?.addEventListener("click", () => showSlide(activeIndex - 1));
+          next?.addEventListener("click", () => showSlide(activeIndex + 1));
+          dots.forEach((dot) => {
+            dot.addEventListener("click", () => {
+              const index = Number(dot.getAttribute("data-gallery-index") ?? 0);
+              showSlide(index);
+            });
+          });
+        }
+      </script>
     </main>
   </body>
 </html>
