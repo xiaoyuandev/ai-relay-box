@@ -1,7 +1,6 @@
 ---
 title: Deep Link 导入
 description: 说明第三方网页如何唤起 AI Relay Box，并传入 Provider 或 Models 导入配置。
-slug: zh-cn/deep-link-import
 ---
 
 ## 这是什么
@@ -29,6 +28,61 @@ ai-relay-box://v1/import?resource=provider&payload=BASE64URL_JSON
 如果你想直接使用现成的生成器页面，可以打开：
 
 <a href="../../deeplink.html" target="_blank" rel="noreferrer">/deeplink.html</a>
+
+## 快速接入函数
+
+如果你的中转站只想提供一个 Provider 导入按钮，可以直接使用下面这个函数。
+
+必传参数只有：
+
+1. `name`
+2. `baseUrl`
+3. `apiKey`
+
+```js
+function createAiRelayBoxProviderImportUrl({ name, baseUrl, apiKey }) {
+  const payload = { name, baseUrl, apiKey };
+  const json = JSON.stringify(payload);
+  const bytes = new TextEncoder().encode(json);
+  let binary = "";
+
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+
+  const encodedPayload = btoa(binary)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+
+  return `ai-relay-box://v1/import?resource=provider&payload=${encodedPayload}`;
+}
+
+// 在按钮点击事件里使用：
+const url = createAiRelayBoxProviderImportUrl({
+  name: "OpenRouter",
+  baseUrl: "https://openrouter.ai/api/v1",
+  apiKey: "sk-or-example"
+});
+
+window.location.href = url;
+```
+
+第三方中转站的实际接入通常可以这样写：
+
+```html
+<button id="import-to-ai-relay-box">导入到 AI Relay Box</button>
+
+<script>
+  document.getElementById("import-to-ai-relay-box").addEventListener("click", () => {
+    window.location.href = createAiRelayBoxProviderImportUrl({
+      name: "你的中转站名称",
+      baseUrl: "https://relay.example.com/v1",
+      apiKey: "用户可见或用户生成的 API Key"
+    });
+  });
+</script>
+```
 
 ## URL 格式
 
