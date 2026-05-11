@@ -357,7 +357,14 @@ export default function App() {
 
     autoUpdateCheckStartedRef.current = true;
     const timeoutId = window.setTimeout(() => {
-      void window.desktopBridge.checkUpdates().catch(() => undefined);
+      void window.desktopBridge
+        .checkUpdates()
+        .then((nextUpdates) => {
+          setDesktopState((current) =>
+            current ? { ...current, updates: nextUpdates } : current
+          );
+        })
+        .catch(() => undefined);
     }, 4000);
 
     return () => {
