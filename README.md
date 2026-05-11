@@ -467,7 +467,15 @@ So a provider can still be usable for request forwarding even if its model list 
 
 ## FAQ
 
-### Why does macOS show “the developer cannot be verified” on first install?
+<details>
+<summary>Are request logs uploaded to any remote service?</summary>
+
+No. Request logs are stored locally on your machine only. We do not upload any request log records to any remote service.
+
+</details>
+
+<details>
+<summary>Why does macOS show “the developer cannot be verified” on first install?</summary>
 
 Current public macOS builds may still show a Gatekeeper warning on first install or first launch because the project is currently distributed with a free ad-hoc style signing path instead of a fully trusted paid Apple distribution chain for every released artifact.
 
@@ -508,6 +516,8 @@ After that, launch `AI Relay Box.app` from Finder or Launchpad.
 After the first successful open, later launches normally stop showing the same warning.
 
 If a `.pkg` installer is attached to the release, prefer the `.pkg` build over dragging a raw `.app` bundle manually.
+
+</details>
 
 ## Local Development
 
