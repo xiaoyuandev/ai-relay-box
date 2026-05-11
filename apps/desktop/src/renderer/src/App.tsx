@@ -874,6 +874,13 @@ export default function App() {
               onQuitAndInstallUpdate={async () => {
                 await handleQuitAndInstallUpdate();
               }}
+              onOpenProjectPage={async () => {
+                if (!window.desktopBridge) {
+                  return;
+                }
+
+                await window.desktopBridge.openProjectPage();
+              }}
               onCoreRestart={async () => {
                 if (!window.desktopBridge) {
                   return;

@@ -222,6 +222,10 @@ function resolveReleaseURL() {
   return "https://github.com/xiaoyuandev/ai-relay-box/releases/latest";
 }
 
+function resolveProjectURL() {
+  return "https://github.com/xiaoyuandev/ai-relay-box";
+}
+
 function shouldStartHidden() {
   if (desktopConfig.launchHidden) {
     return true;
@@ -629,6 +633,12 @@ app.whenReady().then(() => {
 
   ipcMain.handle("app:open-release-page", async () => {
     const url = resolveReleaseURL();
+    await shell.openExternal(url);
+    return { ok: true, url };
+  });
+
+  ipcMain.handle("app:open-project-page", async () => {
+    const url = resolveProjectURL();
     await shell.openExternal(url);
     return { ok: true, url };
   });
